@@ -9,13 +9,13 @@ import java.util.List;
 import com.example.demo.service.DynamicAnalysisService;
 
 public class SimulationThread extends Thread{
-
+	//////仿真线程，每个场景为一个线程
 	private List<Scene> scenes;
 	private List<DeviceDetail> devices;
 	private String uppaalPath;
-	private String fileNameWithoutSuffix;
-	private int scenarioNum;
-	private String filePath;
+	private String fileNameWithoutSuffix;   ////xml文件去掉后缀名
+	private int scenarioNum;   /////场景号
+	private String filePath;   /////文件存放位置
 	
 	
 	public SimulationThread(List<Scene> scenes, List<DeviceDetail> devices, String uppaalPath,

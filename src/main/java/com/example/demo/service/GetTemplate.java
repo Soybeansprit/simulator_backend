@@ -19,7 +19,7 @@ import org.dom4j.io.SAXReader;
 import org.springframework.stereotype.Service;
 @Service
 public class GetTemplate {
-
+//////该类解析uppaal的xml文件
 	public static void main(String[] args) throws DocumentException {
 //		// TODO Auto-generated method stub
 //		String path1 = "D:\\window16.xml";

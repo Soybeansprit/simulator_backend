@@ -5,14 +5,12 @@ import java.util.HashMap;
 import java.util.List;
 
 public class Scene {
-
-	private String scenarioName="";
-	
-	private List<DataTimeValue> dataTimeValues=new ArrayList<DataTimeValue>();
-	private List<DataTimeValue> triggeredRulesName=new ArrayList<DataTimeValue>();
-	private List<String> cannotTriggeredRulesName=new ArrayList<String>();
-	
-	private List<DeviceAnalysisResult> deviceAnalysisResults=new  ArrayList<>();
+	/////各个场景分析结果
+	private String scenarioName="";   ///场景名	
+	private List<DataTimeValue> dataTimeValues=new ArrayList<DataTimeValue>();  ////仿真数据存储格式
+	private List<DataTimeValue> triggeredRulesName=new ArrayList<DataTimeValue>();  ////可触发的规则
+	private List<String> cannotTriggeredRulesName=new ArrayList<String>();	//////不可触发的规则
+	private List<DeviceAnalysisResult> deviceAnalysisResults=new  ArrayList<>();   ////各个设备动态分析结果
 
 	/////key: dataName, value: [time,value]list
 	private HashMap<String, List<double[]>> dataTimeValuesHashMap=new HashMap<>();

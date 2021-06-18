@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PropertyVerifyResult {
-
+	///////property验证结果
 	private String property="";   ////property内容
 	private boolean reachable=false;   ////是否可达
 	private List<ReachableReason> reachableReasons=new ArrayList<>();    ///可达原因

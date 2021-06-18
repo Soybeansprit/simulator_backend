@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 
-import org.apache.tomcat.jni.Address;
+
 import org.dom4j.DocumentException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -22,13 +22,13 @@ import com.example.demo.bean.BiddableType;
 import com.example.demo.bean.DeviceDetail;
 import com.example.demo.bean.DeviceType;
 import com.example.demo.bean.EnvironmentModel;
-import com.example.demo.bean.GraphNode;
+import com.example.demo.bean.IFDGraph.GraphNode;
 import com.example.demo.bean.OutputConstruct.EnvironmentStatic;
 import com.example.demo.bean.OutputConstruct.ScenePropertyResult;
 import com.example.demo.bean.PropertyVerifyResult;
 import com.example.demo.bean.Rule;
 import com.example.demo.bean.Scene;
-import com.example.demo.bean.ScenesTree;
+import com.example.demo.bean.ScenarioTree.ScenesTree;
 import com.example.demo.bean.SensorType;
 import com.example.demo.bean.StaticAnalysisResult;
 import com.example.demo.bean.InputConstruct.EnvironmentRule;
@@ -123,7 +123,7 @@ public class Controller {
 		return scenes;
 	}
 	
-	/////动态分析，返回有哪些错误以及错误原因
+	/////所有场景动态分析，返回有哪些错误以及错误原因
 	@RequestMapping(value="/getAllDynamicAnalysisResult",method = RequestMethod.POST)
 	@ResponseBody
 	public ScenePropertyResult getAllDynamicAnalysisResult(@RequestBody SceneEnvironmentProperty sceneEnvironmentProperty,String simulationTime,String equivalentTime,String intervalTime){

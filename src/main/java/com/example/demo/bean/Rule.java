@@ -7,8 +7,8 @@ public class Rule {
 
 	private String ruleName="";   ///规则名序号  rulei
 	private String ruleContent="";  ///规则内容
-	private List<String> trigger=new ArrayList<String>();
-	private List<String> action=new ArrayList<String>();
+	private List<String> trigger=new ArrayList<String>();  ////所有triggers
+	private List<String> action=new ArrayList<String>();   ////所有actions
 	public String getRuleName() {
 		return ruleName;
 	}

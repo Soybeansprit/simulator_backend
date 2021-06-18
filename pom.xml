@@ -11,7 +11,7 @@
 	<groupId>com.example</groupId>
 	<artifactId>simulator-backend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<packaging>war</packaging>
+
 	<name>simulator-backend</name>
 	<description>Demo project for Spring Boot</description>
 	<properties>

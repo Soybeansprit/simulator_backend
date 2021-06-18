@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class EnvironmentModel {
-
+	
 	private List<DeviceDetail> devices=new ArrayList<DeviceDetail>();
 	private List<SensorType> sensors=new ArrayList<SensorType>();
 	private List<BiddableType> biddables=new ArrayList<BiddableType>();

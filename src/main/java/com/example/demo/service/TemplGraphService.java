@@ -15,16 +15,16 @@ import org.springframework.stereotype.Service;
 
 import com.example.demo.bean.DeviceType;
 import com.example.demo.bean.EnvironmentModel;
+import com.example.demo.bean.ModelGraph.TemplGraph;
+import com.example.demo.bean.ModelGraph.TemplGraphNode;
+import com.example.demo.bean.ModelGraph.TemplTransition;
 import com.example.demo.bean.Rule;
-import com.example.demo.bean.ScenesTree;
+import com.example.demo.bean.ScenarioTree.ScenesTree;
 import com.example.demo.bean.SensorType;
 import com.example.demo.bean.StaticAnalysisResult;
 import com.example.demo.bean.Action;
 import com.example.demo.bean.BiddableType;
 import com.example.demo.bean.DeviceDetail;
-import com.example.demo.bean.TemplGraph;
-import com.example.demo.bean.TemplGraphNode;
-import com.example.demo.bean.TemplTransition;
 import com.example.demo.bean.Trigger;
 import com.example.demo.service.GetTemplate.Branchpoint;
 import com.example.demo.service.GetTemplate.Label;
@@ -152,12 +152,12 @@ public class TemplGraphService {
 		List<Rule> rules=RuleService.getRuleList(ruleText);
 		StaticAnalysisResult staticAnalsisResult=StaticAnalysisService.getStaticAnalaysisResult(rules, ifdFileName, filePath, environmentModel);
 		
-		SystemModelService.generateContrModel(filePath+"\\"+modelFileName2, staticAnalsisResult.usableRules, biddableTypes, devices);
+		SystemModelService.generateContrModel(filePath+"\\"+modelFileName2, staticAnalsisResult.getUsableRules(), biddableTypes, devices);
 //		List<String[]> declarations=SystemModelService.generateDeclaration(rules, biddableTypes, deviceTypes, sensorTypes,controlledDevices);
 //		List<Action> actions=RuleService.getAllActions(staticAnalsisResult.usableRules, devices);
 //		List<Trigger> triggers=RuleService.getAllTriggers(staticAnalsisResult.usableRules, sensorTypes, biddableTypes);
 //		SystemModelService.generateAllScenarios(actions, triggers, declarations, devices, deviceTypes, biddableTypes, sensorTypes, modelFileName2, filePath, "300");
-		ScenesTree scenesTree=SystemModelService.generateAllScenarios(staticAnalsisResult.usableRules, devices, deviceTypes, biddableTypes, sensorTypes, modelFileName2, filePath, "300");
+		ScenesTree scenesTree=SystemModelService.generateAllScenarios(staticAnalsisResult.getUsableRules(), devices, deviceTypes, biddableTypes, sensorTypes, modelFileName2, filePath, "300");
 		DynamicAnalysisService.getAllSimulationResults(scenesTree,devices, modelFileName2, filePath, "D:\\tools\\uppaal-4.1.24\\uppaal-4.1.24\\bin-Windows");
 		System.out.println(devices);
 		s.close();

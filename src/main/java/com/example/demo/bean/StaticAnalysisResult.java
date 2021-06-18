@@ -4,13 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class StaticAnalysisResult {
-
-	public List<ErrorReason> incorrectRules=new ArrayList<ErrorReason>();
-	public List<ErrorReason> unusedRules=new ArrayList<ErrorReason>();
-	public List<List<Rule>> redundantRules=new ArrayList<List<Rule>>();
-	public List<String> incompleteness=new ArrayList<String>();
-	public List<Rule> usableRules=new ArrayList<Rule>();
-	public List<Rule> totalRules=new ArrayList<>();
+	////静态分析结果
+	private List<ErrorReason> incorrectRules=new ArrayList<ErrorReason>();
+	private List<ErrorReason> unusedRules=new ArrayList<ErrorReason>();
+	private List<List<Rule>> redundantRules=new ArrayList<List<Rule>>();
+	private List<String> incompleteness=new ArrayList<String>();
+	private List<Rule> usableRules=new ArrayList<Rule>();
+	private List<Rule> totalRules=new ArrayList<>();
 	public List<Rule> getTotalRules() {
 		return totalRules;
 	}

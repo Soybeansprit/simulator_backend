@@ -3,6 +3,8 @@ package com.example.demo.bean;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.example.demo.bean.ScenarioTree.ScenesTree;
+
 public class InputConstruct {
 
 

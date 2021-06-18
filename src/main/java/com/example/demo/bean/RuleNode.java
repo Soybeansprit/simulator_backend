@@ -5,8 +5,8 @@ import java.util.List;
 
 public class RuleNode {
 	/////用于locate error ，当前规则和会引发这个规则的其他规则
-	private Rule rule=new Rule();
-	private List<RuleNode> preRules=new ArrayList<RuleNode>();
+	private Rule rule=new Rule();   //////当前规则
+	private List<RuleNode> preRules=new ArrayList<RuleNode>();    ////会触发该规则的规则
 	public Rule getRule() {
 		return rule;
 	}

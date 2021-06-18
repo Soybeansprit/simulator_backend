@@ -4,8 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class JitterReason {
-	private List<double[]> jitter=new ArrayList<>();
-	private List<CauseRule> causingRules=new ArrayList<>();
+	//////抖动及原因
+	private List<double[]> jitter=new ArrayList<>();   ///某段抖动  time-value,time-value...
+	private List<CauseRule> causingRules=new ArrayList<>();  //////原因
 	public List<double[]> getJitter() {
 		return jitter;
 	}

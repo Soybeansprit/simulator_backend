@@ -4,8 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ConflictReason {
-	private Conflict conflict=new Conflict();
-	private List<CauseRule> causingRules=new ArrayList<>();
+	/////冲突即原因
+	private Conflict conflict=new Conflict();  /////某个冲突
+	private List<CauseRule> causingRules=new ArrayList<>();   //////原因
 	public Conflict getConflict() {
 		return conflict;
 	}

@@ -4,10 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CauseRule {
-
-	private String state="";
-	private int value=-1;
-	private List<RuleNode> stateCausingRules=new ArrayList<RuleNode>();
+	/////导致某个状态的原因规则
+	private String state="";   ///状态
+	private int value=-1;    ////对应的值
+	private List<RuleNode> stateCausingRules=new ArrayList<RuleNode>();   ////对应的规则
 	public String getState() {
 		return state;
 	}

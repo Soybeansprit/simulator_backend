@@ -20,8 +20,8 @@ import com.example.demo.bean.BiddableType;
 import com.example.demo.bean.DeviceDetail;
 import com.example.demo.bean.EnvironmentModel;
 import com.example.demo.bean.ErrorReason;
-import com.example.demo.bean.GraphNode;
-import com.example.demo.bean.GraphNodeArrow;
+import com.example.demo.bean.IFDGraph.GraphNode;
+import com.example.demo.bean.IFDGraph.GraphNodeArrow;
 import com.example.demo.bean.Rule;
 import com.example.demo.bean.SensorType;
 import com.example.demo.bean.StaticAnalysisResult;
@@ -126,11 +126,11 @@ public class StaticAnalysisService {
 			}
 		}
 		
-		staticAnalysisResult.incorrectRules=incorrectRules;
-		staticAnalysisResult.unusedRules=unusedRules;
-		staticAnalysisResult.redundantRules=redundantRules;
-		staticAnalysisResult.incompleteness=incompleteness;
-		staticAnalysisResult.usableRules=newRules;
+		staticAnalysisResult.setIncorrectRules(incorrectRules);
+		staticAnalysisResult.setUnusedRules(unusedRules);
+		staticAnalysisResult.setRedundantRules(redundantRules);
+		staticAnalysisResult.setIncompleteness(incompleteness);
+		staticAnalysisResult.setUsableRules(newRules);
 		return staticAnalysisResult;
 		
 	}

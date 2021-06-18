@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ReachableReason {
-	///可达原因
+	///property可达原因
 	private double[] satisfyIntervalTime;  ////满足的区间
 	private String scenarioName="";
 	private List<CauseRule> causingRules=new ArrayList<CauseRule>();

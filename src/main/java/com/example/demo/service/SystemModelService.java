@@ -9,7 +9,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import org.apache.tomcat.util.buf.StringUtils;
+
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
@@ -19,19 +19,18 @@ import org.dom4j.io.SAXReader;
 import org.dom4j.io.XMLWriter;
 
 import com.example.demo.bean.Action;
-import com.example.demo.bean.AttributeValue;
 import com.example.demo.bean.BiddableType;
 import com.example.demo.bean.DeviceDetail;
 import com.example.demo.bean.DeviceType;
+import com.example.demo.bean.ModelGraph.TemplGraph;
+import com.example.demo.bean.ModelGraph.TemplGraphNode;
+import com.example.demo.bean.ModelGraph.TemplTransition;
 import com.example.demo.bean.Rule;
-import com.example.demo.bean.SceneChild;
-import com.example.demo.bean.ScenesTree;
-import com.example.demo.bean.SensorType;
-import com.example.demo.bean.TemplGraph;
-import com.example.demo.bean.TemplGraphNode;
-import com.example.demo.bean.TemplTransition;
 import com.example.demo.bean.Trigger;
-
+import com.example.demo.bean.ScenarioTree.ScenesTree;
+import com.example.demo.bean.SensorType;
+import com.example.demo.bean.ScenarioTree.SceneChild;
+import com.example.demo.bean.ScenarioTree.AttributeValue;
 public class SystemModelService {
 	
 

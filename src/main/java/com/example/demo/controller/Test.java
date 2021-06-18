@@ -16,16 +16,15 @@ import com.example.demo.bean.ConflictReason;
 import com.example.demo.bean.DeviceDetail;
 import com.example.demo.bean.DeviceType;
 import com.example.demo.bean.EnvironmentModel;
-import com.example.demo.bean.GraphNode;
+import com.example.demo.bean.IFDGraph.GraphNode;
 import com.example.demo.bean.JitterReason;
 import com.example.demo.bean.PropertyVerifyResult;
 import com.example.demo.bean.Rule;
 import com.example.demo.bean.RuleNode;
+import com.example.demo.bean.ScenarioTree.ScenesTree;
 import com.example.demo.bean.Scene;
-import com.example.demo.bean.ScenesTree;
 import com.example.demo.bean.SensorType;
 import com.example.demo.bean.StaticAnalysisResult;
-import com.example.demo.bean.TemplGraph;
 import com.example.demo.service.DynamicAnalysisService;
 import com.example.demo.service.GetTemplate;
 import com.example.demo.service.RuleService;
@@ -158,12 +157,12 @@ public class Test {
 		////静态分析
 		StaticAnalysisResult staticAnalsisResult=StaticAnalysisService.getStaticAnalaysisResult(rules, ifdFileName, filePath, environmentModel);
 		
-		SystemModelService.generateContrModel(filePath+"\\"+modelFileName2, staticAnalsisResult.usableRules, environmentModel.getBiddables(), environmentModel.getDevices());
+		SystemModelService.generateContrModel(filePath+"\\"+modelFileName2, staticAnalsisResult.getUsableRules(), environmentModel.getBiddables(), environmentModel.getDevices());
 //		List<String[]> declarations=SystemModelService.generateDeclaration(rules, biddableTypes, deviceTypes, sensorTypes,controlledDevices);
 //		List<Action> actions=RuleService.getAllActions(staticAnalsisResult.usableRules, devices);
 //		List<Trigger> triggers=RuleService.getAllTriggers(staticAnalsisResult.usableRules, sensorTypes, biddableTypes);
 //		SystemModelService.generateAllScenarios(actions, triggers, declarations, devices, deviceTypes, biddableTypes, sensorTypes, modelFileName2, filePath, "300");
-		ScenesTree scenesTree=SystemModelService.generateAllScenarios(staticAnalsisResult.usableRules, environmentModel.getDevices(), environmentModel.getDeviceTypes(), environmentModel.getBiddables(), environmentModel.getSensors(), modelFileName2, filePath, "300");
+		ScenesTree scenesTree=SystemModelService.generateAllScenarios(staticAnalsisResult.getUsableRules(), environmentModel.getDevices(), environmentModel.getDeviceTypes(), environmentModel.getBiddables(), environmentModel.getSensors(), modelFileName2, filePath, "300");
 		////动态分析
 		List<Scene> scenes=DynamicAnalysisService.getAllSimulationResults(scenesTree,environmentModel.getDevices(), modelFileName2, filePath, "D:\\tools\\uppaal-4.1.24\\uppaal-4.1.24\\bin-Windows");
 		System.out.println(environmentModel.getDevices());

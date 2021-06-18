@@ -4,9 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DeviceAnalysisResult {
-	private String deviceName="";
-	private List<ConflictReason> conflictReasons=new ArrayList<>();
-	private List<JitterReason> jitterReasons=new ArrayList<>();
+	///////设备分析结果
+	private String deviceName="";  ////设备名
+	private List<ConflictReason> conflictReasons=new ArrayList<>();   ////是否有冲突及原因
+	private List<JitterReason> jitterReasons=new ArrayList<>();    /////是否有抖动及原因
 	public String getDeviceName() {
 		return deviceName;
 	}

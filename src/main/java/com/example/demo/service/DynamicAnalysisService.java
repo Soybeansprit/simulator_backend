@@ -1,11 +1,9 @@
 package com.example.demo.service;
 
 import java.io.BufferedReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,15 +25,15 @@ import com.example.demo.bean.DataTimeValue;
 import com.example.demo.bean.DeviceAnalysisResult;
 import com.example.demo.bean.DeviceDetail;
 import com.example.demo.bean.DeviceType;
-import com.example.demo.bean.GraphNode;
-import com.example.demo.bean.GraphNodeArrow;
+import com.example.demo.bean.IFDGraph.GraphNode;
+import com.example.demo.bean.IFDGraph.GraphNodeArrow;
 import com.example.demo.bean.JitterReason;
 import com.example.demo.bean.PropertyVerifyResult;
 import com.example.demo.bean.ReachableReason;
 import com.example.demo.bean.Rule;
 import com.example.demo.bean.RuleNode;
 import com.example.demo.bean.Scene;
-import com.example.demo.bean.ScenesTree;
+import com.example.demo.bean.ScenarioTree.ScenesTree;
 import com.example.demo.bean.SimulationThread;
 @Service
 public class DynamicAnalysisService {
@@ -162,6 +160,7 @@ public class DynamicAnalysisService {
 		}
 		for(Entry<String,List<double[]>> dataTimeValue:dataTimeValuesHashMap.entrySet()) {
 			List<ConflictReason> conflictReasons=conflictAnalysis(dataTimeValue.getValue());
+			System.out.println(conflictReasons);
 			List<double[]> startTimeValueEndTimeValues=dataStartTimeValueEndTimeValuesMap.get(dataTimeValue.getKey());
 			jitterAnalysis(startTimeValueEndTimeValues, "300", "24", "300");
 			
@@ -1211,8 +1210,8 @@ public class DynamicAnalysisService {
 			startTimeValueEndTimeValue[1]=timeValues.get(i)[1];
 			double startTime=timeValues.get(i)[0];   ////起始时间和值
 			double startValue=timeValues.get(i)[1];
-			double currentTime=startTime;     ////对应当前指针
-			double currentValue=startValue;
+//			double currentTime=startTime;     ////对应当前指针
+//			double currentValue=startValue;
 			String t1=startTime+"";           ///(0,0)
 			String v1=startValue+""; 
 			String currentT=t1;
@@ -1226,8 +1225,8 @@ public class DynamicAnalysisService {
 				if(v2.equals(currentV)) {
 					currentV=v2;                //// until (120.0000000000171,0)
 					currentT=t2;
-					currentTime=endTime;
-					currentValue=endValue;
+//					currentTime=endTime;
+//					currentValue=endValue;
 					startTimeValueEndTimeValue[2]=endTime;
 					startTimeValueEndTimeValue[3]=endValue;
 					i=j;
