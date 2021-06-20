@@ -34,7 +34,6 @@ import com.example.demo.bean.Rule;
 import com.example.demo.bean.RuleNode;
 import com.example.demo.bean.Scene;
 import com.example.demo.bean.ScenarioTree.ScenesTree;
-import com.example.demo.bean.SimulationThread;
 @Service
 public class DynamicAnalysisService {
 
@@ -1331,12 +1330,12 @@ public class DynamicAnalysisService {
 	
 	
 	/////生成各个场景的仿真结果
-	public static List<Scene> getAllSimulationResults(ScenesTree scenesTree,List<DeviceDetail> devices,String fileName,String filePath,String uppaalPath) {
+	public static List<Scene> getAllSimulationResults(ScenesTree scenesTree,List<DeviceDetail> devices,String fileName,String modelFilePath,String uppaalPath,String simulateResultFilePath) {
 		final String fileNameWithoutSuffix=fileName.substring(0, fileName.lastIndexOf(".xml"));
 		final List<Scene> scenes=new ArrayList<>();
 		List<Thread> threads=new ArrayList<>();
 		for(int i=0;i<scenesTree.getChildren().size();i++) {
-			SimulationThread sThread=new SimulationThread(scenes, devices, uppaalPath, fileNameWithoutSuffix, i, filePath);	
+			SimulationThreadService sThread=new SimulationThreadService(scenes, devices, uppaalPath, fileNameWithoutSuffix, i, modelFilePath,simulateResultFilePath);	
 			sThread.setName("scenario-"+i);
 			threads.add(sThread);
 			sThread.start();			
@@ -1480,14 +1479,9 @@ public class DynamicAnalysisService {
 	public static String getSimulationResult(String uppaalPath,String fileName,String filePath) {
 		  InputStream error = null;
 		  	try {
-		  		StringBuffer command = new StringBuffer();
-		  		command.append("cmd /c d: ");
-		  		//这里的&&在多条语句的情况下使用，表示等上一条语句执行成功后在执行下一条命令，
-		  		//也可以使用&表示执行上一条后台就立刻执行下一条语句
-		  		command.append(String.format(" && cd %s", uppaalPath));
-		  		command.append(" && verifyta.exe -O std "+filePath+"\\"+fileName);
+
 //		  		System.out.println(command.toString());
-		  		Process process = Runtime.getRuntime().exec(command.toString());
+		  		Process process = Runtime.getRuntime().exec(getCMDCommand(uppaalPath, fileName, filePath));
 		  		error = process.getErrorStream();
 //		  		long startTime0=System.currentTimeMillis();
 		  		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream(),Charset.forName("UTF-8")));
@@ -1529,5 +1523,24 @@ public class DynamicAnalysisService {
 		  		}
 		  		return ex.getMessage();
 		  	}
+	}
+	
+	public static String getCMDCommand(String uppaalPath,String fileName,String filePath) {
+  		StringBuffer command = new StringBuffer();
+  		command.append("cmd /c d: ");
+  		//这里的&&在多条语句的情况下使用，表示等上一条语句执行成功后在执行下一条命令，
+  		//也可以使用&表示执行上一条后台就立刻执行下一条语句
+  		command.append(String.format(" && cd %s", uppaalPath));
+  		command.append(" && verifyta.exe -O std "+filePath+fileName);
+  		return command.toString();
+	}
+	
+	public static String getLinuxCommand(String uppaalPath,String fileName,String filePath) {
+  		StringBuffer command = new StringBuffer();
+  		//这里的&&在多条语句的情况下使用，表示等上一条语句执行成功后在执行下一条命令，
+  		//也可以使用&表示执行上一条后台就立刻执行下一条语句
+  		command.append(String.format(" cd %s", uppaalPath));
+  		command.append(" ; ./verifyta -O std "+filePath+fileName);
+  		return command.toString();
 	}
 }

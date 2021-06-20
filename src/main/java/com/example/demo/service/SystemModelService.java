@@ -178,7 +178,7 @@ public class SystemModelService {
 			globalDeclaration.append(";\r\n");
 		}
 		SAXReader reader= new SAXReader();
-		Document document = reader.read(new File(filePath+"\\"+fileName));
+		Document document = reader.read(new File(filePath+fileName));
 		Element rootElement=document.getRootElement();
 		////全局声明
 		Element declarationElement=rootElement.element("declaration");
@@ -202,7 +202,7 @@ public class SystemModelService {
 			Element formulaElement=queryElement.addElement("formula");
 			formulaElement.setText(query);
 		}
-		OutputStream os=new FileOutputStream(filePath+"\\"+newFileName);
+		OutputStream os=new FileOutputStream(filePath+newFileName);
 		OutputFormat format=OutputFormat.createPrettyPrint();
 		format.setEncoding("utf-8");
 		format.setTrimText(false); //保留换行，但是出现空行

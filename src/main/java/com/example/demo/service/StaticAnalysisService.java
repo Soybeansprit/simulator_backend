@@ -474,7 +474,7 @@ public class StaticAnalysisService {
 				}
 				for(GraphNodeArrow nodepArrow:node.getpNodeList()) {
 					GraphNode pNode=nodepArrow.getGraphNode();
-					if(nodepArrow.getStyle()==null&&pNode.getShape().indexOf("doubleoctagon")<0&&!pNode.flag) {
+					if(nodepArrow.getStyle()==""&&pNode.getShape().indexOf("doubleoctagon")<0&&!pNode.flag) {
 						if(pNode.getShape().indexOf("hexagon")>=0 && !pNode.getName().equals(ruleNode.getName())) {
 							List<GraphNode> pRuleList=new ArrayList<GraphNode>();
 							
@@ -557,8 +557,8 @@ public class StaticAnalysisService {
 	}
 	
 	//////////////////////获得IFD节点
-	public static List<GraphNode> getIFDNode(String ifdFileName,String filePath) {
-		String dotPath=filePath+"\\"+ifdFileName;
+	public static List<GraphNode> getIFDNode(String ifdFileName,String ifdPath) {
+		String dotPath=ifdPath+ifdFileName;
 		List<GraphNode> graphNodes=new ArrayList<GraphNode>();
 		try(BufferedReader br=new BufferedReader(new FileReader(dotPath))){
 			List<String> strings=new ArrayList<String>();
@@ -668,13 +668,13 @@ public class StaticAnalysisService {
 
 	
 	/////////////////生成IFD
-	public static void generateIFD(List<Rule> rules,String ifdFileName,String filePath,List<DeviceDetail> devices,List<SensorType> sensors,List<BiddableType> biddables) throws IOException {
+	public static void generateIFD(List<Rule> rules,String ifdFileName,String ifdPath,List<DeviceDetail> devices,List<SensorType> sensors,List<BiddableType> biddables) throws IOException {
 //		GetTemplate parse=new GetTemplate();
 
 		
 		//-------------------写dot文件-----------------------------------
 		
-		String dotPath=filePath+"\\"+ifdFileName;
+		String dotPath=ifdPath+ifdFileName;
 		StringBuilder sb=new StringBuilder();
 
 		

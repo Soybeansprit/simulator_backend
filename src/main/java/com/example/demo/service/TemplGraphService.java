@@ -158,7 +158,7 @@ public class TemplGraphService {
 //		List<Trigger> triggers=RuleService.getAllTriggers(staticAnalsisResult.usableRules, sensorTypes, biddableTypes);
 //		SystemModelService.generateAllScenarios(actions, triggers, declarations, devices, deviceTypes, biddableTypes, sensorTypes, modelFileName2, filePath, "300");
 		ScenesTree scenesTree=SystemModelService.generateAllScenarios(staticAnalsisResult.getUsableRules(), devices, deviceTypes, biddableTypes, sensorTypes, modelFileName2, filePath, "300");
-		DynamicAnalysisService.getAllSimulationResults(scenesTree,devices, modelFileName2, filePath, "D:\\tools\\uppaal-4.1.24\\uppaal-4.1.24\\bin-Windows");
+		DynamicAnalysisService.getAllSimulationResults(scenesTree,devices, modelFileName2, filePath, "D:\\tools\\uppaal-4.1.24\\uppaal-4.1.24\\bin-Windows",filePath);
 		System.out.println(devices);
 		s.close();
 
@@ -204,7 +204,7 @@ public class TemplGraphService {
 		/////初始模型文件删掉第二行，更改文件名
 //		String changedModelFileName=initModelFileName.substring(0, initModelFileName.lastIndexOf(".xml"))+"-changed.xml";
 		///删除第二行
-		GetTemplate.deleteFileLine(filePath+"\\"+initModelFileName, filePath+"\\"+changedModelFileName, 2);
+		GetTemplate.deleteFileLine(filePath+initModelFileName, filePath+changedModelFileName, 2);
 		/////获得所有环境模型对应的结构
 		List<TemplGraph> templGraphs=TemplGraphService.getTemplGraphs(changedModelFileName, filePath);
 		List<TemplGraph> controlledDevices=new ArrayList<TemplGraph>();
@@ -225,7 +225,7 @@ public class TemplGraphService {
 					if(person!=null) {
 						templGraph=person;
 					}
-					SystemModelService.generatePersonModel(templGraph, filePath+"\\"+changedModelFileName);
+					SystemModelService.generatePersonModel(templGraph, filePath+changedModelFileName);
 				}
 				biddables.add(templGraph);
 			}			
@@ -261,8 +261,8 @@ public class TemplGraphService {
 	}
 	
 	//////////////获得状态机
-	public static List<TemplGraph> getTemplGraphs(String modelFileName,String filePath) throws DocumentException{
-		String modelPath=filePath+"\\"+modelFileName;
+	public static List<TemplGraph> getTemplGraphs(String modelFileName,String modelFilePath) throws DocumentException{
+		String modelPath=modelFilePath+modelFileName;
 		GetTemplate getTemplate=new GetTemplate();
 		List<Template> templates=getTemplate.getTemplate(modelPath);
 		

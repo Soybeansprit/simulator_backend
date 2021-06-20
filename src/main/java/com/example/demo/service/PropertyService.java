@@ -11,7 +11,7 @@ public class PropertyService {
 
 	public static Properties getProperties(String filePath,String propertyFileName) throws FileNotFoundException, IOException {
 		Properties properties=new Properties();
-		properties.load(new FileInputStream(filePath+"\\"+propertyFileName));
+		properties.load(new FileInputStream(filePath+propertyFileName));
 		return properties;
 	}
 }

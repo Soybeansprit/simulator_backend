@@ -1,4 +1,4 @@
-package com.example.demo.bean;
+package com.example.demo.service;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -6,27 +6,32 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.example.demo.bean.DataTimeValue;
+import com.example.demo.bean.DeviceDetail;
+import com.example.demo.bean.Scene;
 import com.example.demo.service.DynamicAnalysisService;
 
-public class SimulationThread extends Thread{
+public class SimulationThreadService extends Thread{
 	//////仿真线程，每个场景为一个线程
 	private List<Scene> scenes;
 	private List<DeviceDetail> devices;
 	private String uppaalPath;
 	private String fileNameWithoutSuffix;   ////xml文件去掉后缀名
 	private int scenarioNum;   /////场景号
-	private String filePath;   /////文件存放位置
+	private String simulateResultFilePath;   /////文件存放位置
+	private String modelFilePath;
 	
 	
-	public SimulationThread(List<Scene> scenes, List<DeviceDetail> devices, String uppaalPath,
-			String fileNameWithoutSuffix, int scenarioNum, String filePath) {
+	public SimulationThreadService(List<Scene> scenes, List<DeviceDetail> devices, String uppaalPath,
+			String fileNameWithoutSuffix, int scenarioNum, String modelFilePath,String simulateResultFilePath) {
 		super();
 		this.scenes = scenes;
 		this.devices = devices;
 		this.uppaalPath = uppaalPath;
 		this.fileNameWithoutSuffix = fileNameWithoutSuffix;
 		this.scenarioNum = scenarioNum;
-		this.filePath = filePath;
+		this.modelFilePath = modelFilePath;
+		this.simulateResultFilePath=simulateResultFilePath;
 	}
 
 
@@ -35,7 +40,7 @@ public class SimulationThread extends Thread{
 	public void run() {
 		String newModelFileName=fileNameWithoutSuffix+"-scenario-"+scenarioNum+".xml";
 		String resultFileName=fileNameWithoutSuffix+"-scenario-"+scenarioNum+".txt";
-		String simulationResult=DynamicAnalysisService.getSimulationResult(uppaalPath, newModelFileName, filePath);
+		String simulationResult=DynamicAnalysisService.getSimulationResult(uppaalPath, newModelFileName, modelFilePath);
 		//生成仿真结果数据文件
 		for(DeviceDetail device:devices) {
 			//获得设备标识符表示，identifier，转为设备名，并给出位置信息和设备类型
@@ -43,7 +48,7 @@ public class SimulationThread extends Thread{
 			String identifier=device.getDeviceType().getName().substring(0, 1).toLowerCase()+device.getDeviceType().getName().substring(1)+"["+device.getConstructionNum()+"]";
 			simulationResult=simulationResult.replace(identifier, "deviceName="+device.getDeviceName()+",deviceType="+device.getDeviceType().getName()+",location="+device.getLocation());
 		}
-		try (FileWriter fr=new FileWriter(filePath+"\\"+resultFileName);
+		try (FileWriter fr=new FileWriter(simulateResultFilePath+resultFileName);
 				PrintWriter pw=new PrintWriter(fr)){
 			pw.write(simulationResult);
 		}catch(IOException e) {

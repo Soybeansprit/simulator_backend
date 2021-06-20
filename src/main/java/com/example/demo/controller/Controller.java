@@ -91,7 +91,7 @@ public class Controller {
 		////获得环境模型
 		EnvironmentModel environmentModel=TemplGraphService.getEnvironmentModel(initModelFileName, AddressService.changed_model_file_Name, AddressService.MODEL_FILE_PATH, propertyFileName);
 		////静态分析
-		StaticAnalysisResult staticAnalysisResult=StaticAnalysisService.getStaticAnalaysisResult(rules, AddressService.IFD_FILE_NAME,  AddressService.MODEL_FILE_PATH, environmentModel);
+		StaticAnalysisResult staticAnalysisResult=StaticAnalysisService.getStaticAnalaysisResult(rules, AddressService.IFD_FILE_NAME,  AddressService.IFD_FILE_PATH, environmentModel);
 		EnvironmentStatic environmentStatic=new EnvironmentStatic(environmentModel, staticAnalysisResult);
 		return environmentStatic;
 	}
@@ -107,7 +107,7 @@ public class Controller {
 		List<DeviceType> deviceTypes=environmentRule.getEnvironmentModel().getDeviceTypes();
 		List<BiddableType> biddableTypes=environmentRule.getEnvironmentModel().getBiddables();
 		List<SensorType> sensorTypes=environmentRule.getEnvironmentModel().getSensors();
-		SystemModelService.generateContrModel(AddressService.MODEL_FILE_PATH+"\\"+AddressService.changed_model_file_Name, rules, biddableTypes, devices);
+		SystemModelService.generateContrModel(AddressService.MODEL_FILE_PATH+AddressService.changed_model_file_Name, rules, biddableTypes, devices);
 		ScenesTree scenesTree=SystemModelService.generateAllScenarios(rules, devices, deviceTypes, biddableTypes, sensorTypes, AddressService.changed_model_file_Name, AddressService.MODEL_FILE_PATH, simulationTime);
 		return scenesTree;
 	}
@@ -119,7 +119,7 @@ public class Controller {
 		ScenesTree scenesTree=sceneTreeDevice.getScenesTree();
 		List<DeviceDetail> devices=sceneTreeDevice.getDevices();
 		AddressService.setChangedModelFileName(initModelFileName);
-		List<Scene> scenes=DynamicAnalysisService.getAllSimulationResults(scenesTree, devices, AddressService.changed_model_file_Name, AddressService.MODEL_FILE_PATH, AddressService.UPPAAL_PATH);
+		List<Scene> scenes=DynamicAnalysisService.getAllSimulationResults(scenesTree, devices, AddressService.changed_model_file_Name, AddressService.MODEL_FILE_PATH, AddressService.UPPAAL_PATH,AddressService.SIMULATE_RESULT_FILE_PATH);
 		return scenes;
 	}
 	
@@ -137,7 +137,7 @@ public class Controller {
 			rulesMap.put(rule.getRuleName(), rule);
 		}
 		/////获得ifd上各节点
-		List<GraphNode> graphNodes=StaticAnalysisService.getIFDNode(AddressService.IFD_FILE_NAME, AddressService.MODEL_FILE_PATH);
+		List<GraphNode> graphNodes=StaticAnalysisService.getIFDNode(AddressService.IFD_FILE_NAME, AddressService.IFD_FILE_PATH);
 		DynamicAnalysisService.getAllScenariosDynamicAnalysis(scenes, environmentModel.getDevices(), rulesMap, simulationTime, equivalentTime, intervalTime, graphNodes);
 		List<PropertyVerifyResult> propertyVerifyResults=DynamicAnalysisService.analizeAllproperties(properties, scenes, environmentModel.getDevices(), environmentModel.getBiddables(), graphNodes, rulesMap);
 		ScenePropertyResult scenePropertyResult=new ScenePropertyResult();
@@ -159,7 +159,7 @@ public class Controller {
 			rulesMap.put(rule.getRuleName(), rule);
 		}
 		/////获得ifd上各节点
-		List<GraphNode> graphNodes=StaticAnalysisService.getIFDNode(AddressService.IFD_FILE_NAME, AddressService.MODEL_FILE_PATH);
+		List<GraphNode> graphNodes=StaticAnalysisService.getIFDNode(AddressService.IFD_FILE_NAME, AddressService.IFD_FILE_PATH);
 		/////场景分析
 		DynamicAnalysisService.getSingleScenarioDynamicAnalysis(scene, environmentModel.getDevices(), graphNodes, rulesMap);
 		return scene;
