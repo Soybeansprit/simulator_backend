@@ -884,21 +884,19 @@ public class SystemModelService {
 		String[] conAndReverseCon=new String[2];
 		String reverseCondition="";
 		String condition="";
-		String entityName="";
-		String state="";
-		if(trigger.indexOf(".")>0) {
-			state=trigger.substring(trigger.indexOf(".")).substring(1).trim();
-			entityName=trigger.substring(0, trigger.indexOf(".")).trim();
-		}
+
+
+		
+		String attrVal[]=RuleService.getTriAttrVal(trigger, biddables);
 		//找到该设备状态对应的值/condition
-		boolean isDevice=false;
+		
 		for(DeviceDetail device:devices) {
-			if(device.getDeviceName().equals(entityName)) {
+			if(device.getDeviceName().equals(attrVal[0])) {
 				//找到哪类设备
 				//找到状态对应值
 				String value="";
 				for(String[] stateActionValue:device.getDeviceType().stateActionValues) {
-					if(stateActionValue[0].equals(state)) {
+					if(stateActionValue[0].equals(attrVal[2])) {
 						value=stateActionValue[2];
 					}
 				}
@@ -907,41 +905,50 @@ public class SystemModelService {
 					condition=deviceTypeName.substring(0, 1).toLowerCase()+deviceTypeName.substring(1)+"["+device.getConstructionNum()+"]=="+value;
 					reverseCondition=condition.replace("==", "!=");
 				}
-				isDevice=true;
+				
 			}
 		}
-		if(!isDevice) {
-			String[] attrVal=RuleService.getTriAttrVal(trigger, biddables);   /////如Person.Lobby , Person position 1  ==> position=1
-			condition=attrVal[0]+"=="+attrVal[2];
-			reverseCondition=condition.replace("==", "!=");
-//			for(TemplGraph templGraph:templGraphs) {
-//				if(templGraph.getName().equals(entityName)) {
-//					if(templGraph.getDeclaration().indexOf("biddable")>=0) {
-//						////对应biddable实体状态
-//						for(TemplGraphNode stateNode:templGraph.getTemplGraphNodes()) {
-//							if(stateNode.name.equals(state)) {
-//								for(TemplTransition inTransition:stateNode.inTransitions) {
-//									String[] assignments=inTransition.assignment.split(",");
-//									////如果不是t=开头的，则是状态对应的属性
-//									if(assignments.length<=2) {
-//										for(String assignment:assignments) {
-//											assignment=assignment.trim();
-//											if(!assignment.startsWith("t=")) {
-//												condition=assignment.replace("=", "==");;
-//												reverseCondition=condition.replace("==", "!=");
-//											}
-//											break;
-//										}
-//									}
-//									break;
-//								}
-//							}
-//						}
-//					}
-//					break;
-//				}
-//			}
+		if(!attrVal[1].equals(".")) {
+			if(attrVal[1].equals("!=")) {
+				condition=attrVal[0]+"!="+attrVal[2];
+				reverseCondition=condition.replace("!=", "==");
+			}else {
+				condition=attrVal[0]+"=="+attrVal[2];
+				reverseCondition=condition.replace("==", "!=");
+			}
+	
 		}
+//		if(!isDevice) {
+//			String[] attrVal=RuleService.getTriAttrVal(trigger, biddables);   /////如Person.Lobby , Person position 1  ==> position=1
+//
+////			for(TemplGraph templGraph:templGraphs) {
+////				if(templGraph.getName().equals(entityName)) {
+////					if(templGraph.getDeclaration().indexOf("biddable")>=0) {
+////						////对应biddable实体状态
+////						for(TemplGraphNode stateNode:templGraph.getTemplGraphNodes()) {
+////							if(stateNode.name.equals(state)) {
+////								for(TemplTransition inTransition:stateNode.inTransitions) {
+////									String[] assignments=inTransition.assignment.split(",");
+////									////如果不是t=开头的，则是状态对应的属性
+////									if(assignments.length<=2) {
+////										for(String assignment:assignments) {
+////											assignment=assignment.trim();
+////											if(!assignment.startsWith("t=")) {
+////												condition=assignment.replace("=", "==");;
+////												reverseCondition=condition.replace("==", "!=");
+////											}
+////											break;
+////										}
+////									}
+////									break;
+////								}
+////							}
+////						}
+////					}
+////					break;
+////				}
+////			}
+//		}
 		conAndReverseCon[0]=condition;
 		conAndReverseCon[1]=reverseCondition;
 		return conAndReverseCon;

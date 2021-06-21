@@ -1481,7 +1481,7 @@ public class DynamicAnalysisService {
 		  	try {
 
 //		  		System.out.println(command.toString());
-		  		Process process = Runtime.getRuntime().exec(getCMDCommand(uppaalPath, fileName, filePath));
+		  		Process process = Runtime.getRuntime().exec(getLinuxCommand(uppaalPath, fileName, filePath));
 		  		error = process.getErrorStream();
 //		  		long startTime0=System.currentTimeMillis();
 		  		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream(),Charset.forName("UTF-8")));
@@ -1539,8 +1539,8 @@ public class DynamicAnalysisService {
   		StringBuffer command = new StringBuffer();
   		//这里的&&在多条语句的情况下使用，表示等上一条语句执行成功后在执行下一条命令，
   		//也可以使用&表示执行上一条后台就立刻执行下一条语句
-  		command.append(String.format(" cd %s", uppaalPath));
-  		command.append(" ; ./verifyta -O std "+filePath+fileName);
+  		command.append(String.format("%s", uppaalPath));
+  		command.append("./verifyta -O std "+filePath+fileName);
   		return command.toString();
 	}
 }

@@ -345,6 +345,10 @@ public class StaticAnalysisService {
 						if(val2<=val1) {
 							return true;
 						}
+					}else if(attrVal2[1].equals("!=")) {
+						if((int) val2==(int)val1) {
+							return true;
+						}
 					}
 				}else if(attrVal2[1].equals("=")) {
 					if(attrVal1[1].contains(">")) {
@@ -353,6 +357,10 @@ public class StaticAnalysisService {
 						}
 					}else if(attrVal1[1].contains("<")) {
 						if(val1<=val2) {
+							return true;
+						}
+					}else if(attrVal1[1].equals("!=")) {
+						if((int) val2==(int)val1) {
 							return true;
 						}
 					}

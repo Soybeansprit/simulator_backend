@@ -70,7 +70,7 @@ public class Controller {
         }
         //上传xml文件和properties文件		
         String fileName = uploadedFile.getOriginalFilename();
-        String filePath=AddressService.MODEL_FILE_PATH+"\\"+fileName;
+        String filePath=AddressService.MODEL_FILE_PATH+fileName;
         BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(filePath));
 
         outputStream.write(uploadedFile.getBytes());

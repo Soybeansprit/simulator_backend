@@ -273,13 +273,23 @@ public class RuleService {
 			attrVal[1]=".";
 			attrVal[0]=trigger.substring(0, trigger.indexOf(".")).trim();
 			attrVal[2]=trigger.substring(trigger.indexOf(".")).substring(1).trim();	
+			boolean isNot=false;
+			////非
+			if(attrVal[0].startsWith("Not_")) {
+				attrVal[0]=attrVal[0].substring("Not_".length());
+				isNot=true;
+			}
 			for(BiddableType biddable:biddables) {
 				if(biddable.getName().equals(attrVal[0])) {     /////不是设备而是biddable实体的状态，如Person
 					for(String[] stateAttributeValue:biddable.stateAttributeValues) {
 						if(stateAttributeValue[0].equals(attrVal[2])) {
 							/////////找到state对应的属性值
 							attrVal[0]=stateAttributeValue[1];
-							attrVal[1]="=";
+							if(isNot) {
+								attrVal[1]="!=";	
+							}else {
+								attrVal[1]="=";
+							}							
 							attrVal[2]=stateAttributeValue[2];
 							break;
 						}
