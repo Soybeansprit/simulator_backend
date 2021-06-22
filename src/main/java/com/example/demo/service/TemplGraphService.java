@@ -225,6 +225,7 @@ public class TemplGraphService {
 					if(person!=null) {
 						templGraph=person;
 					}
+					//////生成Person模型
 					SystemModelService.generatePersonModel(templGraph, filePath+changedModelFileName);
 				}
 				biddables.add(templGraph);
@@ -540,6 +541,7 @@ public class TemplGraphService {
 	
 	/////////生成person的templGraph
 	public static TemplGraph getPersonTeml(List<String> locations) {
+		/////doorway->locations->out
 		if(locations.size()<=0) {
 			return null;
 		}
@@ -553,28 +555,46 @@ public class TemplGraphService {
 		person.setDeclaration("//biddable");
 		
 		StringBuilder parameter=new StringBuilder();
+		//////////out
+//		TemplGraphNode outNode=new TemplGraphNode();
+//		outNode.id="id1";
+//		outNode.name="Out";
+//		outNode.invariant="time<=t0";
+//		person.addTemplGraphNode(outNode);
+//		parameter.append("double t0");
+		//////////
 		
-		TemplGraphNode outNode=new TemplGraphNode();
-		outNode.id="id1";
-		outNode.name="Out";
-		outNode.invariant="time<=t0";
-		person.addTemplGraphNode(outNode);
+		/////////doorway///////
+		TemplGraphNode doorwayNode=new TemplGraphNode();
+		doorwayNode.id="id1";
+		doorwayNode.name="Doorway";
+		doorwayNode.invariant="time<=t0";
+		person.addTemplGraphNode(doorwayNode);
 		parameter.append("double t0");
-		
-		getTwoNodesRelation(startNode, outNode, "position=0", "", "", "");
-		TemplGraphNode sourceNode=outNode;
+		//////location/////////
+		getTwoNodesRelation(startNode, doorwayNode, "position=0", "", "", "");
+		TemplGraphNode sourceNode=doorwayNode;
 		for(int i=0;i<locations.size();i++) {
 			TemplGraphNode locationNode=new TemplGraphNode();
 			locationNode.id="id"+(i+2);
 			locationNode.name=locations.get(i);
-			if(i<locations.size()-1) {
-				locationNode.invariant="time<=t"+(i+1);
-				parameter.append(",double t"+(i+1));
-			}
+//			if(i<locations.size()-1) {
+//				locationNode.invariant="time<=t"+(i+1);
+//				parameter.append(",double t"+(i+1));
+//			}
+			locationNode.invariant="time<=t"+(i+1);
+			parameter.append(",double t"+(i+1));
 			person.addTemplGraphNode(locationNode);
 			getTwoNodesRelation(sourceNode, locationNode, "position="+(i+1), "", "time>=t"+i, "");
 			sourceNode=locationNode;
 		}
+		//////Out//////
+		TemplGraphNode outNode=new TemplGraphNode();
+		outNode.id="id"+(1+locations.size()+1);
+		outNode.name="Out";
+		person.addTemplGraphNode(outNode);
+		getTwoNodesRelation(sourceNode, outNode, "position="+(1+locations.size()), "", "time>=t"+locations.size(), "");
+		
 		person.setParameter(parameter.toString());
 		
 		return person;

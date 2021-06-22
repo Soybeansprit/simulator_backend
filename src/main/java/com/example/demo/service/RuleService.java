@@ -275,8 +275,8 @@ public class RuleService {
 			attrVal[2]=trigger.substring(trigger.indexOf(".")).substring(1).trim();	
 			boolean isNot=false;
 			////非
-			if(attrVal[0].startsWith("Not_")) {
-				attrVal[0]=attrVal[0].substring("Not_".length());
+			if(attrVal[0].toUpperCase().startsWith("NOT_")) {
+				attrVal[0]=attrVal[0].substring("NOT_".length());
 				isNot=true;
 			}
 			for(BiddableType biddable:biddables) {
