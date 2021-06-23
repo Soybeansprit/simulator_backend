@@ -14,6 +14,7 @@ import org.dom4j.DocumentException;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.bean.DeviceType;
+import com.example.demo.bean.DeviceType.StateEffect;
 import com.example.demo.bean.EnvironmentModel;
 import com.example.demo.bean.ModelGraph.TemplGraph;
 import com.example.demo.bean.ModelGraph.TemplGraphNode;
@@ -77,11 +78,11 @@ public class TemplGraphService {
 			}			
 		}
 		
-		List<DeviceType> deviceTypes=getDeviceTypes(controlledDevices);
+//		List<DeviceType> deviceTypes=getDeviceTypes(controlledDevices,attributes);
 		List<SensorType> sensorTypes=getSensorTypes(sensors);
 		List<BiddableType> biddableTypes=getBiddableTypes(biddables, sensorTypes);
-		setDeviceType(devices, deviceTypes);
-		setDeviceConstructionNum(devices, deviceTypes);
+//		setDeviceType(devices, deviceTypes);
+//		setDeviceConstructionNum(devices, deviceTypes);
 		
 		EnvironmentModel environmentModel=new EnvironmentModel();
 		environmentModel.setBiddables(biddableTypes);
@@ -243,7 +244,7 @@ public class TemplGraphService {
 			attributes=null;
 		}
 		/////设备类型
-		List<DeviceType> deviceTypes=TemplGraphService.getDeviceTypes(controlledDevices);
+		List<DeviceType> deviceTypes=TemplGraphService.getDeviceTypes(controlledDevices,attributes);
 		///传感器类型
 		List<SensorType> sensorTypes=TemplGraphService.getSensorTypes(sensors);
 		////被控实体类型
@@ -415,26 +416,33 @@ public class TemplGraphService {
 	}
 	
 	//////////device, state, action, value
-	public static List<DeviceType> getDeviceTypes(List<TemplGraph> controlledDevices){
+	public static List<DeviceType> getDeviceTypes(List<TemplGraph> controlledDevices,List<Attribute> attributes){
 		List<DeviceType> devices=new ArrayList<DeviceType>();
 		for(TemplGraph controlledDevice:controlledDevices) {
 			if(controlledDevice.getDeclaration().indexOf("controlled_device")>=0) {
-				DeviceType device=getDeviceType(controlledDevice);
+				DeviceType device=getDeviceType(controlledDevice,attributes);
 				devices.add(device);
 			}
 		}
 		return devices;
 	}
 	
-	public static DeviceType getDeviceType(TemplGraph controlledDevice) {
+	public static DeviceType getDeviceType(TemplGraph controlledDevice,List<Attribute> attributes) {
+		/////添加设备对环境属性的影响
 		DeviceType device=new DeviceType();
 		device.setName(controlledDevice.getName());;
 		for(TemplGraphNode stateNode:controlledDevice.getTemplGraphNodes()) {
+			////获得当前节点的状态、对应action和value
+			////添加设备对环境属性的影响
 			if(stateNode.getName()!=null) {
 				String[] stateActionValue=new String[3];
+				StateEffect stateEffect=new StateEffect();
+				stateEffect.setState(stateNode.getName());
 				stateActionValue[0]=stateNode.getName();
+				/////可以只需要看一条边
 				for(TemplTransition inTransition:stateNode.getInTransitions()) {
 					if(inTransition.synchronisation!=null&&inTransition.assignment!=null) {
+						////只看一条边
 						if(inTransition.synchronisation.indexOf("?")>0) {
 							String synchronisation=inTransition.synchronisation;
 							//synchronisation: turn_bulb_on[i]?   => turn_bulb_on
@@ -442,15 +450,37 @@ public class TemplGraphService {
 						}
 						String[] assisnments=inTransition.assignment.split(",");
 						for(String assignment:assisnments) {
+							assignment=assignment.trim();
 							String identifier=device.getName().substring(0, 1).toLowerCase()+device.getName().substring(1);
 							if(assignment.indexOf(identifier)>=0) {
 								stateActionValue[2]=assignment.substring(assignment.indexOf("=")).substring("=".length());
-								break;
+							}else {
+								/////添加设备状态对环境属性的影响
+								///dtemper=dtemper+(cooldt-heatdt)
+								if(assignment.indexOf("(")>0) {
+									String delta=assignment.substring(0, assignment.indexOf("="));
+									String stateDelta=assignment.substring(assignment.indexOf("("), assignment.indexOf("-")).substring("(".length());   ///cooldt									
+									for(Attribute attribute:attributes) {
+										if(attribute.getDelta().equals(delta)) {
+											////找到对应属性
+											String[] effect=new String[3];
+											effect[0]=attribute.getAttribute();
+											effect[1]="'==";
+											////从declaration里找到对应的值
+											effect[2]=controlledDevice.getDeclaration().substring(controlledDevice.getDeclaration().indexOf(stateDelta+"=")).substring((stateDelta+"=").length());
+											effect[2]=effect[2].substring(0,effect[2].indexOf(";"));
+											stateEffect.getEffects().add(effect);
+											break;
+										}
+									}
+								}
+								
 							}
 						}
 						break;
 					}							
 				}
+				device.getStateEffects().add(stateEffect);
 				device.stateActionValues.add(stateActionValue);
 			}
 		}
