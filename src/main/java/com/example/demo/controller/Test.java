@@ -47,11 +47,11 @@ public class Test {
 //			devices.add(device);
 //		}
 //		System.out.println(devices);
-		String modelFileName="anewtry.xml";
-		String filePath="D:\\example";
-		String modelFileName2="anewtry2.xml";
+		String modelFileName="exper-newversion.xml";
+		String filePath="D:\\example\\";
+		String modelFileName2="exper-newversion2.xml";
 		String ifdFileName="ifd.dot";
-		String propertyFileName="properties.properties";
+		String propertyFileName="liu.properties";
 		
 		EnvironmentModel environmentModel=TemplGraphService.getEnvironmentModel(modelFileName,modelFileName2, filePath, propertyFileName);
 		
@@ -87,67 +87,43 @@ public class Test {
 //		environmentModel.setDevices(devices);
 //		environmentModel.setSensors(sensorTypes);
 		
-		String ruleText="1. IF SmartHomeSecurity_0.homeMode AND temperature<=15 THEN Heater_0.turn_heat_on\r\n" + 
-				"\r\n" + 
-				"2. IF SmartHomeSecurity_0.homeMode AND temperature>=30 THEN AirConditioner_0.turn_ac_cool\r\n" + 
-				"\r\n" + 
-				"3. IF SmartHomeSecurity_0.homeMode AND humidity<20 THEN Humidifier_0.turn_hum_on\r\n" + 
-				"\r\n" + 
-				"4. IF SmartHomeSecurity_0.homeMode AND humidity>=45 THEN Humidifier_0.turn_hum_off\r\n" + 
-				"\r\n" + 
-				"5. IF SmartHomeSecurity_0.homeMode AND humidity>65 THEN Fan_0.turn_fan_on\r\n" + 
-				"\r\n" + 
-				"6. IF SmartHomeSecurity_0.homeMode AND temperature>28 THEN Fan_0.turn_fan_on\r\n" + 
-				"\r\n" + 
-				"7. IF SmartHomeSecurity_0.homeMode AND temperature<20 THEN Fan_0.turn_fan_off\r\n" + 
-				"\r\n" + 
-				"15. IF SmartHomeSecurity_0.awayMode THEN Fan_0.turn_fan_on\r\n" + 
-				"\r\n" + 
-				"17. IF Window_0.wopen THEN Heater_0.turn_heat_off\r\n" + 
-				"\r\n" + 
-				"IF Window_0.wopen AND temperature>28 THEN AirConditioner_0.turn_ac_cool, Bulb_0.turn_bulb_off\r\n"+
-				"\r\n"+
-				"18. IF SmartHomeSecurity_0.awayMode THEN Heater_0.turn_heat_off,AirConditioner_0.turn_ac_off,Fan_0.turn_fan_off,Blind_0.close_blind,Bulb_0.turn_bulb_off\r\n" + 
-				"\r\n" + 
-				"19. IF SmartHomeSecurity_0.homeMode AND temperature<18 THEN AirConditioner_0.turn_ac_heat\r\n" + 
-				"\r\n" + 
-				"20. IF SmartHomeSecurity_0.homeMode AND temperature>30 THEN AirConditioner_0.turn_ac_cool\r\n" + 
-				"\r\n" + 
-				"21. IF SmartHomeSecurity_0.homeMode THEN Robot_0.dock_robot\r\n" + 
-				"\r\n" + 
-				"22. IF SmartHomeSecurity_0.awayMode THEN Robot_0.start_robot\r\n" + 
-				"\r\n" + 
-				"23. IF SmartHomeSecurity_0.awayMode THEN Window_0.close_window\r\n" + 
-				"\r\n" + 
-				"24. IF Person.Lobby THEN SmartHomeSecurity_0.turn_sms_home\r\n" + 
-				"\r\n" + 
-				"25. IF Person.Out THEN SmartHomeSecurity_0.turn_sms_away\r\n" + 
-				"\r\n" + 
-				"26. IF SmartHomeSecurity_0.homeMode AND temperature>28 THEN Blind_0.open_blind\r\n" + 
-				"\r\n" + 
-				"27. IF SmartHomeSecurity_0.homeMode THEN Bulb_0.turn_bulb_on\r\n" + 
-				"\r\n" + 
-				"28. IF SmartHomeSecurity_0.homeMode AND co2ppm>=800 THEN Fan_0.turn_fan_on,Window_0.open_window\r\n" + 
-//				"\r\n" + 
-//				"29. IF AirConditioner_0.cool THEN Window_0.close_window\r\n" + 
-				"\r\n" + 
-				"30. IF AirConditioner_0.heat THEN Window_0.close_window\r\n"+
-				"\r\n" +
-				"19. IF SmartHomeSecurity_0.homeMode AND temperature<18 THEN AirConditioner_0.turn_ac_heat\r\n"+ 
-				"\r\n" + 
-				"19. IF temperature>20 AND temperature<18 THEN AirConditioner_0.turn_heat_ac\r\n" + 
-				"\r\n" + 
-				"19. IF SmartHomeSecurity_0.homeMode AND SmartHomeSecurity_0.awayMode THEN AirConditioner_0.turn_ac_heat\r\n"+ 
-				"\r\n" + 
-				"19. IF temperature<18 AND temperature>21 THEN AirConditioner_0.turn_ac_heat\r\n"+
-				"\r\n"+
-				"IF temperature>18 THEN Window_0.open_window,AirConditioner_0.turn_ac_heat\r\n"+
-				"\r\n"+
-				"IF temperature>18 THEN Window_0.open_window\r\n"+
-				"\r\n"+
-				"IF temperature>18 THEN Fan_0.turn_fan_on\r\n"+
-				"\r\n"+
-				"IF Fan_0.fon THEN AirConditioner_0.turn_ac_heat\r\n";
+		String ruleText="IF temperature<=15 THEN AirConditioner_0.turn_ac_heat\r\n" + 
+				" IF temperature>=28 THEN AirConditioner_0.turn_ac_cool,Heater_0.turn_heat_off\r\n" + 
+				" IF humidity<20 THEN Humidifier_0.turn_hum_on,Dehumidifier_0.turn_dehum_off\r\n" + 
+				" IF Person.Location1 THEN Bulb_0.turn_bulb_on,Bulb_1.turn_bulb_on,Window_1.open_window,Window_2.open_window\r\n" + 
+				" IF Person.Location1 THEN TV_0.turn_tv_on\r\n" + 
+				" IF Person.Location2 THEN Bulb_2.turn_bulb_on,Bulb_3.turn_bulb_on,Window_3.open_window\r\n" + 
+				" IF Person.Location4 THEN Bulb_6.turn_bulb_on,Bulb_7.turn_bulb_on,Window_0.open_window\r\n" + 
+				" IF Person.Location3 THEN Bulb_4.turn_bulb_on,Bulb_5.turn_bulb_on\r\n" + 
+				" IF Person.Location5 THEN Bulb_8.turn_bulb_on,Window_4.open_window\r\n" + 
+				" IF Person.Out THEN Bulb_0.turn_bulb_off,Bulb_1.turn_bulb_off,Bulb_2.turn_bulb_off,Bulb_3.turn_bulb_off,Bulb_4.turn_bulb_off,Bulb_5.turn_bulb_off\r\n" + 
+				" IF Person.Out THEN Window_0.close_window,Window_1.close_window,Window_2.close_window,Window_3.close_window\r\n" + 
+				" IF Person.Out THEN AirConditioner_0.turn_ac_off,Humidifier_0.turn_hum_off,Fan_0.turn_fan_off,TV_0.turn_tv_off\r\n" + 
+				" IF Rain.isRain THEN Window_0.close_window,Window_1.close_window,Window_2.close_window,Window_3.close_window\r\n" + 
+				" IF AirConditioner_0.cool THEN Window_0.close_window,Window_1.close_window,Window_2.close_window,Window_3.close_window,Window_4.close_window\r\n" + 
+				" IF AirConditioner_0.heat THEN Window_0.close_window,Window_1.close_window,Window_2.close_window,Window_3.close_window,Window_4.close_window\r\n" + 
+				" IF Wind.Gale THEN Window_3.close_window\r\n" + 
+				" IF Person.Out THEN Robot_0.dock_robot\r\n" + 
+				" IF NOT_Person.Out  THEN Robot_0.start_robot\r\n" + 
+				" IF humidity>50 THEN Humidifier_0.turn_hum_off\r\n" + 
+				" IF Fire.OnFire THEN Alarm_0.turn_alarm_on\r\n" + 
+				" IF Fire.NoFire THEN Alarm_0.turn_alarm_off\r\n" + 
+				"  IF co2ppm>800 THEN AirPurifier_0.turn_ap_on\r\n" + 
+				" IF pm_2_5>75 THEN AirPurifier_0.turn_ap_on\r\n" + 
+				" IF aqi>=150 THEN Window_0.close_window,Window_1.close_window,Window_2.close_window,Window_3.close_window\r\n" + 
+				" IF co2ppm<400 AND pm_2_5<20 THEN AirPurifier_0.turn_ap_off\r\n" + 
+				" IF NOT_Person.Location1 THEN Bulb_0.turn_bulb_off,Bulb_1.turn_bulb_off,Window_1.close_window,Window_2.close_window\r\n" + 
+				"  IF NOT_Person.Location1 THEN TV_0.turn_tv_off\r\n" + 
+				" IF NOT_Person.Location2 THEN Bulb_2.turn_bulb_off,Bulb_3.turn_bulb_off\r\n" + 
+				" IF NOT_Person.Location4 THEN Bulb_6.turn_bulb_off,Bulb_7.turn_bulb_off,Window_0.close_window\r\n" + 
+				" IF NOT_Person.Location3 THEN Bulb_4.turn_bulb_off,Bulb_5.turn_bulb_off\r\n" + 
+				" IF NOT_Person.Location5 THEN Bulb_8.turn_bulb_off\r\n" + 
+				" IF NOT_Person.Out THEN Blind_0.open_blind,Blind_1.open_blind\r\n" + 
+				" \r\n" + 
+				" \r\n" + 
+				" \r\n" + 
+				" IF temperature<10 THEN Heater_0.turn_heat_on\r\n" + 
+				"IF humidity>75 THEN Dehumidifier_0.turn_dehum_on,Humidifier_0.turn_hum_off";
 
 		List<Rule> rules=RuleService.getRuleList(ruleText);
 		HashMap<String,Rule> rulesMap=new HashMap<>();
@@ -157,12 +133,12 @@ public class Test {
 		////静态分析
 		StaticAnalysisResult staticAnalsisResult=StaticAnalysisService.getStaticAnalaysisResult(rules, ifdFileName, filePath, environmentModel);
 		
-		SystemModelService.generateContrModel(filePath+"\\"+modelFileName2, staticAnalsisResult.getUsableRules(), environmentModel.getBiddables(), environmentModel.getDevices());
+		SystemModelService.generateContrModel(filePath+modelFileName2, staticAnalsisResult.getUsableRules(), environmentModel.getBiddables(), environmentModel.getDevices());
 //		List<String[]> declarations=SystemModelService.generateDeclaration(rules, biddableTypes, deviceTypes, sensorTypes,controlledDevices);
 //		List<Action> actions=RuleService.getAllActions(staticAnalsisResult.usableRules, devices);
 //		List<Trigger> triggers=RuleService.getAllTriggers(staticAnalsisResult.usableRules, sensorTypes, biddableTypes);
 //		SystemModelService.generateAllScenarios(actions, triggers, declarations, devices, deviceTypes, biddableTypes, sensorTypes, modelFileName2, filePath, "300");
-		ScenesTree scenesTree=SystemModelService.generateAllScenarios(staticAnalsisResult.getUsableRules(), environmentModel.getDevices(), environmentModel.getDeviceTypes(), environmentModel.getBiddables(), environmentModel.getSensors(), modelFileName2, filePath, "300");
+		ScenesTree scenesTree=SystemModelService.generateAllScenarios(staticAnalsisResult.getUsableRules(), environmentModel.getDevices(), environmentModel.getDeviceTypes(), environmentModel.getBiddables(), environmentModel.getSensors(), environmentModel.getAttributes(), modelFileName2, filePath, "300");
 		////动态分析
 		List<Scene> scenes=DynamicAnalysisService.getAllSimulationResults(scenesTree,environmentModel.getDevices(), modelFileName2, filePath, "D:\\tools\\uppaal-4.1.24\\uppaal-4.1.24\\bin-Windows",filePath);
 		System.out.println(environmentModel.getDevices());
@@ -185,7 +161,7 @@ public class Test {
 				System.out.println(conflictReasons);
 				System.out.println(jitterReasons);
 				///获得原因
-				if(conflictReasons!=null) {
+				if(conflictReasons.size()>0) {
 					System.out.println(device.getDeviceName()+" conflict");
 					for(ConflictReason conflictReason:conflictReasons) {
 						/////但这个还没有将状态和规则对应起来

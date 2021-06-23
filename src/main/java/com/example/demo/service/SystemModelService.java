@@ -19,6 +19,7 @@ import org.dom4j.io.SAXReader;
 import org.dom4j.io.XMLWriter;
 
 import com.example.demo.bean.Action;
+import com.example.demo.bean.Attribute;
 import com.example.demo.bean.BiddableType;
 import com.example.demo.bean.DeviceDetail;
 import com.example.demo.bean.DeviceType;
@@ -36,7 +37,7 @@ public class SystemModelService {
 
 	///////////////生成多个场景，根据temperature等biddable类型的的trigger取值分段获得
 	public static ScenesTree generateAllScenarios(List<Rule> rules,List<DeviceDetail> devices,List<DeviceType> deviceTypes,
-			List<BiddableType> biddableTypes,List<SensorType> sensorTypes,String fileName,String filePath,String simulationTime) throws DocumentException, IOException {
+			List<BiddableType> biddableTypes,List<SensorType> sensorTypes,List<Attribute> attributes,String fileName,String filePath,String simulationTime) throws DocumentException, IOException {
 		/////生成场景树
 		ScenesTree scenesTree=new ScenesTree();
 		scenesTree.setName("smart home");
@@ -52,7 +53,8 @@ public class SystemModelService {
 				controlledDevices.add(templGraph);
 			}
 		}
-		List<String[]> declarations=generateDeclaration(rules, biddableTypes, deviceTypes, sensorTypes, controlledDevices);
+		/////声明的参数
+		List<String[]> declarations=generateDeclaration(rules, biddableTypes, deviceTypes, sensorTypes, attributes, controlledDevices);
 		List<Action> actions=RuleService.getAllActions(rules, devices);
 		List<Trigger> triggers=RuleService.getAllTriggers(rules, sensorTypes, biddableTypes);
 		////////找到涉及相同causal类型的属性的triggers，分别获得分段点，用于多个场景的初始值分段赋值
@@ -83,7 +85,7 @@ public class SystemModelService {
 		/////获得控制器模型
 
 		/////模型声明各个场景相同
-		String modelDeclaration=getModelDeclaration(actions, triggers, devices, biddableTypes, controllers,simulationTime);
+		String modelDeclaration=getModelDeclaration(actions, triggers, devices, biddableTypes, controllers, attributes, simulationTime);
 		/////query仿真公式
 		String queryFormula=getQueryFormula(declarations, simulationTime);
 		////文件名
@@ -112,7 +114,7 @@ public class SystemModelService {
 	
 	///////////////生成多个场景，根据temperature等biddable类型的的trigger取值分段获得
 	public static void generateAllScenarios(List<Action> actions,List<Trigger> triggers,List<String[]> declarations,List<DeviceDetail> devices,List<DeviceType> deviceTypes,
-			List<BiddableType> biddables,List<SensorType> sensors,String fileName,String filePath,String simulationTime) throws DocumentException, IOException {
+			List<BiddableType> biddables,List<SensorType> sensors,List<Attribute> attributes, String fileName,String filePath,String simulationTime) throws DocumentException, IOException {
 		
 		////////找到涉及相同causal类型的属性的triggers，分别获得分段点，用于多个场景的初始值分段赋值
 		List<List<Trigger>> attributesSameTriggers=new ArrayList<List<Trigger>>();
@@ -148,7 +150,7 @@ public class SystemModelService {
 			}
 		}
 		/////模型声明各个场景相同
-		String modelDeclaration=getModelDeclaration(actions, triggers, devices, biddables, controllers,simulationTime);
+		String modelDeclaration=getModelDeclaration(actions, triggers, devices, biddables, controllers, attributes, simulationTime);
 		/////query仿真公式
 		String queryFormula=getQueryFormula(declarations, simulationTime);
 		////文件名
@@ -286,7 +288,7 @@ public class SystemModelService {
 	}
 	
 	///////获得模型声明
-	public static String getModelDeclaration(List<Action> actions,List<Trigger> triggers,List<DeviceDetail> devices,List<BiddableType> biddables,List<TemplGraph> controllers,String simulationTime) {
+	public static String getModelDeclaration(List<Action> actions,List<Trigger> triggers,List<DeviceDetail> devices,List<BiddableType> biddables,List<TemplGraph> controllers,List<Attribute> attributes , String simulationTime) {
 		StringBuilder sb=new StringBuilder();
 		////先实例化
 		////Person的实例化需要知道仿真时间，先等等
@@ -358,6 +360,9 @@ public class SystemModelService {
 		}
 		////对models用","拼接
 		sb.append(String.join(",", models));
+		if(attributes!=null) {
+			sb.append(",Attribute");
+		}
 		sb.append(";");
 		return sb.toString();
 	}
@@ -416,24 +421,55 @@ public class SystemModelService {
 	
 	
 	/////////////获得各参数的声明
-	public static List<String[]> generateDeclaration(List<Rule> rules,List<BiddableType> biddableTypes,List<DeviceType> deviceTypes,List<SensorType> sensorTypes,List<TemplGraph> templGraphs) {
+	public static List<String[]> generateDeclaration(List<Rule> rules,List<BiddableType> biddableTypes,List<DeviceType> deviceTypes,List<SensorType> sensorTypes,List<Attribute> attributes,List<TemplGraph> templGraphs) {
 		List<String[]> declarations=new ArrayList<String[]>();
-		for(SensorType sensor:sensorTypes) {
-			String[] declaration=new String[3];
-			declaration[1]=sensor.attribute;
-			declaration[0]="double";
-			/////如果是biddable的状态对应的属性，则为int类型
-			biddable:
-			for(BiddableType biddable:biddableTypes) {
-				for(String[] stateAttributeValue:biddable.stateAttributeValues) {
-					if(stateAttributeValue[1].equals(declaration[1])) {
-						//////如果该属性是biddable状态标识符
-						declaration[0]="int[0,"+(biddable.stateAttributeValues.size()-1)+"]";
-						break biddable;
-					}
+		if(attributes!=null) {
+			for(Attribute attribute:attributes) {
+				////先根据attribute获得对应参数
+				String[] declaration=new String[3];
+				declaration[0]="clock";
+				declaration[1]=attribute.getAttribute();
+				declarations.add(declaration);
+				///如果delta不为0，则需要对其声明
+				if(!attribute.getDelta().equals("0")) {
+					String[] deltaDeclaration=new String[3];
+					deltaDeclaration[0]="double";
+					deltaDeclaration[1]=attribute.getDelta();
+					deltaDeclaration[2]="0.0";
+					declarations.add(deltaDeclaration);
+					///delta的初始值都为0
 				}
 			}
-			declarations.add(declaration);
+		}
+
+		for(SensorType sensor:sensorTypes) {
+			///如果之前声明了就不加入
+			boolean exist=false;
+			for(String[] declaration:declarations) {
+				if(declaration[1].equals(sensor.getAttribute())) {
+					exist=true;
+					break;
+				}
+			}
+			if(!exist) {
+				String[] declaration=new String[3];
+				declaration[1]=sensor.attribute;
+				declaration[0]="double";
+				/////如果是biddable的状态对应的属性，则为int类型
+				biddable:
+				for(BiddableType biddable:biddableTypes) {
+					for(String[] stateAttributeValue:biddable.stateAttributeValues) {
+						if(stateAttributeValue[1].equals(declaration[1])) {
+							//////如果该属性是biddable状态标识符
+							declaration[0]="int[0,"+(biddable.stateAttributeValues.size()-1)+"]";
+							break biddable;
+						}
+					}
+				}
+				declarations.add(declaration);
+			}
+
+
 		}
 		for(DeviceType device:deviceTypes) {
 			String[] declaration=new String[3];
@@ -460,25 +496,32 @@ public class SystemModelService {
 			declarations.add(declaration);
 		}
 		
-		for(String[] declaration:declarations) {
-			if(declaration[0].equals("double")) {
-				//////////找到clock类型的参数
-				templ:
-				for(TemplGraph templGraph:templGraphs) {
-					for(TemplGraphNode node:templGraph.getTemplGraphNodes()) {
-						String[] invariants=node.getInvariant().split("&&");
-						for(String invariant:invariants) {
-							invariant=invariant.trim();
-							if(invariant.startsWith(declaration[1]+"'")) {
-								declaration[0]="clock";
-								break templ;
+		////如果没有Attribute模型,就通过这种方式找clock
+		if(attributes.size()==0||attributes==null) {
+			for(String[] declaration:declarations) {
+				if(declaration[0].equals("double")) {
+					//////////找到clock类型的参数
+					templ:
+					for(TemplGraph templGraph:templGraphs) {
+						for(TemplGraphNode node:templGraph.getTemplGraphNodes()) {
+							String[] invariants=node.getInvariant().split("&&");
+							for(String invariant:invariants) {
+								invariant=invariant.trim();
+								if(invariant.startsWith(declaration[1]+"'")) {
+									declaration[0]="clock";
+									break templ;
+								}
 							}
 						}
 					}
 				}
 			}
 		}
+
 		
+
+		
+		///仿真时间
 		String[] declaration=new String[3];
 		declaration[0]="clock";
 		declaration[1]="time";

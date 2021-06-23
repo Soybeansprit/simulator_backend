@@ -46,7 +46,7 @@ public class SimulationThreadService extends Thread{
 			//获得设备标识符表示，identifier，转为设备名，并给出位置信息和设备类型
 			//如 bulb[0] => deviceName=Bulb_0,deviceType=Bulb,location=Lobby
 			String identifier=device.getDeviceType().getName().substring(0, 1).toLowerCase()+device.getDeviceType().getName().substring(1)+"["+device.getConstructionNum()+"]";
-			simulationResult=simulationResult.replace(identifier, "deviceName="+device.getDeviceName()+",deviceType="+device.getDeviceType().getName()+",location="+device.getLocation());
+			simulationResult=simulationResult.replace("\n"+identifier, "\ndeviceName="+device.getDeviceName()+",deviceType="+device.getDeviceType().getName()+",location="+device.getLocation());
 		}
 		try (FileWriter fr=new FileWriter(simulateResultFilePath+resultFileName);
 				PrintWriter pw=new PrintWriter(fr)){

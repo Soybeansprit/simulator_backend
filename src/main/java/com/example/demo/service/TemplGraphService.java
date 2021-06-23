@@ -23,6 +23,7 @@ import com.example.demo.bean.ScenarioTree.ScenesTree;
 import com.example.demo.bean.SensorType;
 import com.example.demo.bean.StaticAnalysisResult;
 import com.example.demo.bean.Action;
+import com.example.demo.bean.Attribute;
 import com.example.demo.bean.BiddableType;
 import com.example.demo.bean.DeviceDetail;
 import com.example.demo.bean.Trigger;
@@ -157,8 +158,8 @@ public class TemplGraphService {
 //		List<Action> actions=RuleService.getAllActions(staticAnalsisResult.usableRules, devices);
 //		List<Trigger> triggers=RuleService.getAllTriggers(staticAnalsisResult.usableRules, sensorTypes, biddableTypes);
 //		SystemModelService.generateAllScenarios(actions, triggers, declarations, devices, deviceTypes, biddableTypes, sensorTypes, modelFileName2, filePath, "300");
-		ScenesTree scenesTree=SystemModelService.generateAllScenarios(staticAnalsisResult.getUsableRules(), devices, deviceTypes, biddableTypes, sensorTypes, modelFileName2, filePath, "300");
-		DynamicAnalysisService.getAllSimulationResults(scenesTree,devices, modelFileName2, filePath, "D:\\tools\\uppaal-4.1.24\\uppaal-4.1.24\\bin-Windows",filePath);
+//		ScenesTree scenesTree=SystemModelService.generateAllScenarios(staticAnalsisResult.getUsableRules(), devices, deviceTypes, biddableTypes, sensorTypes, modelFileName2, filePath, "300");
+//		DynamicAnalysisService.getAllSimulationResults(scenesTree,devices, modelFileName2, filePath, "D:\\tools\\uppaal-4.1.24\\uppaal-4.1.24\\bin-Windows",filePath);
 		System.out.println(devices);
 		s.close();
 
@@ -210,6 +211,8 @@ public class TemplGraphService {
 		List<TemplGraph> controlledDevices=new ArrayList<TemplGraph>();
 		List<TemplGraph> sensors=new ArrayList<TemplGraph>();
 		List<TemplGraph> biddables=new ArrayList<TemplGraph>();
+		List<Attribute> attributes=new ArrayList<>();		
+		boolean existAttribute=false;//用来判断有没有attribute模型
 		for(TemplGraph templGraph:templGraphs) {
 			if(templGraph.getDeclaration().indexOf("controlled_device")>=0) {
 				////controlled devices
@@ -217,7 +220,7 @@ public class TemplGraphService {
 			}else if(templGraph.getDeclaration().indexOf("sensor")>=0) {
 				////sensors
 				sensors.add(templGraph);
-			}else {
+			}else if(templGraph.getDeclaration().indexOf("biddable")>=0){
 				////biddables
 				if(templGraph.getName().equals("Person")) {
 					////Person model generation
@@ -229,7 +232,15 @@ public class TemplGraphService {
 					SystemModelService.generatePersonModel(templGraph, filePath+changedModelFileName);
 				}
 				biddables.add(templGraph);
-			}			
+			}else if(templGraph.getName().equals("Attribute")) {			
+				////获得attribute
+				existAttribute=true;
+				attributes=getAttributes(templGraph);
+			}
+		}
+		if(!existAttribute) {
+			/////不存在Attribute模型
+			attributes=null;
 		}
 		/////设备类型
 		List<DeviceType> deviceTypes=TemplGraphService.getDeviceTypes(controlledDevices);
@@ -237,6 +248,7 @@ public class TemplGraphService {
 		List<SensorType> sensorTypes=TemplGraphService.getSensorTypes(sensors);
 		////被控实体类型
 		List<BiddableType> biddableTypes=TemplGraphService.getBiddableTypes(biddables, sensorTypes);
+		
 		TemplGraphService.setDeviceType(devices, deviceTypes);
 		TemplGraphService.setDeviceConstructionNum(devices, deviceTypes);
 
@@ -245,6 +257,8 @@ public class TemplGraphService {
 		environmentModel.setDevices(devices);
 		environmentModel.setSensors(sensorTypes);
 		environmentModel.setDeviceTypes(deviceTypes);
+		////attributes
+		environmentModel.setAttributes(attributes);
 		return environmentModel;
 	}
 		
@@ -519,6 +533,24 @@ public class TemplGraphService {
 			}
 		}
 		return biddableType;
+	}
+	
+	public static List<Attribute> getAttributes(TemplGraph attributeTempl){
+		////根据模型获得各属性参数,该模型只有一个状态，状态上是不变式
+		List<Attribute> attributes=new ArrayList<>();
+		TemplGraphNode node=attributeTempl.getTemplGraphNodes().get(0);
+		String invariantContent=node.getInvariant();
+		String[] invariants=invariantContent.split("&&");
+		for(String invariant : invariants) {
+			invariant=invariant.trim();
+			Attribute attribute=new Attribute();
+			attribute.setContent(invariant);
+			attribute.setAttribute(invariant.substring(0, invariant.indexOf("'==")));
+			attribute.setDelta(invariant.substring(invariant.indexOf("'==")+"'==".length()).trim());
+			attributes.add(attribute);
+		}
+		return attributes;
+		
 	}
 	
 	/////////获得device在xml中的构造方法 deviceDetail 中的constructionNum

@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.demo.bean.Attribute;
 import com.example.demo.bean.BiddableType;
 import com.example.demo.bean.DeviceDetail;
 import com.example.demo.bean.DeviceType;
@@ -107,8 +109,9 @@ public class Controller {
 		List<DeviceType> deviceTypes=environmentRule.getEnvironmentModel().getDeviceTypes();
 		List<BiddableType> biddableTypes=environmentRule.getEnvironmentModel().getBiddables();
 		List<SensorType> sensorTypes=environmentRule.getEnvironmentModel().getSensors();
+		List<Attribute> attributes=environmentRule.getEnvironmentModel().getAttributes();
 		SystemModelService.generateContrModel(AddressService.MODEL_FILE_PATH+AddressService.changed_model_file_Name, rules, biddableTypes, devices);
-		ScenesTree scenesTree=SystemModelService.generateAllScenarios(rules, devices, deviceTypes, biddableTypes, sensorTypes, AddressService.changed_model_file_Name, AddressService.MODEL_FILE_PATH, simulationTime);
+		ScenesTree scenesTree=SystemModelService.generateAllScenarios(rules, devices, deviceTypes, biddableTypes, sensorTypes, attributes, AddressService.changed_model_file_Name, AddressService.MODEL_FILE_PATH, simulationTime);
 		return scenesTree;
 	}
 	

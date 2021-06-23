@@ -9,6 +9,15 @@ public class EnvironmentModel {
 	private List<SensorType> sensors=new ArrayList<SensorType>();
 	private List<BiddableType> biddables=new ArrayList<BiddableType>();
 	private List<DeviceType> deviceTypes=new ArrayList<>();
+	/////添加Attribute
+	private List<Attribute> attributes=new ArrayList<>();
+
+	public List<Attribute> getAttributes() {
+		return attributes;
+	}
+	public void setAttributes(List<Attribute> attributes) {
+		this.attributes = attributes;
+	}
 	public List<DeviceType> getDeviceTypes() {
 		return deviceTypes;
 	}
