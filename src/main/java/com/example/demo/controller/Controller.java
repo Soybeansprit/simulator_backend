@@ -40,6 +40,7 @@ import com.example.demo.bean.InputConstruct.SceneTreeDevice;
 import com.example.demo.service.AddressService;
 import com.example.demo.service.DynamicAnalysisService;
 import com.example.demo.service.RuleService;
+import com.example.demo.service.SimulationThreadService;
 import com.example.demo.service.StaticAnalysisService;
 import com.example.demo.service.SystemModelService;
 import com.example.demo.service.TemplGraphService;
@@ -61,7 +62,6 @@ public class Controller {
 	StaticAnalysisService staticAnalysisService;
 	@Autowired
 	DynamicAnalysisService dynamicAnalysisService;
-	
 	
 	@RequestMapping("/upload")
 	@ResponseBody
@@ -113,6 +113,36 @@ public class Controller {
 		SystemModelService.generateContrModel(AddressService.MODEL_FILE_PATH+AddressService.changed_model_file_Name, rules, biddableTypes, devices);
 		ScenesTree scenesTree=SystemModelService.generateAllScenarios(rules, devices, deviceTypes, biddableTypes, sensorTypes, attributes, AddressService.changed_model_file_Name, AddressService.MODEL_FILE_PATH, simulationTime);
 		return scenesTree;
+	}
+	
+	/////生成单个场景模型,并仿真获得分析结果
+	@RequestMapping(value="/generateBestScenarioModelAndSimulate",method = RequestMethod.POST)
+	@ResponseBody
+	public static Scene generateBestScenarioModelAndSimulate(@RequestBody EnvironmentRule environmentRule,String initModelFileName,String simulationTime) throws DocumentException, IOException {
+		////更改后的模型文件名
+		AddressService.setChangedModelFileName(initModelFileName);
+		String fileNameWithoutSuffix=initModelFileName.substring(0, initModelFileName.lastIndexOf(".xml"));
+		List<Rule> rules=environmentRule.getRules();
+		List<DeviceDetail> devices=environmentRule.getEnvironmentModel().getDevices();
+		List<DeviceType> deviceTypes=environmentRule.getEnvironmentModel().getDeviceTypes();
+		List<BiddableType> biddableTypes=environmentRule.getEnvironmentModel().getBiddables();
+		List<SensorType> sensorTypes=environmentRule.getEnvironmentModel().getSensors();
+		List<Attribute> attributes=environmentRule.getEnvironmentModel().getAttributes();
+		////ruleMap
+		HashMap<String,Rule> ruleMap=new HashMap<>();
+		for(Rule rule:rules) {
+			ruleMap.put(rule.getRuleName(), rule);
+		}
+		/////获得ifd上各节点
+		List<GraphNode> graphNodes=StaticAnalysisService.getIFDNode(AddressService.IFD_FILE_NAME, AddressService.IFD_FILE_PATH);
+		SystemModelService.generateContrModel(AddressService.MODEL_FILE_PATH+AddressService.changed_model_file_Name, rules, biddableTypes, devices);
+		SystemModelService.generateBestScenarioModel(rules, devices, deviceTypes, biddableTypes, sensorTypes, attributes, AddressService.changed_model_file_Name, AddressService.MODEL_FILE_PATH, graphNodes, fileNameWithoutSuffix+"-scenario-best.xml", simulationTime);
+		
+		///仿真
+		Scene scene=DynamicAnalysisService.getSingleSimulationResult(devices, AddressService.UPPAAL_PATH, fileNameWithoutSuffix, "best", AddressService.MODEL_FILE_PATH, AddressService.SIMULATE_RESULT_FILE_PATH);
+		///动态分析
+		DynamicAnalysisService.getSingleScenarioDynamicAnalysis(scene, devices, graphNodes, ruleMap);
+		return scene;
 	}
 	
 	////仿真进行动态分析

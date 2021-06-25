@@ -6,6 +6,8 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.stereotype.Service;
+
 import com.example.demo.bean.DataTimeValue;
 import com.example.demo.bean.DeviceDetail;
 import com.example.demo.bean.Scene;
@@ -17,13 +19,13 @@ public class SimulationThreadService extends Thread{
 	private List<DeviceDetail> devices;
 	private String uppaalPath;
 	private String fileNameWithoutSuffix;   ////xml文件去掉后缀名
-	private int scenarioNum;   /////场景号
+	private String scenarioNum;   /////场景号
 	private String simulateResultFilePath;   /////文件存放位置
 	private String modelFilePath;
 	
 	
 	public SimulationThreadService(List<Scene> scenes, List<DeviceDetail> devices, String uppaalPath,
-			String fileNameWithoutSuffix, int scenarioNum, String modelFilePath,String simulateResultFilePath) {
+			String fileNameWithoutSuffix, String scenarioNum, String modelFilePath,String simulateResultFilePath) {
 		super();
 		this.scenes = scenes;
 		this.devices = devices;

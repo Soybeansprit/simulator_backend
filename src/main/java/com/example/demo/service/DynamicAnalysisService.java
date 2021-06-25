@@ -1335,7 +1335,7 @@ public class DynamicAnalysisService {
 		final List<Scene> scenes=new ArrayList<>();
 		List<Thread> threads=new ArrayList<>();
 		for(int i=0;i<scenesTree.getChildren().size();i++) {
-			SimulationThreadService sThread=new SimulationThreadService(scenes, devices, uppaalPath, fileNameWithoutSuffix, i, modelFilePath,simulateResultFilePath);	
+			SimulationThreadService sThread=new SimulationThreadService(scenes, devices, uppaalPath, fileNameWithoutSuffix, i+"", modelFilePath,simulateResultFilePath);	
 			sThread.setName("scenario-"+i);
 			threads.add(sThread);
 			sThread.start();			
@@ -1363,6 +1363,20 @@ public class DynamicAnalysisService {
 		};
 		Collections.sort(scenes, c);
 		return scenes;
+	}
+	
+	public static Scene getSingleSimulationResult(List<DeviceDetail> devices,String uppaalPath,String fileNameWithoutSuffix,String scenarioNum,String modelFilePath,String simulationResultFilePath) {
+		///仿真
+		List<Scene> scenes=new ArrayList<>();
+		SimulationThreadService thread=new SimulationThreadService(scenes, devices, uppaalPath, fileNameWithoutSuffix, scenarioNum, modelFilePath, simulationResultFilePath);
+		thread.start();
+		try {
+			thread.join();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return scenes.get(0);
 	}
 	
 	/////将仿真结果解析成 <数据名，（时间，取值）List> 的格式存入hashmap,数据名作为key

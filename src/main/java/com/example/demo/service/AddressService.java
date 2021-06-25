@@ -13,6 +13,13 @@ public class AddressService {
 
 
 	public static String changed_model_file_Name;
+	public static String best_model_file_name;
+	public static String getBest_model_file_name() {
+		return best_model_file_name;
+	}
+	public static void setBest_model_file_name(String initModelFileName) {
+		AddressService.best_model_file_name = initModelFileName.substring(0, initModelFileName.lastIndexOf(".xml"))+"-scenario-best.xml";
+	}
 	private AddressService() {
 		
 	}

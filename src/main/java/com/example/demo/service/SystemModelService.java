@@ -7,6 +7,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 
 
@@ -23,6 +24,7 @@ import com.example.demo.bean.Attribute;
 import com.example.demo.bean.BiddableType;
 import com.example.demo.bean.DeviceDetail;
 import com.example.demo.bean.DeviceType;
+import com.example.demo.bean.IFDGraph.GraphNode;
 import com.example.demo.bean.ModelGraph.TemplGraph;
 import com.example.demo.bean.ModelGraph.TemplGraphNode;
 import com.example.demo.bean.ModelGraph.TemplTransition;
@@ -34,7 +36,176 @@ import com.example.demo.bean.ScenarioTree.SceneChild;
 import com.example.demo.bean.ScenarioTree.AttributeValue;
 public class SystemModelService {
 	
+	///////////////生成一个最佳场景
+	public static void generateBestScenarioModel(List<Rule> rules,List<DeviceDetail> devices,List<DeviceType> deviceTypes,
+			List<BiddableType> biddableTypes,List<SensorType> sensorTypes,List<Attribute> attributes,String modelFileName,String modelFilePath,
+			List<GraphNode> graphNodes,String bestScenarioFileName,String simulationTime) throws DocumentException, IOException {
+		/////获得所有模型
+		List<TemplGraph> templGraphs=TemplGraphService.getTemplGraphs(modelFileName, modelFilePath);
+		/////获得控制器模型
+		List<TemplGraph> controllers=new ArrayList<TemplGraph>();
+		List<TemplGraph> controlledDevices=new ArrayList<>();
+		for(TemplGraph templGraph:templGraphs) {
+			if(templGraph.getName().indexOf("Rule")>=0) {
+				controllers.add(templGraph);
+			}else if(templGraph.getDeclaration().contains("controlled_device")) {
+				controlledDevices.add(templGraph);
+			}
+		}
+		////ruleMap
+		HashMap<String,Rule> ruleMap=new HashMap<>();
+		for(Rule rule:rules) {
+			ruleMap.put(rule.getRuleName(), rule);
+		}
+		/////声明的参数
+		List<String[]> declarations=generateDeclaration(rules, biddableTypes, deviceTypes, sensorTypes, attributes, controlledDevices);
+		List<Action> actions=RuleService.getAllActions(rules, devices);
+		List<Trigger> triggers=RuleService.getAllTriggers(rules, sensorTypes, biddableTypes);
 
+		//先获得最佳场景的各属性取值
+		List<String[]> attributesValue=getBestScenarioAttributesValue(graphNodes, devices, biddableTypes, attributes, ruleMap);
+		////根据attributeValue给declaration赋值
+		for(String[] attributeValue:attributesValue) {
+			for(String[] declaration:declarations) {
+				if(attributeValue[1].equals(declaration[1])) {
+					declaration[2]=attributeValue[2];
+					break;
+				}
+			}
+		}
+
+		/////模型声明各个场景相同
+		String modelDeclaration=getModelDeclaration(actions, triggers, devices, biddableTypes, controllers, attributes, simulationTime);
+		/////query仿真公式
+		String queryFormula=getQueryFormula(declarations, simulationTime);
+
+		generateScenario(declarations, modelDeclaration, queryFormula, modelFileName, bestScenarioFileName, modelFilePath);
+		
+
+	}
+	
+	////生成单个最佳场景	
+	public static List<String[]> getBestScenarioAttributesValue(List<GraphNode> graphNodes,List<DeviceDetail> devices,List<BiddableType> biddables,List<Attribute> attributes,HashMap<String,Rule> ruleMap) {
+
+		HashMap<String,DeviceDetail> deviceMap=new HashMap<>();
+		for(DeviceDetail device:devices) {
+			deviceMap.put(device.getDeviceName(), device);
+		}
+		
+		////先获得每条规则能触发的所有规则
+		List<List<Rule>> rulesTriggeredRules=StaticAnalysisService.getRulesTriggeredRules(ruleMap, graphNodes);
+		
+		List<String[]> attributesValue=new ArrayList<>();
+		
+		////分类获得初始条件规则，获得各attribute的初始值
+		for(Attribute attribute:attributes) {
+			String[] attributeValue=new String[3];
+			attributeValue[0]="clock";
+			attributeValue[1]=attribute.getAttribute();
+			///相同属性的规则
+			List<List<Rule>> rulesWithSameAttribute=new ArrayList<>();
+			for(List<Rule> ruleTriggeredRules:rulesTriggeredRules) {
+				//判断trigger能否为初始值，如果是设备状态而且是开的设备状态，则不是初始值
+				Rule rule=ruleTriggeredRules.get(0);
+				///有trigger涉及该attribute
+				boolean sameAttribute=false;
+				///没有trigger是设备的非初始状态
+				boolean notInitialState=false;
+				for(String trigger:rule.getTrigger()) {
+					String[] attrVal=RuleService.getTriAttrVal(trigger, biddables);
+					if(attrVal[1].equals(".")) {
+						///设备状态 Device.State
+						DeviceDetail device=deviceMap.get(attrVal[0]);
+						for(String[] stateActionValue:device.getDeviceType().getStateActionValues()) {
+							if(stateActionValue[0].equals(attrVal[2])){
+								if(!stateActionValue[2].equals("0")) {
+									///非初始状态
+									notInitialState=true;
+								}
+								break;
+							}
+						}
+					}else {
+						if(attrVal[0].equals(attribute.getAttribute())) {
+							sameAttribute=true;
+						}
+					}
+				}
+				if(sameAttribute&&!notInitialState) {
+					rulesWithSameAttribute.add(ruleTriggeredRules);
+				}
+			}
+			///获得触发规则数最多的规则，并根据这个规则给该属性赋值
+			Rule triggeredMaxRule=new Rule();
+			int max=0;
+			for(List<Rule> ruleTriggeredRules:rulesWithSameAttribute) {
+				if(ruleTriggeredRules.size()>max) {
+					max=ruleTriggeredRules.size();
+					triggeredMaxRule=ruleTriggeredRules.get(0);
+				}
+			}
+			///获得该rule中所有与该attribute相关的tigger
+			List<String[]> attrVals=new ArrayList<>();
+			for(String trigger:triggeredMaxRule.getTrigger()) {
+				String[] attrVal=RuleService.getTriAttrVal(trigger, biddables);
+				if(attrVal[0].equals(attribute.getAttribute())) {
+					///找到对应trigger
+					attrVals.add(attrVal);
+				}
+			}
+			////获得边界值，对attribute赋值，找到所有<的选值最小的，找到所有>的选值最大的
+			String[] smallerAttrVal=null;
+			String[] greaterAttrVal=null;
+			for(String[] attrVal:attrVals) {
+				if(attrVal[1].indexOf(">")>=0) {
+					if(greaterAttrVal==null) {
+						greaterAttrVal=new String[3];
+						greaterAttrVal[0]=attrVal[0];
+						greaterAttrVal[1]=attrVal[1];
+						greaterAttrVal[2]=attrVal[2];
+					}else {
+						double val1=Double.parseDouble(attrVal[2]);
+						double val2=Double.parseDouble(greaterAttrVal[2]);
+						if(val1>val2) {
+							greaterAttrVal[2]=attrVal[2];
+						}
+					}
+				}else if(attrVal[1].indexOf("<")>=0) {
+					if(smallerAttrVal==null) {
+						smallerAttrVal=new String[3];
+						smallerAttrVal[0]=attrVal[0];
+						smallerAttrVal[1]=attrVal[1];
+						smallerAttrVal[2]=attrVal[2];
+					}else {
+						double val1=Double.parseDouble(attrVal[2]);
+						double val2=Double.parseDouble(smallerAttrVal[2]);
+						if(val1<val2) {
+							greaterAttrVal[2]=attrVal[2];
+						}
+					}
+				}
+			}
+			if(smallerAttrVal!=null && greaterAttrVal!=null) {
+				double val1=Double.parseDouble(greaterAttrVal[2]);
+				double val2=Double.parseDouble(smallerAttrVal[2]);
+				if(val1<val2) {
+					attributeValue[2]=String.format("%.1f", (val1+val2)/2);
+				}
+			}else if(smallerAttrVal!=null) {
+				double val=Double.parseDouble(smallerAttrVal[2]);
+				attributeValue[2]=(val-1)+"";
+			}else if(greaterAttrVal!=null) {
+				double val=Double.parseDouble(greaterAttrVal[2]);
+				attributeValue[2]=(val+1)+"";
+			}
+			
+			attributesValue.add(attributeValue);
+		}
+		
+		return attributesValue;
+		
+	}
+	
 	///////////////生成多个场景，根据temperature等biddable类型的的trigger取值分段获得
 	public static ScenesTree generateAllScenarios(List<Rule> rules,List<DeviceDetail> devices,List<DeviceType> deviceTypes,
 			List<BiddableType> biddableTypes,List<SensorType> sensorTypes,List<Attribute> attributes,String fileName,String filePath,String simulationTime) throws DocumentException, IOException {
@@ -422,7 +593,7 @@ public class SystemModelService {
 	
 	/////////////获得各参数的声明
 	public static List<String[]> generateDeclaration(List<Rule> rules,List<BiddableType> biddableTypes,List<DeviceType> deviceTypes,List<SensorType> sensorTypes,List<Attribute> attributes,List<TemplGraph> templGraphs) {
-		List<String[]> declarations=new ArrayList<String[]>();
+		List<String[]> declarations=new ArrayList<String[]>();  ////clock temperature 10.0
 		if(attributes!=null) {
 			for(Attribute attribute:attributes) {
 				////先根据attribute获得对应参数
