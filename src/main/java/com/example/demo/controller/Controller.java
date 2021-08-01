@@ -160,6 +160,7 @@ public class Controller {
 	@RequestMapping(value="/getAllDynamicAnalysisResult",method = RequestMethod.POST)
 	@ResponseBody
 	public ScenePropertyResult getAllDynamicAnalysisResult(@RequestBody SceneEnvironmentProperty sceneEnvironmentProperty,String simulationTime,String equivalentTime,String intervalTime){
+		long t1=System.currentTimeMillis();
 		List<Scene> scenes=sceneEnvironmentProperty.getScenes();
 		EnvironmentModel environmentModel=sceneEnvironmentProperty.getEnvironmentModel();
 		List<String> properties =sceneEnvironmentProperty.getProperties();
@@ -176,6 +177,7 @@ public class Controller {
 		ScenePropertyResult scenePropertyResult=new ScenePropertyResult();
 		scenePropertyResult.setPropertyVerifyResults(propertyVerifyResults);
 		scenePropertyResult.setScenes(scenes);
+		System.out.println(System.currentTimeMillis()-t1);
 		return scenePropertyResult;
 	}
 	

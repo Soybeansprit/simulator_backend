@@ -3,6 +3,8 @@ package com.example.demo.bean;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 public class RuleNode {
 	/////用于locate error ，当前规则和会引发这个规则的其他规则
 	private Rule rule=new Rule();   //////当前规则
@@ -13,14 +15,19 @@ public class RuleNode {
 	public void setRule(Rule rule) {
 		this.rule = rule;
 	}
+	
 	public List<RuleNode> getPreRules() {
 		return preRules;
 	}
+	
 	public void setPreRules(List<RuleNode> preRules) {
 		this.preRules = preRules;
 	}
 	public void setPreRules(int i,RuleNode preRule) {
 		this.preRules.set(i, preRule);
+	}
+	public void addPreRule(RuleNode preNode) {
+		this.preRules.add(preNode);
 	}
 	
 	@Override
