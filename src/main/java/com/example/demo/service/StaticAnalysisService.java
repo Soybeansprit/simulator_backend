@@ -65,6 +65,7 @@ public class StaticAnalysisService {
 		///////////////////删除重复的规则
 		List<Rule> newRules=deleteRepeat(rules);
 		
+		long unusedStartTime=System.currentTimeMillis();
 		generateIFD(newRules, ifdFileName, filePath, devices, sensors, biddables);
 		List<GraphNode> nodes=getIFDNode(ifdFileName, filePath);
 		List<GraphNode> ruleNodes=new ArrayList<GraphNode>();
@@ -75,8 +76,9 @@ public class StaticAnalysisService {
 			}
 		}
 		///////////获得unused
+		
 		List<ErrorReason> unusedRules=getUnused(ruleNodes, devices,biddables,mapRules);
-		System.out.println(unusedRules);
+//		System.out.println(unusedRules);
 		Iterator<Rule> iteratorNewRules=newRules.iterator();
 		//////////删掉unused
 		while(iteratorNewRules.hasNext()) {
@@ -88,6 +90,9 @@ public class StaticAnalysisService {
 				}
 			}
 		}
+		System.out.println("unusedTime:"+(System.currentTimeMillis()-unusedStartTime));
+		
+		long redundantStartTime=System.currentTimeMillis();
 		generateIFDForBest(newRules, ifdFileName, filePath, devices, sensors, biddables);
 		ruleNodes.clear();
 		nodes.clear();
@@ -115,7 +120,11 @@ public class StaticAnalysisService {
 				redundantRules.add(reRules);
 			}
 		}
-		System.out.println(redundantRuleNodes);
+		System.out.println("redundantTime:"+(System.currentTimeMillis()-redundantStartTime));
+//		System.out.println(redundantRuleNodes);
+		
+		///////////获得incompleteness
+		long incompleteStartTime=System.currentTimeMillis();
 		List<Action> actions=RuleService.getAllActions(newRules, devices);
 		List<DeviceDetail> cannotOffDevices=getIncompleteness(devices, actions);
 		List<String> incompleteness=new ArrayList<String>();
@@ -128,7 +137,7 @@ public class StaticAnalysisService {
 				}
 			}
 		}
-		
+		System.out.println("incomleteTime:"+(System.currentTimeMillis()-incompleteStartTime));
 //		staticAnalysisResult.setIncorrectRules(incorrectRules);
 		staticAnalysisResult.setUnusedRules(unusedRules);
 		staticAnalysisResult.setRedundantRules(redundantRules);

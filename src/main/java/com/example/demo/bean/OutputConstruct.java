@@ -49,4 +49,22 @@ public class OutputConstruct {
 
 		
 	}
+	
+	public static class DeclarationQueryResult{
+		private List<List<Trigger>> attributesSameTriggers;
+		private List<String[]> declarations;
+		public List<List<Trigger>> getAttributesSameTriggers() {
+			return attributesSameTriggers;
+		}
+		public void setAttributesSameTriggers(List<List<Trigger>> attributesSameTriggers) {
+			this.attributesSameTriggers = attributesSameTriggers;
+		}
+		public List<String[]> getDeclarations() {
+			return declarations;
+		}
+		public void setDeclarations(List<String[]> declarations) {
+			this.declarations = declarations;
+		}
+		
+	}
 }

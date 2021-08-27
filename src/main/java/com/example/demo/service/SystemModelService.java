@@ -9,7 +9,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -28,6 +31,7 @@ import com.example.demo.bean.IFDGraph.GraphNode;
 import com.example.demo.bean.ModelGraph.TemplGraph;
 import com.example.demo.bean.ModelGraph.TemplGraphNode;
 import com.example.demo.bean.ModelGraph.TemplTransition;
+import com.example.demo.bean.OutputConstruct.DeclarationQueryResult;
 import com.example.demo.bean.Rule;
 import com.example.demo.bean.Trigger;
 import com.example.demo.bean.ScenarioTree.ScenesTree;
@@ -79,7 +83,7 @@ public class SystemModelService {
 		/////query仿真公式
 		String queryFormula=getQueryFormula(declarations, simulationTime);
 
-		generateScenario(declarations, modelDeclaration, queryFormula, modelFileName, bestScenarioFileName, modelFilePath);
+		generateScenario(declarations,  modelDeclaration,queryFormula,modelFileName, bestScenarioFileName, modelFilePath);
 		
 
 	}
@@ -207,79 +211,110 @@ public class SystemModelService {
 	}
 	
 	///////////////生成多个场景，根据temperature等biddable类型的的trigger取值分段获得
-	public static ScenesTree generateAllScenarios(List<Rule> rules,List<DeviceDetail> devices,List<DeviceType> deviceTypes,
-			List<BiddableType> biddableTypes,List<SensorType> sensorTypes,List<Attribute> attributes,String fileName,String filePath,String simulationTime) throws DocumentException, IOException {
+	public static ScenesTree generateAllScenarios(String fileName,String filePath,DeclarationQueryResult declarationQueryResult) throws DocumentException, IOException {
 		/////生成场景树
 		ScenesTree scenesTree=new ScenesTree();
 		scenesTree.setName("smart home");
-		
-		/////获得所有模型
-		List<TemplGraph> templGraphs=TemplGraphService.getTemplGraphs(fileName, filePath);
-		List<TemplGraph> controllers=new ArrayList<TemplGraph>();
-		List<TemplGraph> controlledDevices=new ArrayList<>();
-		for(TemplGraph templGraph:templGraphs) {
-			if(templGraph.getName().indexOf("Rule")>=0) {
-				controllers.add(templGraph);
-			}else if(templGraph.getDeclaration().contains("controlled_device")) {
-				controlledDevices.add(templGraph);
-			}
-		}
-		/////声明的参数
-		List<String[]> declarations=generateDeclaration(rules, biddableTypes, deviceTypes, sensorTypes, attributes, controlledDevices);
-		List<Action> actions=RuleService.getAllActions(rules, devices);
-		List<Trigger> triggers=RuleService.getAllTriggers(rules, sensorTypes, biddableTypes);
-		////////找到涉及相同causal类型的属性的triggers，分别获得分段点，用于多个场景的初始值分段赋值
-		List<List<Trigger>> attributesSameTriggers=new ArrayList<List<Trigger>>();
-		for(String[] declaration:declarations) {
-			/////////declaration: [0]clock/double [1]temperature
-			if(declaration[0].equals("double")||declaration[0].equals("clock")) {
-				for(SensorType sensor:sensorTypes) {
-					////找到检测该属性的sensor
-					if(sensor.attribute.equals(declaration[1]) &&
-							sensor.style.equals("causal")) {
-						/////causal类型的属性用于区分场景
-						/////找到涉及该属性的所有triggers
-						List<Trigger> triggersWithSameAttribute=getTriggersWithSameAttribute(declaration, triggers);
-						if(triggersWithSameAttribute.size()>0) {
-							/////如果有涉及该属性的triggers
-							attributesSameTriggers.add(triggersWithSameAttribute);
-						}
-						break;
-					}
-				}
-			}
-		}
+		List<List<Trigger>> attributesSameTriggers=declarationQueryResult.getAttributesSameTriggers();
+		List<String[]> declarations=declarationQueryResult.getDeclarations();
+		//////////--------------放到控制器生成那部分
+//		/////获得所有模型
+//		List<TemplGraph> templGraphs=TemplGraphService.getTemplGraphs(fileName, filePath);
+//		List<TemplGraph> controllers=new ArrayList<TemplGraph>();
+//		List<TemplGraph> controlledDevices=new ArrayList<>();
+//		for(TemplGraph templGraph:templGraphs) {
+//			if(templGraph.getName().indexOf("Rule")>=0) {
+//				controllers.add(templGraph);
+//			}else if(templGraph.getDeclaration().contains("controlled_device")) {
+//				controlledDevices.add(templGraph);
+//			}
+//		}
+//		/////声明的参数
+//		List<String[]> declarations=generateDeclaration(rules, biddableTypes, deviceTypes, sensorTypes, attributes, controlledDevices);
+//		List<Action> actions=RuleService.getAllActions(rules, devices);
+//		List<Trigger> triggers=RuleService.getAllTriggers(rules, sensorTypes, biddableTypes);
+//		////////找到涉及相同causal类型的属性的triggers，分别获得分段点，用于多个场景的初始值分段赋值
+//		List<List<Trigger>> attributesSameTriggers=new ArrayList<List<Trigger>>();
+//		for(String[] declaration:declarations) {
+//			/////////declaration: [0]clock/double [1]temperature
+//			if(declaration[0].equals("double")||declaration[0].equals("clock")) {
+//				for(SensorType sensor:sensorTypes) {
+//					////找到检测该属性的sensor
+//					if(sensor.attribute.equals(declaration[1]) &&
+//							sensor.style.equals("causal")) {
+//						/////causal类型的属性用于区分场景
+//						/////找到涉及该属性的所有triggers
+//						List<Trigger> triggersWithSameAttribute=getTriggersWithSameAttribute(declaration, triggers);
+//						if(triggersWithSameAttribute.size()>0) {
+//							/////如果有涉及该属性的triggers
+//							attributesSameTriggers.add(triggersWithSameAttribute);
+//						}
+//						break;
+//					}
+//				}
+//			}
+//		}
 		/////计算上述分段情况下能生成多少个场景
 		////如temperature属性的断点为18、30 && humidity属性的断点为40
 		////则能生成3*2个场景
+		long generationStartTime=System.currentTimeMillis();
 		int scenarioNum=getScenarioNum(attributesSameTriggers);
 		/////获得控制器模型
-
-		/////模型声明各个场景相同
-		String modelDeclaration=getModelDeclaration(actions, triggers, devices, biddableTypes, controllers, attributes, simulationTime);
-		/////query仿真公式
-		String queryFormula=getQueryFormula(declarations, simulationTime);
+//
+//		/////模型声明各个场景相同
+//		String modelDeclaration=getModelDeclaration(actions, triggers, devices, biddableTypes, controllers, attributes, simulationTime);
+//		/////query仿真公式
+//		String queryFormula=getQueryFormula(declarations, simulationTime);
+		//////------------放到控制器生成那部分------------
+		
+		
 		////文件名
 		String fileNameWithoutSuffix=fileName.substring(0, fileName.lastIndexOf(".xml"));
 		/////各场景分别赋予不同的值
+		ExecutorService executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(1000));
 		for(int i=0;i<scenarioNum;i++) {
 			/////生成场景树子节点
-			SceneChild sceneChild=new SceneChild();
-			sceneChild.setName("scenario-"+i);
-			////场景模型文件名
-			String newFileName=fileNameWithoutSuffix+"-scenario-"+i+".xml";
-			/////给causal的参数赋值并返回
-			List<AttributeValue> attributeValues=setCausalInitialValue(declarations, attributesSameTriggers, i);
-			/////作为展示细节按钮的子节点
-			AttributeValue attributeValue=new AttributeValue();
-			attributeValue.setName("scenario-"+i +" details");
-			sceneChild.addChildrens(attributeValues);
-			sceneChild.addChildren(attributeValue);
-			scenesTree.addChildren(sceneChild);
+			final int k=i;
+			Runnable runnable=new Runnable() {
+				@Override
+				public void run() {
+					// TODO Auto-generated method stub
+					SceneChild sceneChild=new SceneChild();
+					sceneChild.setName("scenario-"+k);
+					////场景模型文件名
+					String newFileName=fileNameWithoutSuffix+"-scenario-"+k+".xml";
+					/////给causal的参数赋值并返回
+					long startTime=System.currentTimeMillis();
+					List<AttributeValue> attributeValues=setCausalInitialValue(declarations, attributesSameTriggers, k);
+					System.out.println("setAttributeTime:"+(System.currentTimeMillis()-startTime));
+					try {
+						generateScenario(declarations,  fileName, newFileName, filePath);
+					} catch (DocumentException | IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					System.out.println("scenarioTime:"+(System.currentTimeMillis()-startTime));
+					/////作为展示细节按钮的子节点
+					AttributeValue attributeValue=new AttributeValue();
+					attributeValue.setName("scenario-"+k +" details");
+					sceneChild.addChildrens(attributeValues);
+					sceneChild.addChildren(attributeValue);
+					scenesTree.addChildren(sceneChild);
+				}
+			};
+			executorService.execute(runnable);
+
 			/////生成模型
-			generateScenario(declarations, modelDeclaration, queryFormula, fileName, newFileName, filePath);
+			
 		}
-		
+		executorService.shutdown();
+		try {
+			executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		System.out.println("senarioGenerationTime:"+(System.currentTimeMillis()-generationStartTime));
 		return scenesTree;
 	}
 	
@@ -332,10 +367,10 @@ public class SystemModelService {
 			/////给causal的参数赋值
 			setCausalInitialValue(declarations, attributesSameTriggers, i);
 			/////生成模型
-			generateScenario(declarations, modelDeclaration, queryFormula, fileName, newFileName, filePath);
+			generateScenario(declarations,  modelDeclaration,queryFormula,fileName, newFileName, filePath);
 		}
 	}
-
+	
 	public static void generateScenario(List<String[]> declarations, String modelDeclaration,String query,String fileName,String newFileName,String filePath) throws DocumentException, IOException {
 		StringBuilder globalDeclaration=new StringBuilder();
 		for(String[] declaration:declarations) {
@@ -356,6 +391,8 @@ public class SystemModelService {
 		////全局声明
 		Element declarationElement=rootElement.element("declaration");
 		declarationElement.setText(globalDeclaration.toString());
+		
+		///////---------把模型声明和验证公式都放在控制器模型生成上
 		////模型声明
 		Element modelDeclarationElement=rootElement.element("system");
 		modelDeclarationElement.setText(modelDeclaration);
@@ -375,6 +412,64 @@ public class SystemModelService {
 			Element formulaElement=queryElement.addElement("formula");
 			formulaElement.setText(query);
 		}
+		///////---------把模型声明和验证公式都放在控制器模型生成上-----------
+		
+		OutputStream os=new FileOutputStream(filePath+newFileName);
+		OutputFormat format=OutputFormat.createPrettyPrint();
+		format.setEncoding("utf-8");
+		format.setTrimText(false); //保留换行，但是出现空行
+		format.setNewlines(false);
+		XMLWriter writer=new XMLWriter(os,format);
+		writer.write(document);
+		writer.close();
+		os.close();
+	}
+
+	public static void generateScenario(List<String[]> declarations, String fileName,String newFileName,String filePath) throws DocumentException, IOException {
+		StringBuilder globalDeclaration=new StringBuilder();
+		long startTime=System.currentTimeMillis();
+		for(String[] declaration:declarations) {
+			if(declaration[1].contains("[0]")) {
+				globalDeclaration.append(declaration[0]+" "+declaration[1].replace("[0]", "[1]"));
+			}else {
+				globalDeclaration.append(declaration[0]+" "+declaration[1]);
+			}
+			
+			if(declaration[2]!=null&&!declaration[2].equals("")) {
+				globalDeclaration.append("="+declaration[2]);
+			}
+			globalDeclaration.append(";\r\n");
+		}
+		System.out.println("declarationTime:"+(System.currentTimeMillis()-startTime));
+		SAXReader reader= new SAXReader();
+		Document document = reader.read(new File(filePath+fileName));
+		Element rootElement=document.getRootElement();
+		////全局声明
+		Element declarationElement=rootElement.element("declaration");
+		declarationElement.setText(globalDeclaration.toString());
+		
+		///////---------把模型声明和验证公式都放在控制器模型生成上
+//		////模型声明
+//		Element modelDeclarationElement=rootElement.element("system");
+//		modelDeclarationElement.setText(modelDeclaration);
+//		////仿真验证公式
+//		Element queriesElement=rootElement.element("queries");
+//		Element queryElement=queriesElement.element("query");
+//		if(queryElement!=null) {
+//			Element formulaElement=queryElement.element("formula");
+//			if(formulaElement!=null) {
+//				formulaElement.setText(query);
+//			}else {
+//				formulaElement=queryElement.addElement("formula");
+//				formulaElement.setText(query);
+//			}
+//		}else {
+//			queryElement=queriesElement.addElement("query");
+//			Element formulaElement=queryElement.addElement("formula");
+//			formulaElement.setText(query);
+//		}
+		///////---------把模型声明和验证公式都放在控制器模型生成上-----------
+		
 		OutputStream os=new FileOutputStream(filePath+newFileName);
 		OutputFormat format=OutputFormat.createPrettyPrint();
 		format.setEncoding("utf-8");
@@ -439,11 +534,11 @@ public class SystemModelService {
 					if(k==0) {
 						///第一段,value-1
 						Double value=Double.parseDouble(triggersWithSameAttribute.get(k).attrVal[2]);
-						declaration[2]=String.format("%.1f", value-1);
+						declaration[2]=String.format("%.1f", value-10);
 					}else if(k==triggersWithSameAttribute.size()) {
 						///最后一段,value+1
 						Double value=Double.parseDouble(triggersWithSameAttribute.get(k-1).attrVal[2]);
-						declaration[2]=String.format("%.1f", value+1);
+						declaration[2]=String.format("%.1f", value+10);
 					}else {
 						///中间段,中间值
 						Double value1=Double.parseDouble(triggersWithSameAttribute.get(k-1).attrVal[2]);
@@ -452,6 +547,7 @@ public class SystemModelService {
 					}
 					attributeValue.setValue(Double.parseDouble(declaration[2]));
 					attributeValues.add(attributeValue);
+					break;
 				}
 			}
 		}
@@ -701,9 +797,10 @@ public class SystemModelService {
 		return declarations;
 	}
 	
-	public static void generateContrModel(String modelFilePath,List<Rule> rules,List<BiddableType> biddables,List<DeviceDetail> devices) throws DocumentException, IOException {
+	public static void generateContrModel(String modelFilePath,String changedFileName,List<Rule> rules,List<DeviceDetail> devices,
+			List<BiddableType> biddableTypes) throws DocumentException, IOException {
 		SAXReader reader= new SAXReader();
-		Document document = reader.read(new File(modelFilePath));
+		Document document = reader.read(new File(modelFilePath+changedFileName));
 		Element rootElement=document.getRootElement();
 		List<Element> templateElements=rootElement.elements("template");
 		for(Rule rule:rules) {
@@ -782,7 +879,7 @@ public class SystemModelService {
 						trigger.indexOf(">")<0) {
 					//如果节点为设备相关，则该节点类型为committed
 					//不满足条件的guard为条件的反转
-					conAndReverseCon=getEntityStateCondAndReverseCon(trigger, devices, biddables);
+					conAndReverseCon=getEntityStateCondAndReverseCon(trigger, devices, biddableTypes);
 				}else {
 					//如果节点为属性相关，则该节点类型为committed
 					//不满足条件的guard为条件的反转
@@ -931,9 +1028,9 @@ public class SystemModelService {
 			
 			
 		}
-			
+	
 		
-		OutputStream os=new FileOutputStream(modelFilePath);
+		OutputStream os=new FileOutputStream(modelFilePath+changedFileName);
 		OutputFormat format=OutputFormat.createPrettyPrint();
 		format.setEncoding("utf-8");
 		format.setTrimText(false);
@@ -942,6 +1039,105 @@ public class SystemModelService {
 		writer.write(document);
 		writer.close();
 		os.close();
+		
+	}
+	
+	public static DeclarationQueryResult generateModelDeclarationAndQuery(String modelFilePath,String changedFileName,List<Rule> rules,List<DeviceDetail> devices,List<DeviceType> deviceTypes,
+			List<BiddableType> biddableTypes,List<SensorType> sensorTypes,List<Attribute> attributes,String simulationTime) throws DocumentException, IOException {
+		SAXReader reader= new SAXReader();
+		Document document = reader.read(new File(modelFilePath+changedFileName));
+		Element rootElement=document.getRootElement();
+
+		
+		//////////--------------放到控制器生成那部分
+		/////获得所有模型
+		long startTime=System.currentTimeMillis();
+		List<TemplGraph> templGraphs=TemplGraphService.getTemplGraphs(changedFileName, modelFilePath);
+		System.out.println("templGraphTime:"+(System.currentTimeMillis()-startTime));
+		List<TemplGraph> controllers=new ArrayList<TemplGraph>();
+		List<TemplGraph> controlledDevices=new ArrayList<>();
+		for(TemplGraph templGraph:templGraphs) {
+			if(templGraph.getName().indexOf("Rule")>=0) {
+				controllers.add(templGraph);
+			}else if(templGraph.getDeclaration().contains("controlled_device")) {
+				controlledDevices.add(templGraph);
+			}
+		}
+		/////声明的参数
+		List<String[]> declarations=generateDeclaration(rules, biddableTypes, deviceTypes, sensorTypes, attributes, controlledDevices);
+		List<Action> actions=RuleService.getAllActions(rules, devices);
+		List<Trigger> triggers=RuleService.getAllTriggers(rules, sensorTypes, biddableTypes);
+		////////找到涉及相同causal类型的属性的triggers，分别获得分段点，用于多个场景的初始值分段赋值
+		List<List<Trigger>> attributesSameTriggers=new ArrayList<List<Trigger>>();
+		for(String[] declaration:declarations) {
+			/////////declaration: [0]clock/double [1]temperature
+			if(declaration[0].equals("double")||declaration[0].equals("clock")) {
+				for(SensorType sensor:sensorTypes) {
+					////找到检测该属性的sensor
+					if(sensor.attribute.equals(declaration[1]) &&
+							sensor.style.equals("causal")) {
+						/////causal类型的属性用于区分场景
+						/////找到涉及该属性的所有triggers
+						List<Trigger> triggersWithSameAttribute=getTriggersWithSameAttribute(declaration, triggers);
+						if(triggersWithSameAttribute.size()>0) {
+							/////如果有涉及该属性的triggers
+							attributesSameTriggers.add(triggersWithSameAttribute);
+						}
+						break;
+					}
+				}
+			}
+		}
+
+
+		
+		
+		/////模型声明各个场景相同
+		String modelDeclaration=getModelDeclaration(actions, triggers, devices, biddableTypes, controllers, attributes, simulationTime);
+		/////query仿真公式
+		String queryFormula=getQueryFormula(declarations, simulationTime);
+		//////------------放到控制器生成那部分------------
+		
+
+		System.out.println("declaration+query:"+(System.currentTimeMillis()-startTime));
+		
+		///////---------把模型声明和验证公式都放在控制器模型生成上
+		////模型声明
+		Element modelDeclarationElement=rootElement.element("system");
+		modelDeclarationElement.setText(modelDeclaration);
+		////仿真验证公式
+		Element queriesElement=rootElement.element("queries");
+		Element queryElement=queriesElement.element("query");
+		if(queryElement!=null) {
+			Element formulaElement=queryElement.element("formula");
+			if(formulaElement!=null) {
+				formulaElement.setText(queryFormula);
+			}else {
+				formulaElement=queryElement.addElement("formula");
+				formulaElement.setText(queryFormula);
+			}
+		}else {
+			queryElement=queriesElement.addElement("query");
+			Element formulaElement=queryElement.addElement("formula");
+			formulaElement.setText(queryFormula);
+		}
+		///////---------把模型声明和验证公式都放在控制器模型生成上-----------
+
+		System.out.println("setDeclaration+setQuery:"+(System.currentTimeMillis()-startTime));	
+		
+		OutputStream os=new FileOutputStream(modelFilePath+changedFileName);
+		OutputFormat format=OutputFormat.createPrettyPrint();
+		format.setEncoding("utf-8");
+		format.setTrimText(false);
+		format.setNewlines(true);
+		XMLWriter writer=new XMLWriter(os,format);
+		writer.write(document);
+		writer.close();
+		os.close();
+		DeclarationQueryResult declarationQueryResult=new DeclarationQueryResult();
+		declarationQueryResult.setAttributesSameTriggers(attributesSameTriggers);
+		declarationQueryResult.setDeclarations(declarations);
+		return declarationQueryResult;
 	}
 	
 	

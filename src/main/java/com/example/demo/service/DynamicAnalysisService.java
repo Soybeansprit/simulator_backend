@@ -16,6 +16,10 @@ import java.util.Map.Entry;
 import org.springframework.stereotype.Service;
 
 import java.util.Stack;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import com.example.demo.bean.BiddableType;
 import com.example.demo.bean.CauseRule;
@@ -193,57 +197,188 @@ public class DynamicAnalysisService {
 		
 		/////获得每条规则的前提rules
 //		List<RuleNode> rulePreRulesNodes=DynamicAnalysisService.getRulePreRules(graphNodes, rulesMap);
+		ExecutorService executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(1000));
 		
+//		for(Scene scene:scenes) {
+//			/////单个场景分析
+//			Runnable analysisWork=new Runnable() {
+//				
+//				@Override
+//				public void run() {
+//					// TODO Auto-generated method stub
+//					getSingleScenarioDynamicAnalysis(scene, devices, graphNodes, rulesMap,simulationTime,equivalentTime,intervalTime);
+//				}
+//			};
+//			executorService.execute(analysisWork);
+////			getSingleScenarioDynamicAnalysis(scene, devices, graphNodes, rulesMap);
+////			////先获得场景dataTimeValue和startTimeValueEndTimeValue的hashmap
+////			getSceneDataHashMap(scene);
+////			List<DeviceAnalysisResult> deviceAnalysisResults=new ArrayList<>();
+////			for(DeviceDetail device:devices) {
+////				///找到对应设备节点
+////				GraphNode deviceNode=new GraphNode();
+////				for(GraphNode node:graphNodes) {
+////					if(node.getName().equals(device.getDeviceName())) {
+////						deviceNode=node;
+////						break;
+////					}
+////				}
+////				////分析设备
+////				DeviceAnalysisResult deviceAnalysisResult=new DeviceAnalysisResult();
+////				deviceAnalysisResult.setDeviceName(device.getDeviceName());
+////				List<ConflictReason> conflictReasons=DynamicAnalysisService.conflictAnalysis(scene.getDataTimeValuesHashMap().get(device.getDeviceName()));
+////				List<JitterReason> jitterReasons=DynamicAnalysisService.jitterAnalysis(scene.getDataStartTimeValueEndTimeValuesHashMap().get(device.getDeviceName()), "300", "24", "300");
+////				////分析问题原因
+////				if(conflictReasons!=null) {
+////					System.out.println(device.getDeviceName()+" conflict");
+////					for(ConflictReason conflictReason:conflictReasons) {
+////						////每次conflict原因
+////						getConflictReason(scene, conflictReason, device, deviceNode,graphNodes,rulesMap);
+//////						System.out.println(causingRules);
+////						
+////					}
+////				}
+////				if(jitterReasons.size()>0) {
+////					System.out.println(device.getDeviceName()+" jitter");
+////					for(JitterReason jitterReason:jitterReasons) {
+////						////每次jitter原因
+////						DynamicAnalysisService.getJitterReason(scene, jitterReason, device, deviceNode,graphNodes,rulesMap);
+//////						System.out.println(causingRules);
+////					}
+////				}
+////				
+////				
+////				deviceAnalysisResult.setConflictReasons(conflictReasons);
+////				deviceAnalysisResult.setJitterReasons(jitterReasons);
+////				deviceAnalysisResults.add(deviceAnalysisResult);
+////			}
+////			scene.setDeviceAnalysisResults(deviceAnalysisResults);
+//		}
+//		executorService.shutdown();
+//		try {
+//			executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+		
+		
+		
+		HashMap<String,DeviceDetail> deviceHashMap=new HashMap<>();
+		HashMap<String,GraphNode> deviceNodeHashMap=new HashMap<>();
+		if(scenes.get(0)!=null) {
+			for(DeviceDetail device:devices) {
+				deviceHashMap.put(device.getDeviceName(), device);
+				for(GraphNode node:graphNodes) {
+					if(node.getName().equals(device.getDeviceName())) {
+						deviceNodeHashMap.put(device.getDeviceName(), node);
+						break;
+					}
+				}
+			}
+		}
+		//////测试时间用
+		long preProcessingStartTime=System.currentTimeMillis();
+		for(Scene scene:scenes) {
+			getSceneDataHashMap(scene);
+			List<DeviceAnalysisResult> deviceAnalysisResults=new ArrayList<>();
+			for(DeviceDetail device:devices) {
+				DeviceAnalysisResult deviceAnalysisResult=new DeviceAnalysisResult();
+				deviceAnalysisResult.setDeviceName(device.getDeviceName());
+				deviceAnalysisResults.add(deviceAnalysisResult);
+			}
+			scene.setDeviceAnalysisResults(deviceAnalysisResults);
+		}
+		System.out.println("preProcessTime:"+(System.currentTimeMillis()-preProcessingStartTime));
+		long conflcitStartTime=System.currentTimeMillis();
+		/////conflict
 		for(Scene scene:scenes) {
 			/////单个场景分析
-			getSingleScenarioDynamicAnalysis(scene, devices, graphNodes, rulesMap);
-//			////先获得场景dataTimeValue和startTimeValueEndTimeValue的hashmap
-//			getSceneDataHashMap(scene);
-//			List<DeviceAnalysisResult> deviceAnalysisResults=new ArrayList<>();
-//			for(DeviceDetail device:devices) {
-//				///找到对应设备节点
-//				GraphNode deviceNode=new GraphNode();
-//				for(GraphNode node:graphNodes) {
-//					if(node.getName().equals(device.getDeviceName())) {
-//						deviceNode=node;
-//						break;
-//					}
-//				}
-//				////分析设备
-//				DeviceAnalysisResult deviceAnalysisResult=new DeviceAnalysisResult();
-//				deviceAnalysisResult.setDeviceName(device.getDeviceName());
-//				List<ConflictReason> conflictReasons=DynamicAnalysisService.conflictAnalysis(scene.getDataTimeValuesHashMap().get(device.getDeviceName()));
-//				List<JitterReason> jitterReasons=DynamicAnalysisService.jitterAnalysis(scene.getDataStartTimeValueEndTimeValuesHashMap().get(device.getDeviceName()), "300", "24", "300");
-//				////分析问题原因
-//				if(conflictReasons!=null) {
-//					System.out.println(device.getDeviceName()+" conflict");
-//					for(ConflictReason conflictReason:conflictReasons) {
-//						////每次conflict原因
-//						getConflictReason(scene, conflictReason, device, deviceNode,graphNodes,rulesMap);
-////						System.out.println(causingRules);
-//						
-//					}
-//				}
-//				if(jitterReasons.size()>0) {
-//					System.out.println(device.getDeviceName()+" jitter");
-//					for(JitterReason jitterReason:jitterReasons) {
-//						////每次jitter原因
-//						DynamicAnalysisService.getJitterReason(scene, jitterReason, device, deviceNode,graphNodes,rulesMap);
-////						System.out.println(causingRules);
-//					}
-//				}
-//				
-//				
-//				deviceAnalysisResult.setConflictReasons(conflictReasons);
-//				deviceAnalysisResult.setJitterReasons(jitterReasons);
-//				deviceAnalysisResults.add(deviceAnalysisResult);
-//			}
-//			scene.setDeviceAnalysisResults(deviceAnalysisResults);
+			Runnable analysisWork=new Runnable() {
+				@Override
+				public void run() {
+					// TODO Auto-generated method stub
+					getSingleScenarioConflictAnalysis(scene, deviceHashMap, deviceNodeHashMap, graphNodes, rulesMap);
+				}
+			};
+			executorService.execute(analysisWork);
 		}
+		executorService.shutdown();
+		try {
+			executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		System.out.println("conflictTime:"+(System.currentTimeMillis()-conflcitStartTime));
+		executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(1000));
+		long jitterStartTime=System.currentTimeMillis();
+		////jitter
+		for(Scene scene:scenes) {
+			/////单个场景分析
+			Runnable analysisWork=new Runnable() {
+				@Override
+				public void run() {
+					// TODO Auto-generated method stub
+					getSingleScenarioJitterAnalysis(scene, deviceHashMap, deviceNodeHashMap, graphNodes, rulesMap, simulationTime, equivalentTime, intervalTime);
+				}
+			};
+			executorService.execute(analysisWork);
+		}
+		executorService.shutdown();
+		try {
+			executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		System.out.println("jitterTime:"+(System.currentTimeMillis()-jitterStartTime));
 		
 	}
 	
-	public static void getSingleScenarioDynamicAnalysis(Scene scene,List<DeviceDetail> devices,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap) {
+	public static void getSingleScenarioConflictAnalysis(Scene scene,HashMap<String,DeviceDetail> deviceHashMap,HashMap<String,GraphNode> deviceNodeHashMap,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap) {
+		for(DeviceAnalysisResult deviceAnalysisResult:scene.getDeviceAnalysisResults()) {
+			String deviceName=deviceAnalysisResult.getDeviceName();
+			DeviceDetail device=deviceHashMap.get(deviceName);
+			GraphNode deviceNode=deviceNodeHashMap.get(deviceName);
+			List<ConflictReason> conflictReasons=DynamicAnalysisService.conflictAnalysis(scene.getDataTimeValuesHashMap().get(device.getDeviceName()));
+			if(conflictReasons.size()>0) {
+//				System.out.println(device.getDeviceName()+" conflict");
+				for(ConflictReason conflictReason:conflictReasons) {
+					////每次conflict原因
+					getConflictReason(scene, conflictReason, device, deviceNode,graphNodes,rulesMap);
+//					System.out.println(causingRules);
+					
+				}
+			}
+			deviceAnalysisResult.setConflictReasons(conflictReasons);
+		}
+
+	}
+	public static void getSingleScenarioJitterAnalysis(Scene scene,HashMap<String,DeviceDetail> deviceHashMap,HashMap<String,GraphNode> deviceNodeHashMap,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap,String simulationTime,String equivalentTime,String intervalTime) {
+		for(DeviceAnalysisResult deviceAnalysisResult:scene.getDeviceAnalysisResults()) {
+			String deviceName=deviceAnalysisResult.getDeviceName();
+			DeviceDetail device=deviceHashMap.get(deviceName);
+			GraphNode deviceNode=deviceNodeHashMap.get(deviceName);
+			//////分别获得check 冲突时间、jitter的时间；以及分别给出原因的时间
+			List<JitterReason> jitterReasons=DynamicAnalysisService.jitterAnalysis(scene.getDataStartTimeValueEndTimeValuesHashMap().get(device.getDeviceName()), simulationTime, equivalentTime, intervalTime);
+			////分析问题原因
+			
+			if(jitterReasons.size()>0) {
+//				System.out.println(device.getDeviceName()+" jitter");
+				for(JitterReason jitterReason:jitterReasons) {
+					////每次jitter原因
+					DynamicAnalysisService.getJitterReason(scene, jitterReason, device, deviceNode,graphNodes,rulesMap);
+//					System.out.println(causingRules);
+				}
+			}
+			deviceAnalysisResult.setJitterReasons(jitterReasons);
+		}
+		
+
+	}
+	
+	public static void getSingleScenarioDynamicAnalysis(Scene scene,List<DeviceDetail> devices,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap,String simulationTime,String equivalentTime,String intervalTime) {
 		////先获得场景dataTimeValue和startTimeValueEndTimeValue的hashmap
 		getSceneDataHashMap(scene);
 		List<DeviceAnalysisResult> deviceAnalysisResults=new ArrayList<>();
@@ -259,8 +394,9 @@ public class DynamicAnalysisService {
 			////分析设备
 			DeviceAnalysisResult deviceAnalysisResult=new DeviceAnalysisResult();
 			deviceAnalysisResult.setDeviceName(device.getDeviceName());
+			//////分别获得check 冲突时间、jitter的时间；以及分别给出原因的时间
 			List<ConflictReason> conflictReasons=DynamicAnalysisService.conflictAnalysis(scene.getDataTimeValuesHashMap().get(device.getDeviceName()));
-			List<JitterReason> jitterReasons=DynamicAnalysisService.jitterAnalysis(scene.getDataStartTimeValueEndTimeValuesHashMap().get(device.getDeviceName()), "300", "24", "300");
+			List<JitterReason> jitterReasons=DynamicAnalysisService.jitterAnalysis(scene.getDataStartTimeValueEndTimeValuesHashMap().get(device.getDeviceName()), simulationTime, equivalentTime, intervalTime);
 			////分析问题原因
 			if(conflictReasons.size()>0) {
 				System.out.println(device.getDeviceName()+" conflict");
@@ -647,9 +783,14 @@ public class DynamicAnalysisService {
 	
 	public static List<PropertyVerifyResult> analizeAllproperties(List<String> properties,List<Scene> scenes,List<DeviceDetail> devices,List<BiddableType> biddableTypes,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap) {
 		List<PropertyVerifyResult> propertyVerifyResults=new ArrayList<>();
+		for(Scene scene:scenes) {
+			getSceneDataHashMap(scene);
+		}
 		for(String property:properties) {
 			System.out.println(property);
+			long propertyStartTime=System.currentTimeMillis();
 			PropertyVerifyResult propertyVerifyResult=propertyAnalysis(property, scenes, devices, biddableTypes, graphNodes, rulesMap);
+			System.out.println("propertyTime:"+(System.currentTimeMillis()-propertyStartTime));
 			propertyVerifyResults.add(propertyVerifyResult);
 		}
 		return propertyVerifyResults;
@@ -739,7 +880,7 @@ public class DynamicAnalysisService {
 					if((satisfyTime[1]-satisfyTime[0])>1) {
 						isReachable=true;
 						/////可达的话就要找原因
-						System.out.println("Property is reachable.");
+//						System.out.println("Property is reachable.");
 						///获得对应场景
 						Scene scene=new Scene();
 						for(Scene sce:scenes) {
@@ -785,7 +926,7 @@ public class DynamicAnalysisService {
 
 						}
 						propertyVerifyResult.getReachableReasons().add(reachableReason);
-						System.out.println(statesCausingRules);
+//						System.out.println(statesCausingRules);
 					}
 				}
 			}
@@ -1391,21 +1532,29 @@ public class DynamicAnalysisService {
 	public static List<Scene> getAllSimulationResults(ScenesTree scenesTree,List<DeviceDetail> devices,String fileName,String modelFilePath,String uppaalPath,String simulateResultFilePath) {
 		final String fileNameWithoutSuffix=fileName.substring(0, fileName.lastIndexOf(".xml"));
 		final List<Scene> scenes=new ArrayList<>();
-		List<Thread> threads=new ArrayList<>();
+//		List<Thread> threads=new ArrayList<>();
+		long simulationStartTime=System.currentTimeMillis();
+		ExecutorService executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(1000));
 		for(int i=0;i<scenesTree.getChildren().size();i++) {
-			SimulationThreadService sThread=new SimulationThreadService(scenes, devices, uppaalPath, fileNameWithoutSuffix, i+"", modelFilePath,simulateResultFilePath);	
-			sThread.setName("scenario-"+i);
-			threads.add(sThread);
-			sThread.start();			
+			SimulationThreadService sRunnable=new SimulationThreadService(scenes, devices, uppaalPath, fileNameWithoutSuffix, i+"", modelFilePath,simulateResultFilePath);	
+			executorService.execute(sRunnable);		
 		}
-		for(Thread thread:threads) {
-			try {
-				thread.join();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+		executorService.shutdown();
+//		for(Thread thread:threads) {
+//			try {
+//				thread.join();
+//			} catch (InterruptedException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+//		}
+		try {
+			executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
+		System.out.println("simulationTime:"+(System.currentTimeMillis()-simulationStartTime));
 		Comparator<Scene> c=new Comparator<Scene>() {
 
 			@Override
@@ -1426,7 +1575,8 @@ public class DynamicAnalysisService {
 	public static Scene getSingleSimulationResult(List<DeviceDetail> devices,String uppaalPath,String fileNameWithoutSuffix,String scenarioNum,String modelFilePath,String simulationResultFilePath) {
 		///仿真
 		List<Scene> scenes=new ArrayList<>();
-		SimulationThreadService thread=new SimulationThreadService(scenes, devices, uppaalPath, fileNameWithoutSuffix, scenarioNum, modelFilePath, simulationResultFilePath);
+		SimulationThreadService sRunnable=new SimulationThreadService(scenes, devices, uppaalPath, fileNameWithoutSuffix, scenarioNum, modelFilePath, simulationResultFilePath);
+		Thread thread=new Thread(sRunnable);
 		thread.start();
 		try {
 			thread.join();

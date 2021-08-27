@@ -134,14 +134,17 @@ public class Test {
 		StaticAnalysisResult staticAnalsisResult=StaticAnalysisService.getStaticAnalaysisResult(rules, ifdFileName, filePath, environmentModel);
 
 		List<GraphNode> graphNodes=StaticAnalysisService.getIFDNode(ifdFileName, filePath);
-		SystemModelService.generateContrModel(filePath+modelFileName2, staticAnalsisResult.getUsableRules(), environmentModel.getBiddables(), environmentModel.getDevices());
+		SystemModelService.generateContrModel(filePath,modelFileName2, staticAnalsisResult.getUsableRules(), environmentModel.getDevices(), environmentModel.getBiddables());
 		SystemModelService.generateBestScenarioModel(rules, environmentModel.getDevices(), environmentModel.getDeviceTypes(), environmentModel.getBiddables(), environmentModel.getSensors(), environmentModel.getAttributes(), modelFileName2, filePath, graphNodes,"best.xml", "300");
 
 		//		List<String[]> declarations=SystemModelService.generateDeclaration(rules, biddableTypes, deviceTypes, sensorTypes,controlledDevices);
 //		List<Action> actions=RuleService.getAllActions(staticAnalsisResult.usableRules, devices);
 //		List<Trigger> triggers=RuleService.getAllTriggers(staticAnalsisResult.usableRules, sensorTypes, biddableTypes);
 //		SystemModelService.generateAllScenarios(actions, triggers, declarations, devices, deviceTypes, biddableTypes, sensorTypes, modelFileName2, filePath, "300");
-		ScenesTree scenesTree=SystemModelService.generateAllScenarios(staticAnalsisResult.getUsableRules(), environmentModel.getDevices(), environmentModel.getDeviceTypes(), environmentModel.getBiddables(), environmentModel.getSensors(), environmentModel.getAttributes(), modelFileName2, filePath, "300");
+		
+		ScenesTree scenesTree=new ScenesTree();
+//				SystemModelService.generateAllScenarios(staticAnalsisResult.getUsableRules(), environmentModel.getDevices(), environmentModel.getDeviceTypes(), environmentModel.getBiddables(), environmentModel.getSensors(), environmentModel.getAttributes(), modelFileName2, filePath, "300");
+		
 		////动态分析
 		List<Scene> scenes=DynamicAnalysisService.getAllSimulationResults(scenesTree,environmentModel.getDevices(), modelFileName2, filePath, "D:\\tools\\uppaal-4.1.24\\uppaal-4.1.24\\bin-Windows",filePath);
 		System.out.println(environmentModel.getDevices());

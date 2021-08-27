@@ -154,7 +154,7 @@ public class TemplGraphService {
 		List<Rule> rules=RuleService.getRuleList(ruleText);
 		StaticAnalysisResult staticAnalsisResult=StaticAnalysisService.getStaticAnalaysisResult(rules, ifdFileName, filePath, environmentModel);
 		
-		SystemModelService.generateContrModel(filePath+"\\"+modelFileName2, staticAnalsisResult.getUsableRules(), biddableTypes, devices);
+		SystemModelService.generateContrModel(filePath,modelFileName2, staticAnalsisResult.getUsableRules(), devices, biddableTypes);
 //		List<String[]> declarations=SystemModelService.generateDeclaration(rules, biddableTypes, deviceTypes, sensorTypes,controlledDevices);
 //		List<Action> actions=RuleService.getAllActions(staticAnalsisResult.usableRules, devices);
 //		List<Trigger> triggers=RuleService.getAllTriggers(staticAnalsisResult.usableRules, sensorTypes, biddableTypes);
