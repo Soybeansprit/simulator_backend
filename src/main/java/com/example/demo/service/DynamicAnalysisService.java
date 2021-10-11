@@ -1536,7 +1536,7 @@ public class DynamicAnalysisService {
 		long simulationStartTime=System.currentTimeMillis();
 		ExecutorService executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(1000));
 		for(int i=0;i<scenesTree.getChildren().size();i++) {
-			SimulationThreadService sRunnable=new SimulationThreadService(scenes, devices, uppaalPath, fileNameWithoutSuffix, i+"", modelFilePath,simulateResultFilePath);	
+			SimulationThreadService sRunnable=new SimulationThreadService(scenes, devices, uppaalPath, fileNameWithoutSuffix, i+"", modelFilePath,simulateResultFilePath);
 			executorService.execute(sRunnable);		
 		}
 		executorService.shutdown();
@@ -1553,6 +1553,15 @@ public class DynamicAnalysisService {
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		}
+		if(scenes==null){
+			///仿真结果有误
+			return null;
+		}
+		if(scenes.size()>0){
+			if(scenes.get(0).getDataTimeValues().size()==0){
+				return null;
+			}
 		}
 		System.out.println("simulationTime:"+(System.currentTimeMillis()-simulationStartTime));
 		Comparator<Scene> c=new Comparator<Scene>() {
@@ -1716,6 +1725,10 @@ public class DynamicAnalysisService {
 		  			System.out.println("null");
 		  		}
 		  		while (s != null) {
+					  if(s.indexOf("[error]")>=0){
+						  ///如果模型有误直接返回null
+						  return null;
+					  }
 //		  			System.out.println(s);
 		  			resultBuffer.append(s+"\n");
 //		  			long startTime=System.currentTimeMillis();

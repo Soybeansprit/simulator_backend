@@ -45,7 +45,14 @@ public class SimulationThreadService implements Runnable{
 		String newModelFileName=fileNameWithoutSuffix+"-scenario-"+scenarioNum+".xml";
 		String resultFileName=fileNameWithoutSuffix+"-scenario-"+scenarioNum+".txt";
 		String simulationResult=DynamicAnalysisService.getSimulationResult(uppaalPath, newModelFileName, modelFilePath);
+		System.out.println(simulationResult);
 		//生成仿真结果数据文件
+		if(simulationResult==null){
+			///仿真结果有问题
+			System.out.println("error");
+			this.scenes.clear();
+			return;
+		}
 		for(DeviceDetail device:devices) {
 			//获得设备标识符表示，identifier，转为设备名，并给出位置信息和设备类型
 			//如 bulb[0] => deviceName=Bulb_0,deviceType=Bulb,location=Lobby

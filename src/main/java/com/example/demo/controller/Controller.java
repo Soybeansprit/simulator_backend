@@ -90,6 +90,7 @@ public class Controller {
 	public EnvironmentStatic getStaticAnalysisResult(@RequestBody List<String> ruleTextLines,String initModelFileName,String propertyFileName) throws DocumentException, IOException {
 		/////生成规则结构
 		List<Rule> rules=RuleService.getRuleList(ruleTextLines);
+//		System.out.println(initModelFileName);
 		////设置更改后的模型文件名
 		AddressService.setChangedModelFileName(initModelFileName);
 		////获得环境模型

@@ -583,6 +583,9 @@ public class SystemModelService {
 		////先对设备实例化
 		for(DeviceDetail device:devices) {
 			////Bulb_1=Bulb(1);
+			if(device.getConstructionNum()==-1){
+				continue;
+			}
 			String deviceInstance=device.getDeviceName()+"="+device.getDeviceType().getName()+"("+device.getConstructionNum()+")";
 			sb.append(deviceInstance+";\r\n");
 		}
