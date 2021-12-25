@@ -3,6 +3,10 @@ package com.example.demo.bean;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 设备类型，可以有多个实例
+ * 设备类型名，状态标识符，【设备状态名、信号通道、状态标识符取值以及对各个属性的影响值】
+ * */
 public class DeviceType extends Entity{
 	// [0] state, [1]action [2]value
 	//Bulb------bon, turn_bulb_on, 1
@@ -50,6 +54,93 @@ public class DeviceType extends Entity{
 		public void setEffects(List<String[]> effects) {
 			this.effects = effects;
 		}
-		
+
+	}
+
+
+	private String deviceType="";  ///设备类型
+	private String identifier="";  ///状态标识符
+	private int number=0;  ///实例个数
+	private List<StateSyncValueEffect> stateSyncValueEffects=new ArrayList<>();  ///各状态信息
+
+	public String getDeviceType() {
+		return deviceType;
+	}
+
+	public void setDeviceType(String deviceType) {
+		this.deviceType = deviceType;
+	}
+
+	public String getIdentifier() {
+		return identifier;
+	}
+
+	public void setIdentifier(String identifier) {
+		this.identifier = identifier;
+	}
+
+	public int getNumber() {
+		return number;
+	}
+
+	public void setNumber(int number) {
+		this.number = number;
+	}
+
+	public List<StateSyncValueEffect> getStateSyncValueEffects() {
+		return stateSyncValueEffects;
+	}
+
+	public void setStateSyncValueEffects(List<StateSyncValueEffect> stateSyncValueEffects) {
+		this.stateSyncValueEffects = stateSyncValueEffects;
+	}
+
+	////状态信息
+	public class StateSyncValueEffect{
+		private String stateName="";
+		private String stateId="";
+		private String synchronisation="";
+		private String value="";  ///identifier取值
+		private List<String[]> effects=new ArrayList<>();  ///effect[0]=attribute, effect[1]=delta（对于会对总变化率产生影响的）, effect[2]=影响值
+
+		public String getStateName() {
+			return stateName;
+		}
+
+		public void setStateName(String stateName) {
+			this.stateName = stateName;
+		}
+
+		public String getStateId() {
+			return stateId;
+		}
+
+		public void setStateId(String stateId) {
+			this.stateId = stateId;
+		}
+
+		public String getSynchronisation() {
+			return synchronisation;
+		}
+
+		public void setSynchronisation(String synchronisation) {
+			this.synchronisation = synchronisation;
+		}
+
+		public String getValue() {
+			return value;
+		}
+
+		public void setValue(String value) {
+			this.value = value;
+		}
+
+		public List<String[]> getEffects() {
+			return effects;
+		}
+
+		public void setEffects(List<String[]> effects) {
+			this.effects = effects;
+		}
 	}
 }

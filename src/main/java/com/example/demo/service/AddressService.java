@@ -11,6 +11,13 @@ public class AddressService {
 	public final static String IFD_FILE_NAME="ifd.dot";
 	public final static String SIMULATE_RESULT_FILE_PATH="D:\\workspace\\resultFile\\";
 
+//	public final static String MODEL_FILE_PATH= "/home/komorebi/Documents/workspace/java-workspace/TAPs-Simulator/data/modelFile/";
+//	public final static String UPPAAL_PATH="/home/komorebi/Documents/workspace/tool/uppaal64-4.1.24/bin-Linux/";
+//	public final static String IFD_FILE_PATH="/home/komorebi/Documents/workspace/java-workspace/TAPs-Simulator/data/ifdFile/";
+//	public final static String IFD_FILE_NAME="ifd.dot";
+//	public final static String SIMULATE_RESULT_FILE_PATH="/home/komorebi/Documents/workspace/java-workspace/TAPs-Simulator/data/resultFile/";
+//	public final static String VIDEO_PATH="/root/public_html/TAPs-Simulator/assets/";
+
 
 	public static String changed_model_file_Name;
 	public static String best_model_file_name;

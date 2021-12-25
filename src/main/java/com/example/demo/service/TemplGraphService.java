@@ -511,15 +511,15 @@ public class TemplGraphService {
 					assignment=assignment.trim();
 					if(assignment.endsWith("=get()")){
 						String attribute=assignment.substring(0, assignment.indexOf("=get()"));
-						sensorType.attribute=attribute;
+						sensorType.setAttribute(attribute);
 					}
 				}
 			}
 		}
 		if(sensor.getDeclaration().indexOf("biddable")>=0) {
-			sensorType.style="biddable";
+			sensorType.setStyle("biddable");
 		}else if(sensor.getDeclaration().indexOf("causal")>=0) {
-			sensorType.style="causal";
+			sensorType.setStyle("causal");
 		}
 		return sensorType;
 	}
@@ -549,7 +549,7 @@ public class TemplGraphService {
 						assignment=assignment.trim();
 						if(!assignment.startsWith("t=")) {
 							for(SensorType sensor:sensors) {
-								if(!assignment.startsWith(sensor.attribute)) {
+								if(!assignment.startsWith(sensor.getAttribute())) {
 									stateAttributeValue[1]=assignment.substring(0, assignment.indexOf("=")).trim();
 									stateAttributeValue[2]=assignment.substring(assignment.indexOf("=")).substring(1).trim();
 									break;

@@ -40,35 +40,171 @@ public class GetTemplate {
 	
 	////////////////Template///////////////////////////////
 	public class Template{
-		public String name=""; 
+		public String name="";
 		public String declaration="";
 		public String parameter="";
 		public List<Location> locations= new ArrayList<Location>();
 		public List<Branchpoint> branchpoints=new ArrayList<Branchpoint>();
 		public String init="";
 		public List<Transition> transitions=new ArrayList<Transition>();
+
+		public String getName() {
+			return name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+
+		public String getDeclaration() {
+			return declaration;
+		}
+
+		public void setDeclaration(String declaration) {
+			this.declaration = declaration;
+		}
+
+		public String getParameter() {
+			return parameter;
+		}
+
+		public void setParameter(String parameter) {
+			this.parameter = parameter;
+		}
+
+		public List<Location> getLocations() {
+			return locations;
+		}
+
+		public void setLocations(List<Location> locations) {
+			this.locations = locations;
+		}
+
+		public List<Branchpoint> getBranchpoints() {
+			return branchpoints;
+		}
+
+		public void setBranchpoints(List<Branchpoint> branchpoints) {
+			this.branchpoints = branchpoints;
+		}
+
+		public String getInit() {
+			return init;
+		}
+
+		public void setInit(String init) {
+			this.init = init;
+		}
+
+		public List<Transition> getTransitions() {
+			return transitions;
+		}
+
+		public void setTransitions(List<Transition> transitions) {
+			this.transitions = transitions;
+		}
 	}
 	
-	class Location{
+	public class Location{
 		String id="";
 		String name="";
 		String invariant="";
-		String style="";
+		String style="";  ///"committed"?"urgent"?"location"
+
+		public String getId() {
+			return id;
+		}
+
+		public void setId(String id) {
+			this.id = id;
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+
+		public String getInvariant() {
+			return invariant;
+		}
+
+		public void setInvariant(String invariant) {
+			this.invariant = invariant;
+		}
+
+		public String getStyle() {
+			return style;
+		}
+
+		public void setStyle(String style) {
+			this.style = style;
+		}
 	}
 	
-	class Branchpoint{
+	public class Branchpoint{
 		String id="";
+
+		public String getId() {
+			return id;
+		}
+
+		public void setId(String id) {
+			this.id = id;
+		}
 	}
 	
-	class Transition{
+	public class Transition{
 		String sourceId="";
 		String targetId="";
-		List<Label> labels=new ArrayList<Label>();		
+		List<Label> labels=new ArrayList<Label>();
+
+		public String getSourceId() {
+			return sourceId;
+		}
+
+		public void setSourceId(String sourceId) {
+			this.sourceId = sourceId;
+		}
+
+		public String getTargetId() {
+			return targetId;
+		}
+
+		public void setTargetId(String targetId) {
+			this.targetId = targetId;
+		}
+
+		public List<Label> getLabels() {
+			return labels;
+		}
+
+		public void setLabels(List<Label> labels) {
+			this.labels = labels;
+		}
 	}
 	
-	class Label{
-		String kind="";
+	public class Label{
+		String kind="";  ///"guard"?"assignment"?"probability"?"synchronisation"
 		String content="";
+
+		public String getKind() {
+			return kind;
+		}
+
+		public void setKind(String kind) {
+			this.kind = kind;
+		}
+
+		public String getContent() {
+			return content;
+		}
+
+		public void setContent(String content) {
+			this.content = content;
+		}
 	}
 
 	

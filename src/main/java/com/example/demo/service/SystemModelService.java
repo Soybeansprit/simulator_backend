@@ -329,8 +329,8 @@ public class SystemModelService {
 			if(declaration[0].equals("double")||declaration[0].equals("clock")) {
 				for(SensorType sensor:sensors) {
 					////找到检测该属性的sensor
-					if(sensor.attribute.equals(declaration[1]) &&
-							sensor.style.equals("causal")) {
+					if(sensor.getAttribute().equals(declaration[1]) &&
+							sensor.getStyle().equals("causal")) {
 						/////causal类型的属性用于区分场景
 						/////找到涉及该属性的所有triggers
 						List<Trigger> triggersWithSameAttribute=getTriggersWithSameAttribute(declaration, triggers);
@@ -723,7 +723,7 @@ public class SystemModelService {
 			}
 			if(!exist) {
 				String[] declaration=new String[3];
-				declaration[1]=sensor.attribute;
+				declaration[1]=sensor.getAttribute();
 				declaration[0]="double";
 				/////如果是biddable的状态对应的属性，则为int类型
 				biddable:
@@ -1077,8 +1077,8 @@ public class SystemModelService {
 			if(declaration[0].equals("double")||declaration[0].equals("clock")) {
 				for(SensorType sensor:sensorTypes) {
 					////找到检测该属性的sensor
-					if(sensor.attribute.equals(declaration[1]) &&
-							sensor.style.equals("causal")) {
+					if(sensor.getAttribute().equals(declaration[1]) &&
+							sensor.getStyle().equals("causal")) {
 						/////causal类型的属性用于区分场景
 						/////找到涉及该属性的所有triggers
 						List<Trigger> triggersWithSameAttribute=getTriggersWithSameAttribute(declaration, triggers);
