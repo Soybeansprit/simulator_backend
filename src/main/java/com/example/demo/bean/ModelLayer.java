@@ -13,6 +13,7 @@ public class ModelLayer {
     private List<UncertainEntityType> uncertainEntityTypes=new ArrayList<>();  ///不确定实体类型
     private List<DeviceType> deviceTypes=new ArrayList<>();   ///设备类型
     private List<SensorType> sensorTypes=new ArrayList<>();   ///传感器类型
+    private List<CyberServiceType> cyberServiceTypes=new ArrayList<>();  ///cyber service类型
 
     public Human getHuman() {
         return human;
@@ -52,5 +53,13 @@ public class ModelLayer {
 
     public void setSensorTypes(List<SensorType> sensorTypes) {
         this.sensorTypes = sensorTypes;
+    }
+
+    public List<CyberServiceType> getCyberServiceTypes() {
+        return cyberServiceTypes;
+    }
+
+    public void setCyberServiceTypes(List<CyberServiceType> cyberServiceTypes) {
+        this.cyberServiceTypes = cyberServiceTypes;
     }
 }

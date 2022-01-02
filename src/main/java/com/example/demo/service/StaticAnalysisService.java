@@ -5,30 +5,16 @@ import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Queue;
+import java.util.*;
 
+import com.example.demo.bean.*;
 import org.dom4j.DocumentException;
 import org.springframework.stereotype.Service;
 
-import com.example.demo.bean.Action;
-import com.example.demo.bean.Attribute;
-import com.example.demo.bean.BiddableType;
-import com.example.demo.bean.DeviceDetail;
 import com.example.demo.bean.DeviceType.StateEffect;
-import com.example.demo.bean.EnvironmentModel;
-import com.example.demo.bean.ErrorReason;
 import com.example.demo.bean.IFDGraph.GraphNode;
 import com.example.demo.bean.IFDGraph.GraphNodeArrow;
-import com.example.demo.bean.Rule;
-import com.example.demo.bean.SensorType;
-import com.example.demo.bean.StaticAnalysisResult;
-import com.example.demo.bean.Trigger;
+
 @Service
 public class StaticAnalysisService {	
 	
@@ -725,6 +711,220 @@ public class StaticAnalysisService {
 		}
 		
 		return graphNodes;
+	}
+
+	////2021/12/27
+	public static void generateIFD(HashMap<String,Trigger> triggerMap, HashMap<String,Action> actionMap, List<Rule> rules, InstanceLayer interactiveEnvironment,HashMap<String, Instance> interactiveInstanceMap,String ifdFileName,String filePath) throws IOException {
+		StringBuilder sb = new StringBuilder();
+
+		sb.append("digraph infoflow{\r\n");
+		sb.append("rankdir=LR;\r\n");
+		sb.append("\r\n");
+		///////////////////生成sensor节点//////////////////
+		sb.append("///////////////sensors////////////////\r\n");
+		for (SensorInstance sensorInstance : interactiveEnvironment.getSensorInstances()) {
+			String sensorDot = sensorInstance.getInstanceName() + "[shape=\"doubleoctagon\",style=\"filled\",fillcolor=\"azure3\"]";
+			sb.append(sensorDot + "\r\n");
+		}
+		///////////////////////////////////////////////////
+		sb.append("\r\n");
+
+		//////////////生成device节点////////////////
+		sb.append("//////////////devices//////////////\r\n");
+		for (DeviceInstance deviceInstance : interactiveEnvironment.getDeviceInstances()) {
+			String deviceDot = deviceInstance.getInstanceName() + "[shape=\"doubleoctagon\",style=\"filled\",fillcolor=\"darkseagreen1\"]";
+			sb.append(deviceDot + "\r\n");
+		}
+
+		//////////////////////////////////////////////////////
+		sb.append("\r\n");
+		sb.append("\r\n");
+
+		//////////////生成cyber service节点//////////////////
+		sb.append("////////////////////cyber services///////////////////\r\n");
+		for (CyberServiceInstance cyberServiceInstance : interactiveEnvironment.getCyberServiceInstances()) {
+			String cyberDot = cyberServiceInstance.getInstanceName() + "[shape=\"doubleoctagon\",style=\"filled\",fillcolor=\"mediumpurple1\"]";
+			sb.append(cyberDot + "\r\n");
+		}
+		//////////////////////////////////////////////////////
+		sb.append("\r\n");
+		sb.append("\r\n");
+
+		/////////////////////生成rule节点////////////////////
+		sb.append("////////////////////rules/////////////////////\r\n");
+		for (Rule rule : rules) {
+			String ruleDot = rule.getRuleName() + "[shape=\"hexagon\",style=\"filled\",fillcolor=\"lightskyblue\"]";
+			sb.append(ruleDot + "\r\n");
+		}
+		//////////////////////////////////////////////////////
+		sb.append("\r\n");
+		sb.append("\r\n");
+
+		/////////////////////////生成action节点/////////////////////////////
+		/////////////////////////rule->action  action->device//////////////
+		sb.append("\r\n");
+		sb.append("\r\n");
+		sb.append("////////////////////actions/////////////////////\r\n");
+		for (Map.Entry<String, Action> actionKeyValue : actionMap.entrySet()) {
+			//action节点
+			Action action = actionKeyValue.getValue();
+			String actionDot = action.getActionId() + "[label=\"" + action.getActionContent() + "\",shape=\"record\",style=\"filled\",fillcolor=\"beige\"]";
+			sb.append(actionDot + "\r\n");
+			for (Rule actRule : action.getRelatedRules()) {
+				//rule->action
+				String ruleToActionDot = actRule.getRuleName() + "->" + action.getActionId();
+				sb.append(ruleToActionDot + "\r\n");
+			}
+			//instance->action   device/cyber->action
+			String actionToDevice = action.getInstanceName() + "->" + action.getActionId() + "[color=\"lemonchiffon3\"]";
+			sb.append(actionToDevice + "\r\n");
+		}
+
+		/////////////////////////生成trigger节点//////////////////////////////////////
+		/////////////////////////trigger->rule  device/sensor->trigger//////////////
+		sb.append("\r\n");
+		sb.append("////////////////////triggers/////////////////////\r\n");
+		for (Map.Entry<String, Trigger> triggerKeyValue : triggerMap.entrySet()) {
+			//trigger节点
+			Trigger trigger = triggerKeyValue.getValue();
+			String triggerDot = trigger.getTriggerId() + "[label=\"" + trigger.getTriggerContent() + "\",shape=\"oval\",style=\"filled\",fillcolor=\"lightpink\"]";
+			sb.append(triggerDot + "\r\n");
+			//trigger->rule
+			for (Rule triRule : trigger.getRelatedRules()) {
+				String triggerToRuleDot = trigger.getTriggerId() + "->" + triRule.getRuleName();
+				sb.append(triggerToRuleDot + "\r\n");
+			}
+
+
+			//trigger受到的影响   ，trigger只能是attribute<(<=,>,>=)value or Instance.state  instance可以是人或不确定实体，也可以是设备实例
+			if (trigger.getSensor().equals("")) {
+				//sensor/device ->trigger
+				String deviceToTriggerDot = trigger.getInstanceName() + "->" + trigger.getTriggerId() + "[color=\"lightpink\"]";
+				sb.append(deviceToTriggerDot + "\r\n");
+
+				///如果是设备状态，则可能受action直接影响
+				//action->trigger
+				///找到对应的实例
+				Instance instance = interactiveInstanceMap.get(trigger.getInstanceName());
+				if (instance instanceof DeviceInstance) {
+					DeviceInstance deviceInstance = (DeviceInstance) instance;
+					///找到状态对应的sync
+					for (DeviceType.StateSyncValueEffect stateSyncValueEffect : deviceInstance.getDeviceType().getStateSyncValueEffects()) {
+						if (stateSyncValueEffect.getStateName().equals(trigger.getTriggerForm()[2])) {
+							String synchronisation = stateSyncValueEffect.getSynchronisation();
+							///找到对应action
+							StringBuilder actionContent = new StringBuilder();
+							actionContent.append(trigger.getInstanceName());
+							actionContent.append(".");
+							actionContent.append(synchronisation);
+							Action action = actionMap.get(actionContent.toString());
+							//action->trigger
+							if (action!=null){
+								///如果有该action，则指向该trigger
+								String actionToTriggerDot = action.getActionId() + "->" + trigger.getTriggerId() + "[color=\"red\",fontsize=\"18\"]";
+								sb.append(actionToTriggerDot + "\r\n");
+							}
+
+							break;
+						}
+					}
+				}
+
+			} else {
+				//sensor->trigger
+				String sensorToTriggerDot = trigger.getSensor() + "->" + trigger.getTriggerId() + "[color=\"lightpink\"]";
+				sb.append(sensorToTriggerDot + "\r\n");
+
+				if (!trigger.getTriggerForm()[1].equals(".")) {
+					//trigger 类型 是  attribute<(<=,>,>=)value
+
+					///获得trigger->trigger和action->trigger
+					if (trigger.getTriggerForm()[1].indexOf(">") >= 0) {
+						getToTriggerDot(trigger,triggerMap,actionMap,interactiveInstanceMap,sb,">");
+					} else if (trigger.getTriggerForm()[1].indexOf("<") >= 0) {
+						getToTriggerDot(trigger,triggerMap,actionMap,interactiveInstanceMap,sb,"<");
+					}
+				}
+			}
+
+		}
+		/////////////////////////////////////////////
+		sb.append("\r\n");
+		sb.append("}\r\n");
+//		parse.write(graphvizFile, "", true);
+//		parse.write(graphvizFile, "}", true);
+		BufferedWriter bw=new BufferedWriter(new FileWriter(filePath+ifdFileName));
+		bw.write(sb.toString());
+		bw.close();
+	}
+
+	public static void getToTriggerDot(Trigger trigger, HashMap<String,Trigger> triggerMap, HashMap<String,Action> actionMap, HashMap<String,Instance> interactiveInstanceMap,StringBuilder sb,String compare){
+		///找其他蕴含该trigger的trigger，即otherTrigger是trigger的子集
+		//trigger->trigger   相同属性
+		for (Map.Entry<String,Trigger> otherTriggerKeyValue: triggerMap.entrySet()) {
+			Trigger otherTrigger=otherTriggerKeyValue.getValue();
+			if (!otherTrigger.getTriggerId().equals(trigger.getTriggerId())
+					&& otherTrigger.getTriggerForm()[0].equals(trigger.getTriggerForm()[0])
+					&& otherTrigger.getTriggerForm()[1].indexOf(compare) >= 0) {  ///<,>
+				Double triVal = Double.parseDouble(trigger.getTriggerForm()[2]);
+				Double othTriVal = Double.parseDouble(otherTrigger.getTriggerForm()[2]);
+				boolean contain=false;
+				if (compare.equals("<")&&triVal > othTriVal){
+					/////如temperature<25 -> temperature<30
+					contain=true;
+				}else if (compare.equals(">")&&triVal < othTriVal){
+					/////如temperature>30 -> temperature>25
+					contain=true;
+				} else if (triVal.toString().equals(othTriVal.toString())) {
+					if (trigger.getTriggerForm()[1].equals(compare+"=")) {  ///<=,>=
+						////如temperature<30 -> temperature<=30
+						contain=true;
+					}
+				}
+				if (contain){
+					String triggerToTriggerDot = otherTrigger.getTriggerId() + "->" + trigger.getTriggerId() + "[color=\"red\",fontsize=\"18\"]";
+					sb.append(triggerToTriggerDot + "\r\n");
+				}
+			}
+		}
+
+		///action--->trigger 隐性的正影响
+		for (Map.Entry<String,Action> actionKeyValue:actionMap.entrySet()){
+			Action action=actionKeyValue.getValue();
+			Instance instance=interactiveInstanceMap.get(action.getInstanceName());
+			boolean existEffect=false;
+			if (instance instanceof DeviceInstance){
+				DeviceInstance deviceInstance=(DeviceInstance) instance;
+				DeviceType deviceType=deviceInstance.getDeviceType();
+				for (DeviceType.StateSyncValueEffect stateSyncValueEffect:deviceType.getStateSyncValueEffects()){
+					if (stateSyncValueEffect.getSynchronisation().equals(action.getSync())){
+						////找到该action的sync、state对应的对attribute的影响
+						for (String[] effect:stateSyncValueEffect.getEffects()){
+							///effect[0]=attribute, effect[1]=delta（对于会对总变化率产生影响的）, effect[2]=影响值
+							if (effect[0].equals(trigger.getTriggerForm()[0])&&!effect[1].equals("")){
+								double effectValue=Double.parseDouble(effect[2]);
+								if (compare.equals(">")&&effectValue>0){
+									///effect>0则说明该action对>的trigger有正影响
+									/////存在隐性正影响
+									existEffect=true;
+								}else if (compare.equals("<")&&effectValue<0){
+									///effect<0则说明该action对<的trigger有正影响
+									/////存在隐性正影响
+									existEffect=true;
+								}
+								break;
+							}
+						}
+						break;
+					}
+				}
+			}
+			if (existEffect){
+				String actionToTriggerDot=action.getActionId()+"->"+trigger.getTriggerId()+"[color=\"red\",fontsize=\"18\",style=\"dashed\"]";
+				sb.append(actionToTriggerDot+"\r\n");
+			}
+		}
+
 	}
 
 	

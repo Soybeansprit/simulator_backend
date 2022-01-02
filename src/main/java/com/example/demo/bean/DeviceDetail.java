@@ -21,7 +21,7 @@ public class DeviceDetail {
 		super();
 		this.deviceName = deviceName;
 		this.location = location;
-		this.deviceType.name=deviceTypeName;
+		this.deviceType.setName(deviceTypeName);
 	}
 	public void setDeviceName(String deviceName) {
 		this.deviceName = deviceName;
@@ -46,7 +46,7 @@ public class DeviceDetail {
 	}
 	@Override
 	public String toString() {
-		return "DeviceDetail [deviceName=" + deviceName + ", location=" + location + ", deviceType=" + deviceType.name + "]";
+		return "DeviceDetail [deviceName=" + deviceName + ", location=" + location + ", deviceType=" + deviceType.getName() + "]";
 	}
 	public void setDeviceTypeName(String deviceTypeName) {
 		DeviceType deviceType=new DeviceType();

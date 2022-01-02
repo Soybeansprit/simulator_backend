@@ -7,6 +7,7 @@ import org.dom4j.Element;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -17,6 +18,7 @@ import java.util.List;
  * */
 @Service
 public class ModelLayerService {
+
 
     ///解析xml文件，并记录对应模型
     ///模型层包括各种类型的模型，人、不确定实体、具有各种环境属性的实体（air）、cyber service、设备、传感器
@@ -90,39 +92,47 @@ public class ModelLayerService {
                 for (AttributeEntityType.Attribute attribute:attributeEntityType.getAttributes()){
                     ///是否检测的环境属性
                     if (attribute.getAttribute().trim().equals(sensorType.getAttribute().trim())){
-                        sensorType.setMonitoredEntityType(attributeEntityType.getEntityType());
+                        sensorType.setMonitoredEntityType(attributeEntityType.getTypeName());
                         break;
                     }
                 }
                 if (sensorType.getMonitoredEntityType().equals("")){
                     ///是否检测人
                     if (human.getIdentifier().trim().equals(sensorType.getAttribute().trim())){
-                        sensorType.setMonitoredEntityType(human.getType());
+                        sensorType.setMonitoredEntityType(human.getTypeName());
                     }
                 }
                 if (sensorType.getMonitoredEntityType().equals("")){
                     ///是否检测不确定实体
                     for (UncertainEntityType uncertainEntityType:uncertainEntityTypes){
                         if (uncertainEntityType.getIdentifier().trim().equals(sensorType.getAttribute().trim())){
-                            sensorType.setMonitoredEntityType(uncertainEntityType.getUncertainEntityType());
+                            sensorType.setMonitoredEntityType(uncertainEntityType.getTypeName());
                             break;
                         }
                     }
                 }
             }
         }
+        ////添加一个Timer用于计时
+        SensorType timerType=new SensorType();
+        timerType.setTypeName("Timer");
+        timerType.setAttribute("time");
+        sensorTypes.add(timerType);
+
         modelLayer.setDeviceTypes(deviceTypes);
         modelLayer.setAttributeEntity(attributeEntityType);
         modelLayer.setSensorTypes(sensorTypes);
         modelLayer.setUncertainEntityTypes(uncertainEntityTypes);
         modelLayer.setHuman(human);
+        modelLayer.setCyberServiceTypes(cyberServiceTypes);
+
 
         return modelLayer;
     }
 
     ///传感器
     public static void getSensorTypeFromTemplate(GetTemplate.Template template, SensorType sensorType){
-        sensorType.setSensorType(template.getName());
+        sensorType.setTypeName(template.getName());
         GetTemplate.Transition transition=template.getTransitions().get(0);
         if (transition.getLabels().size()>0){
             for (GetTemplate.Label label: transition.getLabels()){
@@ -132,7 +142,7 @@ public class ModelLayerService {
                         String[] variableValue=assignment.split("=");
                         if (variableValue[1].indexOf("get()")>=0){
                             ///检测属性
-                            sensorType.setAttribute(variableValue[0]);
+                            sensorType.setAttribute(variableValue[0].trim());
                             break;
                         }
                     }
@@ -147,7 +157,7 @@ public class ModelLayerService {
         ///先获得declaration中的内容
         String[] declarations=template.getDeclaration().split(";");
         ///设备模型，n各location对应n个状态，都有状态名，有对应的同步信号，是参数化模型，可被多次实例化，不同状态可能对环境产生影响
-        deviceType.setDeviceType(template.getName());  ///类型名
+        deviceType.setTypeName(template.getName());  ///类型名
         for (GetTemplate.Location location:template.getLocations()){
             if (!location.getName().equals("")){
                 ///状态信息，状态名，状态id
@@ -222,14 +232,16 @@ public class ModelLayerService {
     //cyber service 类型，只有状态、同步信号，对应输入输出
     public static void getCyberServiceTypeFromTemplate(GetTemplate.Template template,CyberServiceType cyberServiceType){
         //cyber service 类型，只有状态、同步信号，对应输入输出
-        cyberServiceType.setCyberType(template.getName());
+        cyberServiceType.setTypeName(template.getName());
         for (GetTemplate.Location location:template.getLocations()){
             String[] stateSync=new String[2]; ///stateSync[0]=stateId,stateSync[1]=synchronization
+            ///先确定状态id
             stateSync[0]=location.getId();
             cyberServiceType.getStateSyncs().add(stateSync);
         }
         for (String[] stateSync:cyberServiceType.getStateSyncs()){
-            if (stateSync[1].equals("")){
+            ///再确定该到状态的信号通道
+            if (stateSync[1]==null||stateSync[1].equals("")){
                 for (GetTemplate.Transition transition:template.getTransitions()){
                     if (transition.getTargetId().equals(stateSync[0])){
                         if (transition.getLabels().size()>0){
@@ -249,7 +261,7 @@ public class ModelLayerService {
     //不确定实体
     public static void getUncertainEntityTypeFromTemplate(GetTemplate.Template template,UncertainEntityType uncertainEntityType){
         //不确定实体
-        uncertainEntityType.setUncertainEntityType(template.getName());  ///类型名
+        uncertainEntityType.setTypeName(template.getName());  ///类型名
         List<String[]> stateValues=new ArrayList<>();
         ///获得各个状态
         for(GetTemplate.Location location:template.getLocations()){
@@ -299,7 +311,7 @@ public class ModelLayerService {
     ///attribute实体
     public static void getAttributeEntityTypeFromTemplate(GetTemplate.Template template,AttributeEntityType attributeEntityType){
         ///attribute实体
-        attributeEntityType.setEntityType(template.getName());  ///类型名
+        attributeEntityType.setTypeName(template.getName().trim());  ///类型名
         if (template.getLocations().size()>0){
             GetTemplate.Location location=template.getLocations().get(0);
             if (!location.getInvariant().equals("")){
@@ -308,9 +320,9 @@ public class ModelLayerService {
                 for (String invariant:invariants){
                     String[] attributeDelta=invariant.split("'==");  ///temperature'==dtemper => attributeDelta[0]="temperature", attributeDelta[1]="dtemper"
                     AttributeEntityType.Attribute attribute=attributeEntityType.new Attribute();
-                    attribute.setAttribute(attributeDelta[0]);
-                    attribute.setContent(invariant);
-                    attribute.setDelta(attributeDelta[1]);
+                    attribute.setAttribute(attributeDelta[0].trim());
+                    attribute.setContent(invariant.trim());
+                    attribute.setDelta(attributeDelta[1].trim());
                     attributeEntityType.getAttributes().add(attribute);
                 }
             }
@@ -320,12 +332,28 @@ public class ModelLayerService {
     ////获得人的模型，根据空间位置信息获得
     public static Human getHuman(List<String> locations){
         Human human=new Human();
-        human.setType("Human");  //模型名
+        human.setTypeName("Human");  //模型名
         human.setIdentifier("position");  //人的状态标识符
         List<String[]> stateValues=new ArrayList<>();  ///各状态对应的状态标识符取值
         for(int i=0;i<locations.size();i++){
             String[] stateValue=new String[3];  ///stateValue[0]=状态名,stateValue[1]=状态id,stateValue[1]=状态标识符取值
-            stateValue[0]=locations.get(i);  ///状态名
+            stateValue[0]=locations.get(i).trim();  ///状态名
+            stateValue[1]="id"+(i+1);    ///状态id
+            stateValue[2]=i+"";  //状态标识符取值
+            stateValues.add(stateValue);
+        }
+        human.setStateValues(stateValues);
+        return human;
+    }
+    ////获得人的模型，根据空间位置信息获得
+    public static Human getHuman(String[] locations){
+        Human human=new Human();
+        human.setTypeName("Human");  //模型名
+        human.setIdentifier("position");  //人的状态标识符
+        List<String[]> stateValues=new ArrayList<>();  ///各状态对应的状态标识符取值
+        for(int i=0;i<locations.length;i++){
+            String[] stateValue=new String[3];  ///stateValue[0]=状态名,stateValue[1]=状态id,stateValue[1]=状态标识符取值
+            stateValue[0]=locations[i].trim();  ///状态名
             stateValue[1]="id"+(i+1);    ///状态id
             stateValue[2]=i+"";  //状态标识符取值
             stateValues.add(stateValue);
@@ -335,82 +363,102 @@ public class ModelLayerService {
     }
 
 
-    ///根据人模型信息，生成xml中的元素
-    public static void getHumanElement(Human human, Element humanElement){
-        Element nameElement=humanElement.addElement("name");
-        nameElement.setText(human.getType());  ///模型名
+//    ///根据人模型信息，生成xml中的元素
+//    public static void getHumanElement(Human human, Element humanElement){
+//        Element nameElement=humanElement.addElement("name");
+//        nameElement.setText(human.getTypeName());  ///模型名
+//
+//        ///parameter
+//        Element parameterElement=humanElement.addElement("parameter");
+//        StringBuilder parameter=new StringBuilder();  ///传参部分
+//
+//        ///declaration
+//        Element declarationElement=humanElement.addElement("declaration");
+//        StringBuilder declaration=new StringBuilder();
+//        declaration.append(
+//                "//human\n" +
+//                "clock t;\n"+
+//                "clock time;");
+//        declarationElement.setText(declaration.toString());
+//
+//        ///先创建一个init location
+//        Element initLocationElement=humanElement.addElement("location");
+//        initLocationElement.addAttribute("id","id0");
+//        initLocationElement.addAttribute("x","150");
+//        initLocationElement.addAttribute("y","100");
+//        initLocationElement.addElement("committed");
+//        ///init
+//        Element initElement=humanElement.addElement("init");
+//        initElement.addAttribute("ref", "id0");
+//
+//        ///locations
+//        List<Element> locationElements=humanElement.elements("location");
+//        ///transitions
+//        List<Element> transitionElements=new ArrayList<Element>();
+//        for (int i=0;i<human.getStateValues().size();i++){
+//            String[] stateValue=human.getStateValues().get(i);
+//            ///location
+//            Element locationElement=DocumentHelper.createElement("location");
+//            locationElement.addAttribute("id",stateValue[1]);
+//            locationElement.addAttribute("x",150*(i+2)+"");
+//            locationElement.addAttribute("y","100");
+//            locationElement.addElement("name").setText(stateValue[0]);
+//            if (i<human.getStateValues().size()-1){
+//                ///不是最后一个location，存在不变式 time<=t1、t2.。。 t1、t2。。。是参数
+//                Element labelElement=locationElement.addElement("label");
+//                labelElement.addAttribute("kind", "invariant");
+//                labelElement.setText("time<=t"+(i+1));
+//                ///parameter
+//                if (i>0){
+//                    parameter.append(", ");
+//                }
+//                parameter.append("double t"+(i+1));
+//            }
+//            locationElements.add(0,locationElement);
+//
+//            ///transition
+//            Element transitionElement= DocumentHelper.createElement("transition");
+//            Element sourceElement=transitionElement.addElement("source");
+//            sourceElement.addAttribute("ref", "id"+i);
+//            Element targetElement=transitionElement.addElement("target");
+//            targetElement.addAttribute("ref", stateValue[1]);
+//                ///guard
+//            if (i>0){
+//                Element guardElement=transitionElement.addElement("label");
+//                guardElement.addAttribute("kind", "guard");
+//                guardElement.setText("time>=t"+i);
+//            }
+//                ///assignment
+//            Element assignmentElement=transitionElement.addElement("label");
+//            assignmentElement.addAttribute("kind", "assignment");
+//            assignmentElement.setText(human.getIdentifier()+"="+stateValue[2]);
+//            transitionElements.add(transitionElement);
+//        }
+//
+//        parameterElement.setText(parameter.toString());
+//
+//        for(Element transitionElement:transitionElements) {
+//            humanElement.add(transitionElement);
+//        }
+//    }
 
-        ///parameter
-        Element parameterElement=humanElement.addElement("parameter");
-        StringBuilder parameter=new StringBuilder();  ///传参部分
-
-        ///declaration
-        Element declarationElement=humanElement.addElement("declaration");
-        StringBuilder declaration=new StringBuilder();
-        declaration.append(
-                "//human\n" +
-                "clock t;\n"+
-                "clock time;");
-        declarationElement.setText(declaration.toString());
-
-        ///先创建一个init location
-        Element initLocationElement=humanElement.addElement("location");
-        initLocationElement.addAttribute("id","id0");
-        initLocationElement.addAttribute("x","150");
-        initLocationElement.addAttribute("y","100");
-        initLocationElement.addElement("committed");
-        ///init
-        Element initElement=humanElement.addElement("init");
-        initElement.addAttribute("ref", "id0");
-
-        ///locations
-        List<Element> locationElements=humanElement.elements("location");
-        ///transitions
-        List<Element> transitionElements=new ArrayList<Element>();
-        for (int i=0;i<human.getStateValues().size();i++){
-            String[] stateValue=human.getStateValues().get(i);
-            ///location
-            Element locationElement=DocumentHelper.createElement("location");
-            locationElement.addAttribute("id",stateValue[1]);
-            locationElement.addAttribute("x",150*(i+2)+"");
-            locationElement.addAttribute("y","100");
-            locationElement.addElement("name").setText(stateValue[0]);
-            if (i<human.getStateValues().size()-1){
-                ///不是最后一个location，存在不变式 time<=t1、t2.。。 t1、t2。。。是参数
-                Element labelElement=locationElement.addElement("label");
-                labelElement.addAttribute("kind", "invariant");
-                labelElement.setText("time<=t"+(i+1));
-                ///parameter
-                if (i>0){
-                    parameter.append(", ");
-                }
-                parameter.append("double t"+(i+1));
-            }
-            locationElements.add(0,locationElement);
-
-            ///transition
-            Element transitionElement= DocumentHelper.createElement("transition");
-            Element sourceElement=transitionElement.addElement("source");
-            sourceElement.addAttribute("ref", "id"+i);
-            Element targetElement=transitionElement.addElement("target");
-            targetElement.addAttribute("ref", stateValue[1]);
-                ///guard
-            if (i>0){
-                Element guardElement=transitionElement.addElement("label");
-                guardElement.addAttribute("kind", "guard");
-                guardElement.setText("time>=t"+i);
-            }
-                ///assignment
-            Element assignmentElement=transitionElement.addElement("label");
-            assignmentElement.addAttribute("kind", "assignment");
-            assignmentElement.setText(human.getIdentifier()+"="+stateValue[2]);
-            transitionElements.add(transitionElement);
+    ///以key-value的map形式存储模型层的模型
+    public static HashMap<String, EntityType> getModelMap(ModelLayer modelLayer){
+        HashMap<String, EntityType> modelLayerMap=new HashMap<>();
+        for (DeviceType deviceType:modelLayer.getDeviceTypes()){
+            modelLayerMap.put(deviceType.getTypeName(),deviceType);
         }
-
-        parameterElement.setText(parameter.toString());
-
-        for(Element transitionElement:transitionElements) {
-            humanElement.add(transitionElement);
+        for (SensorType sensorType:modelLayer.getSensorTypes()){
+            modelLayerMap.put(sensorType.getTypeName(),sensorType);
         }
+        for (UncertainEntityType uncertainEntityType:modelLayer.getUncertainEntityTypes()){
+            modelLayerMap.put(uncertainEntityType.getTypeName(),uncertainEntityType);
+        }
+        for (CyberServiceType cyberServiceType:modelLayer.getCyberServiceTypes()){
+            modelLayerMap.put(cyberServiceType.getTypeName(),cyberServiceType);
+        }
+        modelLayerMap.put(modelLayer.getAttributeEntity().getTypeName(),modelLayer.getAttributeEntity());
+        modelLayerMap.put(modelLayer.getHuman().getTypeName(),modelLayer.getHuman());
+        return modelLayerMap;
     }
 }

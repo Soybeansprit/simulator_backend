@@ -19,5 +19,5 @@ public class Conflict {
 	}
 	public void setConflictValues(List<Integer> conflictValues) {
 		this.conflictValues = conflictValues;
-	} 
+	}
 }

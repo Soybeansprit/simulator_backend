@@ -33,6 +33,9 @@ public class Rule {
 	public void setAction(List<String> action) {
 		this.action = action;
 	}
+
+
+
 	
 	public boolean contentEquals(Rule rule) {
 		if(ruleName.equals(rule.getRuleName())) {

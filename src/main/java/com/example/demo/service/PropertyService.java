@@ -9,9 +9,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class PropertyService {
 
-	public static Properties getProperties(String filePath,String propertyFileName) throws FileNotFoundException, IOException {
+	public static Properties getProperties(String filePath,String instanceInformationFileName) throws FileNotFoundException, IOException {
 		Properties properties=new Properties();
-		properties.load(new FileInputStream(filePath+propertyFileName));
+		properties.load(new FileInputStream(filePath+instanceInformationFileName));
 		return properties;
 	}
 }

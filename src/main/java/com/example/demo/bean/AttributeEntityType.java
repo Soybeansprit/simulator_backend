@@ -8,17 +8,9 @@ import java.util.List;
  * 带各种环境属性的实体（air），只有一个实例
  * 实体类型名,【内容、属性名、属性总变化率变量名】
  * */
-public class AttributeEntityType {
-    private String entityType=""; ///所属模型类型名
+public class AttributeEntityType extends EntityType{
     private List<Attribute> attributes=new ArrayList<>();
 
-    public String getEntityType() {
-        return entityType;
-    }
-
-    public void setEntityType(String entityType) {
-        this.entityType = entityType;
-    }
 
     public List<Attribute> getAttributes() {
         return attributes;

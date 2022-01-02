@@ -1695,7 +1695,7 @@ public class DynamicAnalysisService {
 //							System.out.println(timeValue[0]);
 							timeValue[1]=Double.parseDouble(splitTimeValue[1]);
 //							System.out.println(timeValue[1]);
-							dataTimeValue.timeValues.add(timeValue);
+							dataTimeValue.getTimeValues().add(timeValue);
 						}
 					}
 				}

@@ -61,10 +61,61 @@ public class Action {
 	public void setValue(String value) {
 		this.value = value;
 	}
+
+
+
 	
 	@Override
 	public String toString() {
 		// TODO Auto-generated method stub
 		return this.actionNum+" : "+this.action;
 	}
+
+
+	private String actionContent="";  ///action内容
+	private String actionId="";   ///对应IFD中action节点的id
+	private String instanceName="";  ///对应的实例名，可能是设备，也可能是cyber service
+	private String sync="";   ///对应的synchronisation
+	private List<Rule> relatedRules=new ArrayList<>();
+
+	public String getActionContent() {
+		return actionContent;
+	}
+
+	public void setActionContent(String actionContent) {
+		this.actionContent = actionContent;
+	}
+
+	public String getActionId() {
+		return actionId;
+	}
+
+	public void setActionId(String actionId) {
+		this.actionId = actionId;
+	}
+
+	public String getInstanceName() {
+		return instanceName;
+	}
+
+	public void setInstanceName(String instanceName) {
+		this.instanceName = instanceName;
+	}
+
+	public String getSync() {
+		return sync;
+	}
+
+	public void setSync(String sync) {
+		this.sync = sync;
+	}
+
+	public List<Rule> getRelatedRules() {
+		return relatedRules;
+	}
+
+	public void setRelatedRules(List<Rule> relatedRules) {
+		this.relatedRules = relatedRules;
+	}
+
 }

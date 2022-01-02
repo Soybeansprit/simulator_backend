@@ -115,12 +115,22 @@ public class RuleService {
 				List<String> triggers=Arrays.asList(triggerStr.split("AND"));   ////trigger列表
 				List<String> actions=Arrays.asList(actionStr.split(","));       /////action列表
 				for(int i=0;i<triggers.size();i++) {
-					String trigger=triggers.get(i).trim();
+					String[] triggerForm=getTriggerForm(triggers.get(i));
+					StringBuilder triggerSb=new StringBuilder();
+					triggerSb.append(triggerForm[0]);
+					triggerSb.append(triggerForm[1]);
+					triggerSb.append(triggerForm[2]);
+					String trigger=triggerSb.toString();
 					triggers.set(i, trigger);					
 				}
 				rule.setTrigger(triggers);
 				for(int i=0;i<actions.size();i++) {
-					String action=actions.get(i).trim();
+					String[] instanceSync=actions.get(i).split("\\.");
+					StringBuilder actionSb=new StringBuilder();
+					actionSb.append(instanceSync[0].trim());
+					actionSb.append(".");
+					actionSb.append(instanceSync[1].trim());
+					String action=actionSb.toString();
 					actions.set(i, action);
 				}
 				rule.setAction(actions);				
@@ -222,7 +232,7 @@ public class RuleService {
 					tri.attrVal=getTriAttrVal(trigger,biddables);      /////分析trigger
 					if(!tri.attrVal[1].equals(".")){
 						for(SensorType sensor:sensors) {
-							if(sensor.attribute.equals(tri.attrVal[0])) {
+							if(sensor.getAttribute().equals(tri.attrVal[0])) {
 								tri.device=sensor.getName();
 								break;
 							}
@@ -300,6 +310,39 @@ public class RuleService {
 								
 		}
 		return attrVal;
+	}
+
+	////解析trigger的格式 attribute<(<=,>,>=)value or instance.state
+	// / time<30      instance.state for 3  时间值
+	public static String[] getTriggerForm(String triggerContent){
+		String[] triggerForm=new String[3];
+		if(triggerContent.contains(">=")) {
+			triggerForm[1]=">=";
+			triggerForm[0]=triggerContent.substring(0,triggerContent.indexOf(">=")).trim();
+			triggerForm[2]=triggerContent.substring(triggerContent.indexOf(">=")).substring(2).trim();
+		}else if(triggerContent.contains(">")) {
+			triggerForm[1]=">";
+			triggerForm[0]=triggerContent.substring(0, triggerContent.indexOf(">")).trim();
+			triggerForm[2]=triggerContent.substring(triggerContent.indexOf(">")).substring(1).trim();
+		}else if(triggerContent.contains("<=")) {
+			triggerForm[1]="<=";
+			triggerForm[0]=triggerContent.substring(0,triggerContent.indexOf("<=")).trim();
+			triggerForm[2]=triggerContent.substring(triggerContent.indexOf("<=")).substring(2).trim();
+		}else if(triggerContent.contains("<")) {
+			triggerForm[1]="<";
+			triggerForm[0]=triggerContent.substring(0, triggerContent.indexOf("<")).trim();
+			triggerForm[2]=triggerContent.substring(triggerContent.indexOf("<")).substring(1).trim();
+		}else if(triggerContent.contains("=")) {
+			triggerForm[1]="=";
+			triggerForm[0]=triggerContent.substring(0,triggerContent.indexOf("=")).trim();
+			triggerForm[2]=triggerContent.substring(triggerContent.indexOf("=")).substring(1).trim();
+		}else if(triggerContent.contains(".")) {
+			//////表示实体状态  Bulb_0.bon   Person.lobby
+			triggerForm[1]=".";
+			triggerForm[0]=triggerContent.substring(0, triggerContent.indexOf(".")).trim();
+			triggerForm[2]=triggerContent.substring(triggerContent.indexOf(".")).substring(1).trim();
+		}
+		return triggerForm;
 	}
 	
 	

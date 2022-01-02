@@ -7,12 +7,14 @@ import java.util.List;
  * 设备类型，可以有多个实例
  * 设备类型名，状态标识符，【设备状态名、信号通道、状态标识符取值以及对各个属性的影响值】
  * */
-public class DeviceType extends Entity{
+public class DeviceType extends EntityType{
 	// [0] state, [1]action [2]value
 	//Bulb------bon, turn_bulb_on, 1
 	public List<String[]> stateActionValues=new ArrayList<String[]>();
 	public int deviceNumber=0;
 	public List<StateEffect> stateEffects=new ArrayList<>();
+	private String name="";
+
 
 	public List<StateEffect> getStateEffects() {
 		return stateEffects;
@@ -58,33 +60,19 @@ public class DeviceType extends Entity{
 	}
 
 
-	private String deviceType="";  ///设备类型
-	private String identifier="";  ///状态标识符
-	private int number=0;  ///实例个数
+
+	private int instanceNumber=0;  ///实例个数
 	private List<StateSyncValueEffect> stateSyncValueEffects=new ArrayList<>();  ///各状态信息
 
-	public String getDeviceType() {
-		return deviceType;
+
+
+
+	public int getInstanceNumber() {
+		return instanceNumber;
 	}
 
-	public void setDeviceType(String deviceType) {
-		this.deviceType = deviceType;
-	}
-
-	public String getIdentifier() {
-		return identifier;
-	}
-
-	public void setIdentifier(String identifier) {
-		this.identifier = identifier;
-	}
-
-	public int getNumber() {
-		return number;
-	}
-
-	public void setNumber(int number) {
-		this.number = number;
+	public void setInstanceNumber(int instanceNumber) {
+		this.instanceNumber = instanceNumber;
 	}
 
 	public List<StateSyncValueEffect> getStateSyncValueEffects() {
@@ -97,9 +85,9 @@ public class DeviceType extends Entity{
 
 	////状态信息
 	public class StateSyncValueEffect{
-		private String stateName="";
-		private String stateId="";
-		private String synchronisation="";
+		private String stateName="";  ///状态名
+		private String stateId="";    ///对应xml文件中的节点id
+		private String synchronisation="";   ///对应同步信号通道
 		private String value="";  ///identifier取值
 		private List<String[]> effects=new ArrayList<>();  ///effect[0]=attribute, effect[1]=delta（对于会对总变化率产生影响的）, effect[2]=影响值
 
