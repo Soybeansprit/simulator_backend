@@ -713,7 +713,129 @@ public class StaticAnalysisService {
 		return graphNodes;
 	}
 
+	///解析IFD，获得节点和边，不管实体节点
+	public static List<GraphNode> parseIFDAndGetIFDNode(String ifdPath,String ifdFileName){
+		String dotPath=ifdPath+ifdFileName;
+		List<GraphNode> graphNodes=new ArrayList<GraphNode>();
+		HashMap<String,GraphNode> graphNodeMap=new HashMap<>();
+		HashMap<String,String> instanceColorMap=new HashMap<>();
+		try(BufferedReader br=new BufferedReader(new FileReader(dotPath))){
+			List<String> strings=new ArrayList<String>();
+			String str="";
+			while((str=br.readLine())!=null) {
+				//获得各节点
+				strings.add(str);
+				if(str.indexOf("[")>0) {
+					if(str.indexOf("->")<0) {
+						///获得节点的信息
+						///如action1[label="Bulb.turn_bulb_on",shape="record",style="filled",fillcolor="beige"]
+						///trigger1[label="temperature<=15",shape="oval",style="filled",fillcolor="lightpink"]
+
+						String nodeName=str.substring(0, str.indexOf("[")).trim();
+						///action1
+						String attr=str.substring(str.indexOf("["), str.indexOf("]")).substring("[".length());
+						///label="Bulb.turn_bulb_on",shape="record",style="filled",fillcolor="beige"
+						//去掉引号
+						attr=attr.replace("\"","");
+						String[] features=attr.split(",");
+						String shape="";
+						String label="";
+						String fillColor="";
+						for(String feature:features) {
+							String[] featureName=feature.split("=");
+							if(featureName[0].equals("shape")) {
+								shape=featureName[1].trim();
+							} else if(featureName[0].equals("label")) {
+								label=featureName[1].trim();
+							} else if(featureName[0].equals("fillcolor")) {
+								fillColor=featureName[1].trim();
+							}
+						}
+						////不管实体节点，也就是shape="doubleoctagon"的节点直接跳过
+						if (str.indexOf("shape=\"doubleoctagon\"")>=0){
+							///对应实体名和颜色
+							instanceColorMap.put(nodeName,fillColor);
+							continue;
+						}
+						///创建新节点
+						GraphNode graphNode=new GraphNode(nodeName,shape,fillColor,label);
+						graphNodes.add(graphNode);
+						graphNodeMap.put(graphNode.getName(), graphNode);
+					}
+
+				}
+			}
+
+
+			for(String string:strings) {
+				///获得各边
+				if(string.indexOf("->")>0) {
+					////////如trigger9->trigger1[color="red",fontsize="18"]
+					String arrow=string;
+					String attrbutes="";
+					String[] features=null;
+					if(string.indexOf("[")>0) {
+						//trigger9->trigger1
+						arrow=string.substring(0, string.indexOf("["));
+						//color="red",fontsize="18"
+						attrbutes=string.substring(string.indexOf("["), string.indexOf("]")).substring("[".length());
+						///去掉引号
+						attrbutes=attrbutes.replace("\"","");
+						features=attrbutes.split(",");
+					}
+					//trigger9->trigger1
+					String[] nodes=arrow.split("->");
+					for(int i=0;i<nodes.length;i++) {
+						nodes[i]=nodes[i].trim();
+					}
+					/////获得前后关系的两个节点的边
+					GraphNode pGraphNode=graphNodeMap.get(nodes[0]); ///前一个节点
+					GraphNode cGraphNode=graphNodeMap.get(nodes[1]);  ///后一个节点
+					if (pGraphNode==null){
+						///表明是实体节点，给后一个节点添加实体信息，实体名和该节点颜色
+						String color=instanceColorMap.get(nodes[0]);
+						String[] relatedInstanceAndColor=new String[2];
+						relatedInstanceAndColor[0]=nodes[0];
+						relatedInstanceAndColor[1]=color;
+						cGraphNode.setRelatedInstanceAndColor(relatedInstanceAndColor);
+						continue;
+					}
+					GraphNodeArrow pNodeArrow=new GraphNodeArrow();  ///对于后一个节点来说的前边，指向当前节点的边
+					GraphNodeArrow cNodeArrow=new GraphNodeArrow();    ///对于前一个节点来说的后边，从当前节点出发的边
+					pNodeArrow.setGraphNode(pGraphNode);    ///前边出发的节点
+					cNodeArrow.setGraphNode(cGraphNode);    ///后边指向的节点
+					if(features!=null) {
+						for(String feature:features) {
+							String[] featureValue=feature.split("=");
+							if(featureValue[0].equals("label")) {
+								pNodeArrow.setLabel(featureValue[1].trim());
+								cNodeArrow.setLabel(featureValue[1].trim());
+							}
+							if(featureValue[0].equals("style")) {
+								pNodeArrow.setStyle(featureValue[1].trim());
+								cNodeArrow.setStyle(featureValue[1].trim());
+							}
+							if(featureValue[0].equals("color")) {
+								pNodeArrow.setColor(featureValue[1].trim());
+								cNodeArrow.setColor(featureValue[1].trim());
+							}
+						}
+					}
+					pGraphNode.getcNodeArrowList().add(cNodeArrow); ///对于前一个节点来说，添加一条边，从该节点指向后一个节点
+					cGraphNode.getpNodeArrowList().add(pNodeArrow);   ///对于后一个节点来说，添加一条边，从前一个节点指向该节点
+				}
+			}
+
+
+		}catch(IOException e) {
+			e.printStackTrace();
+		}
+
+		return graphNodes;
+	}
+
 	////2021/12/27
+	////生成IFD
 	public static void generateIFD(HashMap<String,Trigger> triggerMap, HashMap<String,Action> actionMap, List<Rule> rules, InstanceLayer interactiveEnvironment,HashMap<String, Instance> interactiveInstanceMap,String ifdFileName,String filePath) throws IOException {
 		StringBuilder sb = new StringBuilder();
 
@@ -857,7 +979,7 @@ public class StaticAnalysisService {
 		bw.write(sb.toString());
 		bw.close();
 	}
-
+	///找到指向trigger的节点和边
 	public static void getToTriggerDot(Trigger trigger, HashMap<String,Trigger> triggerMap, HashMap<String,Action> actionMap, HashMap<String,Instance> interactiveInstanceMap,StringBuilder sb,String compare){
 		///找其他蕴含该trigger的trigger，即otherTrigger是trigger的子集
 		//trigger->trigger   相同属性

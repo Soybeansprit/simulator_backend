@@ -46,18 +46,33 @@ public class SystemModelGenerationService {
                 "IF temperature<25 THEN AirConditioner_0.turn_ac_off\n" +
                 "\n" +
                 "IF Bulb_0.boff for 3 THEN TV_0.turn_tv_off   \n" +
-                "IF time>30 AND time<40 THEN Blind_0.open_blind  ";
+                "IF time>30 AND time<40 THEN Blind_0.open_blind \n "+
+                "";
         List<String> locations=new ArrayList<>();
-        locations.add("living_room");
-        locations.add("kitchen");
-        locations.add("bathroom");
-        locations.add("bedroom");
-        locations.add("out");
+//        locations.add("living_room");
+//        locations.add("kitchen");
+//        locations.add("bathroom");
+//        locations.add("bedroom");
+//        locations.add("out");
         ModelLayer modelLayer=ModelLayerService.getModelLayer("D:\\example\\例子\\","ontology.xml","changed-ontology.xml",locations);
         InstanceLayer instanceLayer=InstanceLayerService.getInstanceLayer("D:\\example\\例子\\","information.properties",modelLayer);
         List<Rule> rules=RuleService.getRuleList(ruleText);
-        getInteractiveEnvironment(instanceLayer,modelLayer,rules,"D:\\example\\例子\\","changed-ontology.xml");
-        String simulationResult=SimulationService.getSimulationResult(AddressService.UPPAAL_PATH,"D:\\example\\例子\\test\\","changed-ontology-0.xml","window");
+        HashMap<String,Trigger> triggerMap=getTriggerMapFromRules(rules,instanceLayer);
+        HashMap<String,Action> actionMap=getActionMapFromRules(rules);
+        InstanceLayer interactiveEnvironment=getInteractiveEnvironment(instanceLayer,modelLayer,triggerMap,actionMap);
+        HashMap<String, Instance> interactiveInstanceMap=InstanceLayerService.getInstanceMap(interactiveEnvironment);
+        ///生成IFD
+        StaticAnalysisService.generateIFD(triggerMap,actionMap,rules,interactiveEnvironment,interactiveInstanceMap,"ifd.dot","D:\\example\\例子\\");
+        generateCommonModelFile("D:\\example\\例子\\","changed-ontology.xml",instanceLayer,rules,triggerMap,actionMap,interactiveEnvironment,interactiveInstanceMap);
+        List<String[]> attributeValues=new ArrayList<>();
+        String[] attributeValue1={"temperature","40.0"};
+        String[] attributeValue2={"coppm","100.0"};
+        attributeValues.add(attributeValue1);
+        attributeValues.add(attributeValue2);
+        generateSingleScenario("D:\\example\\例子\\","changed-ontology.xml","D:\\example\\例子\\test\\","new-scenario.xml",modelLayer,rules,attributeValues);
+
+//        getInteractiveEnvironment(instanceLayer,modelLayer,rules,"D:\\example\\例子\\","changed-ontology.xml");
+        String simulationResult=SimulationService.getSimulationResult(AddressService.UPPAAL_PATH,"D:\\example\\例子\\test\\","new-scenario.xml","windows");
         List<DataTimeValue> dataTimeValues=SimulationService.parseSimulationResult(simulationResult,instanceLayer,"D:\\example\\例子\\test\\","test.txt");
         double satisfaction=AnalysisService.getSatisfaction("temperature",5.0,9.0,dataTimeValues);
         System.out.println(satisfaction);
@@ -68,104 +83,125 @@ public class SystemModelGenerationService {
         List<DeviceJitter> deviceJitters=AnalysisService.getDevicesJitter(dataTimeValues,3);
         System.out.println(deviceJitters);
         AnalysisService.getPropertyConformDurations(dataTimeValues,"!temperature<8&AirConditioner_0.heat",instanceLayer);
-    }
-    ///解析rules，生成交互环境,这过程中可以生成IFD？
-    public static InstanceLayer getInteractiveEnvironment(InstanceLayer instanceLayer,ModelLayer modelLayer, List<Rule> rules,String filePath,String changedModelFileName) throws DocumentException, IOException {
-        InstanceLayer interactiveEnvironment=new InstanceLayer();
-        HashMap<String, Instance> instanceLayerMap=InstanceLayerService.getInstanceMap(instanceLayer);
-        HashMap<String,Instance> interactiveInstanceMap=new HashMap<>();
-        HashMap<String,Trigger> triggerMap=new HashMap<>();
-        HashMap<String,Action> actionMap=new HashMap<>();
+        List<List<List<String[]>>> allDeviceConflictDirectRules=AnalysisService.getAllDeviceConflictDirectRules(deviceConflicts,dataTimeValues,instanceLayer,rules);
+
+        HashMap<String,Rule> ruleHashMap=new HashMap<>();
         for (Rule rule:rules){
-            ///遍历规则抽取实例
-            ///遍历trigger
-            for (String triggerContent:rule.getTrigger()){
-                ///解析trigger
-                Trigger trigger=getTriggerFromTriggerContent(triggerContent,triggerMap,instanceLayerMap,instanceLayer);
-                triggerMap.putIfAbsent(triggerContent,trigger);
-                trigger.getRelatedRules().add(rule);
-                ///trigger涉及到哪些实例
-                ///trigger所属实例
-                String instanceName=trigger.getInstanceName();
-                if (!instanceName.equals("")){
-                    ///像时间这种属性不属于任意一个实体
-                    interactiveInstanceMap.putIfAbsent(instanceName,instanceLayerMap.get(instanceName));
-                }
-
-                ///相关传感器
-                String sensorName=trigger.getSensor();
-                if (!sensorName.equals("")){
-                    ///像可控设备这种不被传感器检测属性
-                    interactiveInstanceMap.putIfAbsent(sensorName,instanceLayerMap.get(sensorName));
-                }
-            }
-
-            ///遍历action
-            for (String actionContent:rule.getAction()){
-                Action action=getActionFromActionContent(actionContent,actionMap);
-                actionMap.putIfAbsent(actionContent,action);
-                action.getRelatedRules().add(rule);
-                ///action涉及到哪个实例  //设备、cyber service
-                String instanceName=action.getInstanceName();
-                interactiveInstanceMap.putIfAbsent(instanceName,instanceLayerMap.get(instanceName));
-            }
-
+            ruleHashMap.put(rule.getRuleName(),rule);
         }
-        ///生成IFD
-        ////先生成交互环境模型
-        for (Map.Entry<String, Instance> instanceEntry:interactiveInstanceMap.entrySet()){
-            Instance instance=instanceEntry.getValue();
-            if (instance instanceof HumanInstance){
-                interactiveEnvironment.setHumanInstance((HumanInstance) instance);
-            }else if (instance instanceof AttributeEntityInstance){
-                interactiveEnvironment.setAttributeEntityInstance((AttributeEntityInstance) instance);
-            }else if (instance instanceof UncertainEntityInstance){
-                interactiveEnvironment.getUncertainEntityInstances().add((UncertainEntityInstance) instance);
-            }else if (instance instanceof CyberServiceInstance){
-                interactiveEnvironment.getCyberServiceInstances().add((CyberServiceInstance) instance);
-            }else if (instance instanceof DeviceInstance){
-                interactiveEnvironment.getDeviceInstances().add((DeviceInstance) instance);
-            }else if (instance instanceof SensorInstance){
-                interactiveEnvironment.getSensorInstances().add((SensorInstance) instance);
-            }
+        HashMap<String,DataTimeValue> dataTimeValueHashMap=new HashMap<>();
+        for (DataTimeValue dataTimeValue:dataTimeValues){
+            dataTimeValueHashMap.put(dataTimeValue.getDataName(),dataTimeValue);
         }
+        RuleAndPreRule currentRule=new RuleAndPreRule();
+        currentRule.setCurrentRule(ruleHashMap.get("rule2"));
 
-        ///生成IFD
-        StaticAnalysisService.generateIFD(triggerMap,actionMap,rules,interactiveEnvironment,interactiveInstanceMap,"ifd.dot","D:\\example\\例子\\");
-
-        ///生成控制器模型
-        SAXReader reader= new SAXReader();
-        Document document = reader.read(new File(filePath+changedModelFileName));
-        Element rootElement=document.getRootElement();
-//		System.out.println(rootElement.getName());
-        List<Element> templateElements=rootElement.elements("template");
-        ///同时把人的模型写进去
-        Element humanElement=DocumentHelper.createElement("template");
-        getHumanElement(instanceLayer.getHumanInstance().getHuman(), humanElement);
-        templateElements.add(0,humanElement);
-
-        ///生成控制器模型,并写入
-        for (Rule rule:rules){
-            Element controllerElement=DocumentHelper.createElement("template");
-            getControllerElement(controllerElement,rule,triggerMap,actionMap,interactiveInstanceMap);
-            templateElements.add(0,controllerElement);
+        List<IFDGraph.GraphNode> graphNodes=StaticAnalysisService.parseIFDAndGetIFDNode("D:\\example\\例子\\","ifd.dot");
+        HashMap<String, IFDGraph.GraphNode> graphNodeHashMap=new HashMap<>();
+        for (IFDGraph.GraphNode graphNode:graphNodes){
+            graphNodeHashMap.put(graphNode.getName(),graphNode);
         }
-
-        ///系统声明
-        String[] intoLocationTime={"60.0,120.0,180.0,240.0"};
-        String modelDeclaration=getModelDeclaration(interactiveEnvironment,rules,intoLocationTime);
-
-        String query=getQuery(instanceLayer,rules,"300");
-        setSystemDeclaration(rootElement,modelDeclaration,"",query);
-
-        ///写入xml文件中
-        writeTheXMLFile(document,filePath,changedModelFileName);
-
-
-        generateMultiScenariosAccordingToTriggers(filePath,changedModelFileName,"D:\\example\\例子\\test\\",modelLayer,rules,triggerMap);
-
-        return interactiveEnvironment;
+        IFDGraph.GraphNode ruleNode=graphNodeHashMap.get("rule2");
+        AnalysisService.getRulePreRule(ruleNode,currentRule,ruleHashMap,2.06,dataTimeValueHashMap);
+        System.out.println(currentRule);
     }
+
+//    public static InstanceLayer getInteractiveEnvironment(InstanceLayer instanceLayer,ModelLayer modelLayer, List<Rule> rules,String filePath,String changedModelFileName) throws DocumentException, IOException {
+//        InstanceLayer interactiveEnvironment=new InstanceLayer();
+//        HashMap<String, Instance> instanceLayerMap=InstanceLayerService.getInstanceMap(instanceLayer);
+//        HashMap<String,Instance> interactiveInstanceMap=new HashMap<>();
+//        HashMap<String,Trigger> triggerMap=new HashMap<>();
+//        HashMap<String,Action> actionMap=new HashMap<>();
+//        for (Rule rule:rules){
+//            ///遍历规则抽取实例
+//            ///遍历trigger
+//            for (String triggerContent:rule.getTrigger()){
+//                ///解析trigger
+//                Trigger trigger=getTriggerFromTriggerContent(triggerContent,triggerMap,instanceLayerMap,instanceLayer);
+//                triggerMap.putIfAbsent(triggerContent,trigger);
+//                trigger.getRelatedRules().add(rule);
+//                ///trigger涉及到哪些实例
+//                ///trigger所属实例
+//                String instanceName=trigger.getInstanceName();
+//                if (!instanceName.equals("")){
+//                    ///像时间这种属性不属于任意一个实体
+//                    interactiveInstanceMap.putIfAbsent(instanceName,instanceLayerMap.get(instanceName));
+//                }
+//
+//                ///相关传感器
+//                String sensorName=trigger.getSensor();
+//                if (!sensorName.equals("")){
+//                    ///像可控设备这种不被传感器检测属性
+//                    interactiveInstanceMap.putIfAbsent(sensorName,instanceLayerMap.get(sensorName));
+//                }
+//            }
+//
+//            ///遍历action
+//            for (String actionContent:rule.getAction()){
+//                Action action=getActionFromActionContent(actionContent,actionMap);
+//                actionMap.putIfAbsent(actionContent,action);
+//                action.getRelatedRules().add(rule);
+//                ///action涉及到哪个实例  //设备、cyber service
+//                String instanceName=action.getInstanceName();
+//                interactiveInstanceMap.putIfAbsent(instanceName,instanceLayerMap.get(instanceName));
+//            }
+//
+//        }
+//        ///生成IFD
+//        ////先生成交互环境模型
+//        for (Map.Entry<String, Instance> instanceEntry:interactiveInstanceMap.entrySet()){
+//            Instance instance=instanceEntry.getValue();
+//            if (instance instanceof HumanInstance){
+//                interactiveEnvironment.setHumanInstance((HumanInstance) instance);
+//            }else if (instance instanceof AttributeEntityInstance){
+//                interactiveEnvironment.setAttributeEntityInstance((AttributeEntityInstance) instance);
+//            }else if (instance instanceof UncertainEntityInstance){
+//                interactiveEnvironment.getUncertainEntityInstances().add((UncertainEntityInstance) instance);
+//            }else if (instance instanceof CyberServiceInstance){
+//                interactiveEnvironment.getCyberServiceInstances().add((CyberServiceInstance) instance);
+//            }else if (instance instanceof DeviceInstance){
+//                interactiveEnvironment.getDeviceInstances().add((DeviceInstance) instance);
+//            }else if (instance instanceof SensorInstance){
+//                interactiveEnvironment.getSensorInstances().add((SensorInstance) instance);
+//            }
+//        }
+//
+//        ///生成IFD
+//        StaticAnalysisService.generateIFD(triggerMap,actionMap,rules,interactiveEnvironment,interactiveInstanceMap,"ifd.dot","D:\\example\\例子\\");
+//
+//        ///生成控制器模型
+//        SAXReader reader= new SAXReader();
+//        Document document = reader.read(new File(filePath+changedModelFileName));
+//        Element rootElement=document.getRootElement();
+////		System.out.println(rootElement.getName());
+//        List<Element> templateElements=rootElement.elements("template");
+//        ///同时把人的模型写进去
+//        Element humanElement=DocumentHelper.createElement("template");
+//        getHumanElement(instanceLayer.getHumanInstance().getHuman(), humanElement);
+//        templateElements.add(0,humanElement);
+//
+//        ///生成控制器模型,并写入
+//        for (Rule rule:rules){
+//            Element controllerElement=DocumentHelper.createElement("template");
+//            getControllerElement(controllerElement,rule,triggerMap,actionMap,interactiveInstanceMap);
+//            templateElements.add(0,controllerElement);
+//        }
+//
+//        ///系统声明
+//        String[] intoLocationTime={"60.0,120.0,180.0,240.0"};
+//        String modelDeclaration=getModelDeclaration(interactiveEnvironment,rules,intoLocationTime);
+//
+//        String query=getQuery(instanceLayer,rules,"300");
+//        setSystemDeclaration(rootElement,modelDeclaration,"",query);
+//
+//        ///写入xml文件中
+//        writeTheXMLFile(document,filePath,changedModelFileName);
+//
+//
+//        generateMultiScenariosAccordingToTriggers(filePath,changedModelFileName,"D:\\example\\例子\\test\\",modelLayer,rules,triggerMap);
+//
+//        return interactiveEnvironment;
+//    }
 
 //    public static void generateSystemModel(String filePath,String fileName,InstanceLayer interactiveEnvironment,ModelLayer modelLayer,)
 
@@ -1056,6 +1092,139 @@ public class SystemModelGenerationService {
         return triggerFormsWithSameAttribute;
     }
 
+    ///生成共同的文件
+    public static void generateCommonModelFile(String filePath,String changedModelFileName,InstanceLayer instanceLayer,List<Rule> rules,HashMap<String,Trigger> triggerMap,HashMap<String,Action> actionMap,InstanceLayer interactiveEnvironment,HashMap<String,Instance> interactiveInstanceMap){
+        ///生成控制器模型
+        try {
+            SAXReader reader= new SAXReader();
+            Document document = reader.read(new File(filePath+changedModelFileName));
+            Element rootElement=document.getRootElement();
+//		System.out.println(rootElement.getName());
+            List<Element> templateElements=rootElement.elements("template");
+            ///同时把人的模型写进去
+            Element humanElement=DocumentHelper.createElement("template");
+            getHumanElement(instanceLayer.getHumanInstance().getHuman(), humanElement);
+            templateElements.add(0,humanElement);
+
+            ///生成控制器模型,并写入
+            for (Rule rule:rules){
+                Element controllerElement=DocumentHelper.createElement("template");
+                getControllerElement(controllerElement,rule,triggerMap,actionMap,interactiveInstanceMap);
+                templateElements.add(0,controllerElement);
+            }
+
+            ///系统声明
+            String[] intoLocationTime={"60.0,120.0,180.0,240.0"};
+            String modelDeclaration=getModelDeclaration(interactiveEnvironment,rules,intoLocationTime);
+
+            String query=getQuery(instanceLayer,rules,"300");
+            setSystemDeclaration(rootElement,modelDeclaration,"",query);
+
+            ///写入xml文件中
+            writeTheXMLFile(document,filePath,changedModelFileName);
+        }catch (IOException e){
+            e.printStackTrace();
+        }catch (DocumentException e){
+            e.printStackTrace();
+        }
+
+    }
+
+    ///解析rules，生成交互环境,这过程中可以生成IFD？
+    public static InstanceLayer getInteractiveEnvironment(InstanceLayer instanceLayer,ModelLayer modelLayer,HashMap<String,Trigger> triggerMap,HashMap<String,Action> actionMap){
+        InstanceLayer interactiveEnvironment=new InstanceLayer();
+        HashMap<String,Instance> interactiveInstanceMap=new HashMap<>();
+        HashMap<String, Instance> instanceLayerMap=InstanceLayerService.getInstanceMap(instanceLayer);
+        for (Map.Entry<String,Trigger> triggerEntry:triggerMap.entrySet()){
+            ///trigger涉及到哪些实例
+            ///trigger所属实例
+            Trigger trigger=triggerEntry.getValue();
+            String instanceName=trigger.getInstanceName();
+            if (!instanceName.equals("")){
+                ///像时间这种属性不属于任意一个实体
+                interactiveInstanceMap.putIfAbsent(instanceName,instanceLayerMap.get(instanceName));
+            }
+
+            ///相关传感器
+            String sensorName=trigger.getSensor();
+            if (!sensorName.equals("")){
+                ///像可控设备这种不被传感器检测属性
+                interactiveInstanceMap.putIfAbsent(sensorName,instanceLayerMap.get(sensorName));
+            }
+        }
+        for (Map.Entry<String,Action> actionEntry:actionMap.entrySet()){
+            ///action涉及到哪个实例  //设备、cyber service
+            Action action=actionEntry.getValue();
+            String instanceName=action.getInstanceName();
+            interactiveInstanceMap.putIfAbsent(instanceName,instanceLayerMap.get(instanceName));
+        }
+        ////先生成交互环境模型
+        for (Map.Entry<String, Instance> instanceEntry:interactiveInstanceMap.entrySet()){
+            Instance instance=instanceEntry.getValue();
+            if (instance instanceof HumanInstance){
+                interactiveEnvironment.setHumanInstance((HumanInstance) instance);
+            }else if (instance instanceof AttributeEntityInstance){
+                interactiveEnvironment.setAttributeEntityInstance((AttributeEntityInstance) instance);
+            }else if (instance instanceof UncertainEntityInstance){
+                interactiveEnvironment.getUncertainEntityInstances().add((UncertainEntityInstance) instance);
+            }else if (instance instanceof CyberServiceInstance){
+                interactiveEnvironment.getCyberServiceInstances().add((CyberServiceInstance) instance);
+            }else if (instance instanceof DeviceInstance){
+                interactiveEnvironment.getDeviceInstances().add((DeviceInstance) instance);
+            }else if (instance instanceof SensorInstance){
+                interactiveEnvironment.getSensorInstances().add((SensorInstance) instance);
+            }
+        }
+        return interactiveEnvironment;
+    }
+
+    ///获得triggerMap
+    public static HashMap<String,Trigger> getTriggerMapFromRules(List<Rule> rules,InstanceLayer instanceLayer){
+        HashMap<String,Trigger> triggerMap=new HashMap<>();
+        HashMap<String, Instance> instanceLayerMap=InstanceLayerService.getInstanceMap(instanceLayer);
+        for (Rule rule:rules){
+            ///遍历规则抽取实例
+            ///遍历trigger
+            for (String triggerContent:rule.getTrigger()){
+                ///解析trigger
+                Trigger trigger=getTriggerFromTriggerContent(triggerContent,triggerMap,instanceLayerMap,instanceLayer);
+                triggerMap.putIfAbsent(triggerContent,trigger);
+                trigger.getRelatedRules().add(rule);
+//                ///trigger涉及到哪些实例
+//                ///trigger所属实例
+//                String instanceName=trigger.getInstanceName();
+//                if (!instanceName.equals("")){
+//                    ///像时间这种属性不属于任意一个实体
+//                    interactiveInstanceMap.putIfAbsent(instanceName,instanceLayerMap.get(instanceName));
+//                }
+//
+//                ///相关传感器
+//                String sensorName=trigger.getSensor();
+//                if (!sensorName.equals("")){
+//                    ///像可控设备这种不被传感器检测属性
+//                    interactiveInstanceMap.putIfAbsent(sensorName,instanceLayerMap.get(sensorName));
+//                }
+            }
+        }
+        return triggerMap;
+    }
+
+    ///获得actionMap
+    public static HashMap<String,Action> getActionMapFromRules(List<Rule> rules){
+        HashMap<String,Action> actionMap=new HashMap<>();
+        for (Rule rule:rules){
+            ///遍历action
+            for (String actionContent:rule.getAction()){
+                Action action=getActionFromActionContent(actionContent,actionMap);
+                actionMap.putIfAbsent(actionContent,action);
+                action.getRelatedRules().add(rule);
+//                ///action涉及到哪个实例  //设备、cyber service
+//                String instanceName=action.getInstanceName();
+//                interactiveInstanceMap.putIfAbsent(instanceName,instanceLayerMap.get(instanceName));
+            }
+        }
+        return actionMap;
+    }
 
 
     ///解析trigger triggerForm  TriggerId  triggerContent  InstanceName  sensor

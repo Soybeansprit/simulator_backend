@@ -130,6 +130,7 @@ public class InstanceLayerService {
             }
 
         }
+        instanceLayer.getHumanInstance().setHuman(modelLayer.getHuman());
 
 
         ///添加未提到的monitored entity

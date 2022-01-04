@@ -2,7 +2,9 @@ package com.example.demo.service;
 
 import com.example.demo.bean.*;
 
+import javax.xml.crypto.Data;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -14,27 +16,87 @@ public class AnalysisService {
 
     ///综合IFD寻找更深层次的原因
     ///综合所有原因
-    ///冲突定位找原因，每次冲突都定位找原因,找到在那段时间触发的规则，同时该规则要与该设备相关
-    public static List<List<String>> getConflictDirectRules(DeviceConflict deviceConflict,List<DataTimeValue> dataTimeValues,DeviceInstance deviceInstance,List<Rule> rules){
-        List<List<String>> allConflictTimeAndRelatedRules=new ArrayList<>();
+    ///根据IFD，往前回溯找其他引发该规则的规则，当当前规则涉及设备状态时
+    public static void getRulePreRule(IFDGraph.GraphNode ruleNode,RuleAndPreRule currentRule,HashMap<String,Rule> ruleHashMap, double triggeredTime, HashMap<String,DataTimeValue> dataTimeValueHashMap){
+        ruleNode.setTraversed(true);
+        for (IFDGraph.GraphNodeArrow triggerArrow:ruleNode.getpNodeArrowList()){
+            IFDGraph.GraphNode triggerNode=triggerArrow.getGraphNode();   ///rule节点前面的节点为trigger节点
+            if (!triggerNode.isTraversed()&&triggerNode.getRelatedInstanceAndColor()[1].equals("darkseagreen1")){
+                triggerNode.setTraversed(true);  ///没被遍历过，并且是设备状态的trigger
+                ///且是设备状态的trigger
+                ///往前找action
+                for (IFDGraph.GraphNodeArrow actionArrow:triggerNode.getpNodeArrowList()){
+                    if (actionArrow.getColor().equals("red")&&actionArrow.getStyle().equals("")){
+                        ///找到红色的实线的边
+                        IFDGraph.GraphNode actionNode=actionArrow.getGraphNode();  ///action节点
+                        if (!actionNode.isTraversed()){
+                            actionNode.setTraversed(true);  ///没有遍历过的action
+                            ///找到rule
+                            for (IFDGraph.GraphNodeArrow ruleArrow:actionNode.getpNodeArrowList()){
+                                IFDGraph.GraphNode otherRuleNode=ruleArrow.getGraphNode();
+                                if (!otherRuleNode.isTraversed()){ ///找没有遍历过的rule
+                                    otherRuleNode.setTraversed(true);
+                                    ///看该rule能否在这之前触发
+                                    DataTimeValue dataTimeValue=dataTimeValueHashMap.get(otherRuleNode.getName());
+                                    double otherTriggeredTime=canRuleBeTriggeredInDuration(dataTimeValue,0.0,triggeredTime);
+                                    if (otherTriggeredTime>0.0){
+                                        ///表明能被触发
+                                        RuleAndPreRule preRule=new RuleAndPreRule();
+                                        preRule.setCurrentRule(ruleHashMap.get(dataTimeValue.getDataName()));
+                                        currentRule.getPreRules().add(preRule);
+                                        ///递归找其他前驱规则
+                                        getRulePreRule(otherRuleNode,preRule,ruleHashMap,otherTriggeredTime,dataTimeValueHashMap);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+    }
+    ///找到所有设备的冲突情况
+    public static List<List<List<String[]>>> getAllDeviceConflictDirectRules(List<DeviceConflict> deviceConflicts,List<DataTimeValue> dataTimeValues,InstanceLayer instanceLayer,List<Rule> rules){
+        List<List<List<String[]>>> allDeviceConflictDirectRules=new ArrayList<>();
+        for (DeviceConflict deviceConflict:deviceConflicts){
+            if (deviceConflict.getConflictTimeValues().size()>0){
+                for (DeviceInstance deviceInstance:instanceLayer.getDeviceInstances()){
+                    if (deviceInstance.getInstanceName().equals(deviceConflict.getInstanceName())){
+                        List<List<String[]>> conflictDirectRules=getConflictDirectRules(deviceConflict,dataTimeValues,deviceInstance,rules);
+                        allDeviceConflictDirectRules.add(conflictDirectRules);
+                        System.out.println(conflictDirectRules);
+                        break;
+                    }
+                }
+            }
+        }
+        return allDeviceConflictDirectRules;
+    }
+    ///冲突定位找原因，每次冲突都定位找原因,找到在那段时间触发的规则及触发时间，同时该规则要与该设备相关
+    public static List<List<String[]>> getConflictDirectRules(DeviceConflict deviceConflict,List<DataTimeValue> dataTimeValues,DeviceInstance deviceInstance,List<Rule> rules){
+        List<List<String[]>> allConflictTimeAndRelatedRules=new ArrayList<>();
         for (List<Double> conflictTimeValue:deviceConflict.getConflictTimeValues()){
-            List<String> conflictTimeAndTriggeredRules=getSingleConflictDirectRules(conflictTimeValue,dataTimeValues,deviceInstance,rules);
+            List<String[]> conflictTimeAndTriggeredRules=getSingleConflictDirectRules(conflictTimeValue,dataTimeValues,deviceInstance,rules);
             allConflictTimeAndRelatedRules.add(conflictTimeAndTriggeredRules);
         }
         return allConflictTimeAndRelatedRules;
     }
-    ///找某次冲突相关的规则
-    public static List<String> getSingleConflictDirectRules(List<Double> conflictTimeValue,List<DataTimeValue> dataTimeValues,DeviceInstance deviceInstance,List<Rule> rules){
+    ///找某次冲突相关的并且触发了的规则，及其触发时间
+    public static List<String[]> getSingleConflictDirectRules(List<Double> conflictTimeValue,List<DataTimeValue> dataTimeValues,DeviceInstance deviceInstance,List<Rule> rules){
         ///每次冲突都定位找原因
         double conflictTime=conflictTimeValue.get(0);
         ///找在该时间段触发的所有规则
-        List<String> conflictTimeAndTriggeredRules=new ArrayList<>();
-        conflictTimeAndTriggeredRules.add(conflictTime+"");  ///冲突时间
-        conflictTimeAndTriggeredRules.addAll(getTriggeredRules(dataTimeValues,conflictTime)); ///找到该时间触发的规则
+        List<String[]> conflictTimeAndTriggeredRules=new ArrayList<>();
+        String[] conflictAndTime=new String[2];
+        conflictAndTime[0]="conflictTime";
+        conflictAndTime[1]=conflictTime+"";
+        conflictTimeAndTriggeredRules.add(conflictAndTime);  ///冲突时间
+        conflictTimeAndTriggeredRules.addAll(getTriggeredRuleTimes(dataTimeValues,conflictTime)); ///找到该时间触发的规则
         ///删掉无关的rule
         for(int i=conflictTimeAndTriggeredRules.size()-1;i>0;i--){
             for (Rule rule:rules){
-                if (rule.getRuleName().equals(conflictTimeAndTriggeredRules.get(i))){
+                if (rule.getRuleName().equals(conflictTimeAndTriggeredRules.get(i)[0])){
                     ///找到对应的规则信息
                     ///看是否与该设备相关
 
@@ -59,27 +121,43 @@ public class AnalysisService {
         }
         return false;
     }
-    ///找到在该时间触发的规则
-    public static List<String> getTriggeredRules(List<DataTimeValue> dataTimeValues,double time){
-        List<String> triggeredRules=new ArrayList<>();
+    ///找到在该时间点触发的规则和触发开始时间
+    public static List<String[]> getTriggeredRuleTimes(List<DataTimeValue> dataTimeValues,double time){
+        List<String[]> triggeredRuleTimes=new ArrayList<>();
         for (DataTimeValue dataTimeValue:dataTimeValues){
             if (dataTimeValue.getDataName().indexOf("rule")>=0){
                 ///找到规则相关的仿真路径
                 ///看在该时间有没有触发
-                for (int i=0;i<dataTimeValue.getTimeValues().size()-1;i+=2){
-                    double[] currentTimeValue=dataTimeValue.getTimeValues().get(i);
-                    double[] nextTimeValue=dataTimeValue.getTimeValues().get(i+1);
-                    if (currentTimeValue[0]>time) {
-                        break;
-                    }
-                    if (currentTimeValue[1]>0.5&&currentTimeValue[0]<=time&&nextTimeValue[0]>=time){
-                        ///在该时间能触发,添加规则名
-                        triggeredRules.add(dataTimeValue.getDataName());
-                    }
+                double triggeredTime=canRuleBeTriggeredInDuration(dataTimeValue,time,time);
+                if (triggeredTime>0.0){
+                    ///触发了
+                    String[] triggeredRuleTime=new String[2];
+                    triggeredRuleTime[0]=dataTimeValue.getDataName();
+                    triggeredRuleTime[1]=triggeredTime+"";
+                    triggeredRuleTimes.add(triggeredRuleTime);
                 }
             }
         }
-        return triggeredRules;
+        return triggeredRuleTimes;
+    }
+    ///看某条规则能否在特定时间段触发,返回触发的时间点
+    public static double canRuleBeTriggeredInDuration(DataTimeValue dataTimeValue,double leftTime,double rightTime){
+        for (int i=0;i<dataTimeValue.getTimeValues().size();i+=2){
+            double[] currentTimeValue=dataTimeValue.getTimeValues().get(i);
+            double[] nextTimeValue=dataTimeValue.getTimeValues().get(i+1);
+            if (currentTimeValue[1]<0.5){
+                continue;
+            }
+            if (currentTimeValue[0]>rightTime){
+                break;
+            }
+            if (nextTimeValue[0]>=leftTime&&currentTimeValue[0]<=rightTime){
+                ///在该时间段能触发
+                return currentTimeValue[0];
+            }
+        }
+        ///不能被触发
+        return 0.0;
     }
 
     ///验证所有设备，看是否存在状态冲突
@@ -358,6 +436,7 @@ public class AnalysisService {
                             addSatTimeValue(propertyElementCheckResult.getSatTimeValues(),currentTimeValue,nextTimeValue);
                         }
                     }else if (currentTimeValue[1]>nextTimeValue[1]){
+                        ///左边相对于右边更能满足
                         ///如果左边的值大于右边的值
                         if (boundTimeValue[0]>=currentTimeValue[0]&&boundTimeValue[0]<=nextTimeValue[0]){
                             ///如果边界时间在区间之间
@@ -375,6 +454,7 @@ public class AnalysisService {
                             addSatTimeValue(propertyElementCheckResult.getSatTimeValues(),currentTimeValue,nextTimeValue);
                         }
                     }else if (currentTimeValue[1]<nextTimeValue[1]){
+                        ///右边相对于左边更能满足
                         ///如果右边的值大于左边的值
                         if (boundTimeValue[0]>=currentTimeValue[0]&&boundTimeValue[0]<=nextTimeValue[0]){
                             ///如果边界点在区间内
@@ -402,6 +482,7 @@ public class AnalysisService {
                             addSatTimeValue(propertyElementCheckResult.getSatTimeValues(),currentTimeValue,nextTimeValue);
                         }
                     }else if (currentTimeValue[1]>nextTimeValue[1]){
+                        ///右边相对于左边更能满足
                         ///如果左边的值大于右边的值
                         if (boundTimeValue[0]>=currentTimeValue[0]&&boundTimeValue[0]<=nextTimeValue[0]){
                             ///如果边界时间在区间之间
@@ -419,6 +500,7 @@ public class AnalysisService {
                             addSatTimeValue(propertyElementCheckResult.getSatTimeValues(),currentTimeValue,nextTimeValue);
                         }
                     }else if (currentTimeValue[1]<nextTimeValue[1]){
+                        ///左边相对于右边更能满足
                         ///如果左边的值小于右边的值
                         if (boundTimeValue[0]>=currentTimeValue[0]&&boundTimeValue[0]<=nextTimeValue[0]){
                             ///如果边界时间在区间之间
@@ -503,6 +585,124 @@ public class AnalysisService {
         }
         return value;
     }
+
+
+    ///获得在所有场景下都无法触发的规则
+    public static List<String> getNotTriggeredRulesInAll(List<List<String>> notTriggeredRulesOfDifferentScenarios){
+        List<String> notTriggeredRulesInAll=new ArrayList<>();
+        if (notTriggeredRulesOfDifferentScenarios.size()>0){
+            notTriggeredRulesInAll=notTriggeredRulesOfDifferentScenarios.get(0);
+        }
+        for (int i=1;i<notTriggeredRulesOfDifferentScenarios.size();i++){
+            if (notTriggeredRulesInAll.size()==0){
+                break;
+            }
+            notTriggeredRulesInAll=getNotTriggeredRulesSynthesize(notTriggeredRulesInAll,notTriggeredRulesOfDifferentScenarios.get(i));
+        }
+        return notTriggeredRulesInAll;
+    }
+    ///综合两个场景下不能触发的规则
+    public static List<String> getNotTriggeredRulesSynthesize(List<String> notTriggeredRules1,List<String> notTriggeredRules2){
+        for (int i=notTriggeredRules1.size()-1;i>=0;i--){
+            boolean alsoNotTriggered=false;
+            ///在场景2下同样无法触发，则保留，在场景2下能被触发则删除
+            for (String notTriggeredRule:notTriggeredRules2){
+                if (notTriggeredRule.equals(notTriggeredRules1.get(i))){
+                    alsoNotTriggered=true;
+                    break;
+                }
+            }
+            if (!alsoNotTriggered){
+                notTriggeredRules1.remove(i);
+            }
+        }
+        return notTriggeredRules1;
+    }
+    ///找到该场景下无法触发的规则
+    public static List<String> getNotTriggeredRulesInAScenario(List<DataTimeValue> dataTimeValues){
+        List<String> notTriggeredRules=new ArrayList<>();
+        for (DataTimeValue dataTimeValue:dataTimeValues){
+            if (dataTimeValue.getDataName().indexOf("rule")>=0){
+                if (dataTimeValue.getTimeValues().size()<=2){
+                    ///size大于2则说明能被触发
+                    notTriggeredRules.add(dataTimeValue.getDataName());
+                }
+            }
+        }
+        return notTriggeredRules;
+    }
+
+
+    ///找到不完整性，也就是该一个设备被打开后，无法被关闭，不再被关闭
+    ///获得所有场景下都打开后无法关闭的设备（可以有场景无法打开）
+    public static List<String> getDeviceCannotBeTurnedOffListInAll(List<List<String[]>> deviceCannotBeTurnedOffOrOnListOfDifferentScenarios){
+        List<String> deviceCannotBeTurnedOffList=new ArrayList<>();
+        List<String[]> deviceCannotBeTurnedOffOrOnList=new ArrayList<>();
+        if (deviceCannotBeTurnedOffOrOnListOfDifferentScenarios.size()>0){
+            deviceCannotBeTurnedOffOrOnList=deviceCannotBeTurnedOffOrOnListOfDifferentScenarios.get(0);
+        }
+        for (int i=1;i<deviceCannotBeTurnedOffOrOnListOfDifferentScenarios.size();i++){
+            if (deviceCannotBeTurnedOffOrOnList.size()==0){
+                break;
+            }
+            deviceCannotBeTurnedOffOrOnList=getDeviceCannotBeTurnedOffOrOnListSynthesize(deviceCannotBeTurnedOffOrOnList,deviceCannotBeTurnedOffOrOnListOfDifferentScenarios.get(i));
+        }
+        for (String[] deviceCannotBeTurnedOffOrOn:deviceCannotBeTurnedOffOrOnList){
+            ///确定确实是无法被关闭的设备
+            if (deviceCannotBeTurnedOffOrOn[1].equals("notOff")){
+                deviceCannotBeTurnedOffList.add(deviceCannotBeTurnedOffOrOn[0]);
+            }
+        }
+        return deviceCannotBeTurnedOffList;
+    }
+    ///综合两个场景下打开后无法关闭的设备
+    public static List<String[]> getDeviceCannotBeTurnedOffOrOnListSynthesize(List<String[]> deviceCannotBeTurnedOffOrOnList1,List<String[]> deviceCannotBeTurnedOffOrOnList2){
+        for (int i=deviceCannotBeTurnedOffOrOnList1.size()-1;i>=0;i--){
+            String[] deviceCannotBeTurnedOffOrOn1=deviceCannotBeTurnedOffOrOnList1.get(i);
+            boolean exist=false;
+            boolean notOff=false;
+            for (String[] deviceCannotBeTurnedOffOrOn2:deviceCannotBeTurnedOffOrOnList2){
+                if (deviceCannotBeTurnedOffOrOn2[0].equals(deviceCannotBeTurnedOffOrOn1[0])){
+                    exist=true;  ///存在该设备
+                    if (deviceCannotBeTurnedOffOrOn2[1].equals("notOff")){
+                        notOff=true;   ///该设备无法关
+                    }
+                    break;
+                }
+            }
+            if (!exist){
+                deviceCannotBeTurnedOffOrOnList1.remove(i);
+                continue;
+            }
+            if (notOff){
+                deviceCannotBeTurnedOffOrOn1[1]="notOff";
+            }
+        }
+        return deviceCannotBeTurnedOffOrOnList1;
+    }
+    ///找到某个场景下被打开后就不再被关闭的的设备，如果整个过程没有被打开，也添加进来用String数组存储，[0]=deviceName,[1]="notOff"/"notOn"
+    public static List<String[]> getDeviceCannotBeTurnedOffOrOnListInAScenario(List<DataTimeValue> dataTimeValues){
+        List<String[]> deviceCannotBeTurnedOffOrOnList=new ArrayList<>();
+        for (DataTimeValue dataTimeValue:dataTimeValues){
+            if (dataTimeValue.isDevice()){
+                ///开始两个timeValue必然是value为0.0的,因此不用看
+                if (dataTimeValue.getTimeValues().size()>2){
+                    String[] deviceNotOff=new String[2];
+                    deviceNotOff[0]=dataTimeValue.getInstanceName();
+                    deviceNotOff[1]="notOff";
+                    deviceCannotBeTurnedOffOrOnList.add(deviceNotOff);
+                }else {
+                    ///如果设备一直没打开
+                    String[] deviceNotOn=new String[2];
+                    deviceNotOn[0]=dataTimeValue.getInstanceName();
+                    deviceNotOn[1]="notOn";
+                    deviceCannotBeTurnedOffOrOnList.add(deviceNotOn);
+                }
+            }
+        }
+        return deviceCannotBeTurnedOffOrOnList;
+    }
+
 
 
     ///计算满意度
@@ -604,7 +804,7 @@ public class AnalysisService {
         }
         return deviceStatesDurationList;
     }
-    ///计算耗能。即计算各设备各状态的时间
+    ///计算耗能。即计算各设备各状态的时间  deviceStateDuration[0]设备名  deviceStateDuration[1]状态名  deviceStateDuration[2]该状态保持时间
     public static List<String[]> getDeviceStatesDuration(DataTimeValue deviceDataTimeValue,DeviceInstance deviceInstance){
         DeviceType deviceType=deviceInstance.getDeviceType();
         List<String[]> deviceStatesDuration=new ArrayList<>();
