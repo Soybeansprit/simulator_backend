@@ -6,18 +6,72 @@ import javax.xml.crypto.Data;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 对仿真数据进行分析，冲突、抖动、自定义性质、以及其他分析【满意度、能耗等】
  * 定位错误原因
+ * 需要综合原因
  * */
 public class AnalysisService {
     ///定位找原因
 
     ///综合IFD寻找更深层次的原因
-    ///综合所有原因
-    ///根据IFD，往前回溯找其他引发该规则的规则，当当前规则涉及设备状态时
-    public static void getRulePreRule(IFDGraph.GraphNode ruleNode,RuleAndPreRule currentRule,HashMap<String,Rule> ruleHashMap, double triggeredTime, HashMap<String,DataTimeValue> dataTimeValueHashMap){
+    ///综合所有原因，对于单个场景下，对于不同冲突，对于找到触发规则如果触发时间都相同，可以综合在一起
+    public static List<List<String[]>> getConflictDirectRulesSynthesize(List<List<String[]>> allConflictTimeAndRelatedRules){
+        List<List<String[]>> synthesizedConflictDirectRules=new ArrayList<>();
+        if (allConflictTimeAndRelatedRules.size()>0){
+            synthesizedConflictDirectRules.add(allConflictTimeAndRelatedRules.get(0));
+        }
+        for (int i=1;i<allConflictTimeAndRelatedRules.size();i++){
+            getConflictDirectRulesSynthesize(synthesizedConflictDirectRules,allConflictTimeAndRelatedRules.get(i));
+        }
+        return synthesizedConflictDirectRules;
+    }
+    ///对于两次冲突原因的综合
+    public static void getConflictDirectRulesSynthesize(List<List<String[]>> synthesizedConflictDirectRules,List<String[]> conflictTimeAndRelatedRules){
+        for (List<String[]> conflictDirectRules:synthesizedConflictDirectRules){
+            ///判断是否与conflictTimeAndRelatedRules的规则和时间相同
+            if (isRuleTimeSame(conflictDirectRules,conflictTimeAndRelatedRules)){
+                return;
+            }
+        }
+        synthesizedConflictDirectRules.add(conflictTimeAndRelatedRules);
+    }
+    public static boolean isRuleTimeSame(List<String[]> conflictTimeAndRelatedRules1,List<String[]> conflictTimeAndRelatedRules2){
+        for (String[] conflictRule2:conflictTimeAndRelatedRules2){
+            if (!conflictRule2[0].equals("conflictTime")){
+                ////要都存在且完全相同
+                boolean exist=false;
+                for (String[] conflictRule1:conflictTimeAndRelatedRules1){
+                    if (conflictRule1[0].equals(conflictRule2[0])){
+                        if (conflictRule1[1].equals(conflictRule2[1])){
+                            exist=true;
+                        }
+                        break;
+                    }
+                }
+                if (!exist){
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    ///找某个时间触发的规则的前驱规则
+    public static RuleAndPreRule getRulePreRule(String[] ruleTime,HashMap<String, IFDGraph.GraphNode> graphNodeHashMap,HashMap<String,Rule> ruleHashMap,HashMap<String,DataTimeValue> dataTimeValueHashMap){
+        IFDGraph.GraphNode ruleNode=graphNodeHashMap.get(ruleTime[0]); ///找到ifd上对应的规则节点
+        RuleAndPreRule currentRule=new RuleAndPreRule();
+        currentRule.setCurrentRule(ruleHashMap.get(ruleTime[0]));   ////找到对应的规则
+        double triggerTime=Double.parseDouble(ruleTime[1]);
+        setTraversedFalse(graphNodeHashMap);
+        ///获得当前规则的前驱规则
+        getRulePreRule(ruleNode,graphNodeHashMap,currentRule,ruleHashMap,triggerTime,dataTimeValueHashMap);
+        return currentRule;
+    }
+    //根据IFD，往前回溯找其他引发该规则的规则，当当前规则涉及设备状态时
+    public static void getRulePreRule(IFDGraph.GraphNode ruleNode,HashMap<String, IFDGraph.GraphNode> graphNodeHashMap,RuleAndPreRule currentRule,HashMap<String,Rule> ruleHashMap, double triggeredTime, HashMap<String,DataTimeValue> dataTimeValueHashMap){
         ruleNode.setTraversed(true);
         for (IFDGraph.GraphNodeArrow triggerArrow:ruleNode.getpNodeArrowList()){
             IFDGraph.GraphNode triggerNode=triggerArrow.getGraphNode();   ///rule节点前面的节点为trigger节点
@@ -29,7 +83,7 @@ public class AnalysisService {
                     if (actionArrow.getColor().equals("red")&&actionArrow.getStyle().equals("")){
                         ///找到红色的实线的边
                         IFDGraph.GraphNode actionNode=actionArrow.getGraphNode();  ///action节点
-                        if (!actionNode.isTraversed()){
+                        if (actionNode.getShape().equals("record")&&!actionNode.isTraversed()){
                             actionNode.setTraversed(true);  ///没有遍历过的action
                             ///找到rule
                             for (IFDGraph.GraphNodeArrow ruleArrow:actionNode.getpNodeArrowList()){
@@ -45,18 +99,32 @@ public class AnalysisService {
                                         preRule.setCurrentRule(ruleHashMap.get(dataTimeValue.getDataName()));
                                         currentRule.getPreRules().add(preRule);
                                         ///递归找其他前驱规则
-                                        getRulePreRule(otherRuleNode,preRule,ruleHashMap,otherTriggeredTime,dataTimeValueHashMap);
+                                        getRulePreRule(otherRuleNode,graphNodeHashMap,preRule,ruleHashMap,otherTriggeredTime,dataTimeValueHashMap);
+//                                        ///把graphNodes的traversed重新置为false
+//                                        setTraversedFalse(graphNodeHashMap);
+//                                        ///把初始的ruleNode置为true
+//                                        ruleNode.setTraversed(true);
+//                                        otherRuleNode.setTraversed(true);
                                     }
+                                    otherRuleNode.setTraversed(false);
                                 }
                             }
+                            actionNode.setTraversed(false);
                         }
                     }
                 }
-
+                triggerNode.setTraversed(false);
             }
+            ruleNode.setTraversed(false);
         }
     }
-    ///找到所有设备的冲突情况
+    ////把graphNodes的traversed重新置为false
+    public static void setTraversedFalse(HashMap<String, IFDGraph.GraphNode> graphNodeHashMap){
+        for (Map.Entry<String, IFDGraph.GraphNode> graphNodeEntry:graphNodeHashMap.entrySet()){
+            graphNodeEntry.getValue().setTraversed(false);
+        }
+    }
+    ///找到所有设备的冲突情况,针对单个场景
     public static List<List<List<String[]>>> getAllDeviceConflictDirectRules(List<DeviceConflict> deviceConflicts,List<DataTimeValue> dataTimeValues,InstanceLayer instanceLayer,List<Rule> rules){
         List<List<List<String[]>>> allDeviceConflictDirectRules=new ArrayList<>();
         for (DeviceConflict deviceConflict:deviceConflicts){
@@ -73,7 +141,7 @@ public class AnalysisService {
         }
         return allDeviceConflictDirectRules;
     }
-    ///冲突定位找原因，每次冲突都定位找原因,找到在那段时间触发的规则及触发时间，同时该规则要与该设备相关
+    ///冲突定位找原因，每次冲突都定位找原因,找到在那段时间触发的规则及触发时间，同时该规则要与该设备相关,针对单个场景中该设备的所有冲突
     public static List<List<String[]>> getConflictDirectRules(DeviceConflict deviceConflict,List<DataTimeValue> dataTimeValues,DeviceInstance deviceInstance,List<Rule> rules){
         List<List<String[]>> allConflictTimeAndRelatedRules=new ArrayList<>();
         for (List<Double> conflictTimeValue:deviceConflict.getConflictTimeValues()){
@@ -109,6 +177,24 @@ public class AnalysisService {
             }
         }
         return conflictTimeAndTriggeredRules;
+    }
+    ///看是否是cause指定设备状态的rule,如果是，则
+    public static boolean isRuleCausingInstanceStateValue(Rule rule,DeviceInstance deviceInstance,int stateValue){
+        for (String action:rule.getAction()){
+            String[] instanceSync=action.split("\\.");
+            if (instanceSync[0].trim().equals(deviceInstance.getInstanceName())){
+                ///与该设备有关的规则
+                ///再看是否是指定状态
+                for (DeviceType.StateSyncValueEffect stateSyncValueEffect:deviceInstance.getDeviceType().getStateSyncValueEffects()){
+                    int value=Integer.parseInt(stateSyncValueEffect.getValue());
+                    if (value==stateValue){
+                        return true;
+                    }
+                }
+                break;
+            }
+        }
+        return false;
     }
     ///看该规则与设备实例是否相关
     public static boolean isRuleRelatedToDeviceInstance(Rule rule,DeviceInstance deviceInstance){
@@ -159,6 +245,409 @@ public class AnalysisService {
         ///不能被触发
         return 0.0;
     }
+
+
+
+
+
+//    ////综合所有冲突原因
+//    public static List<List<List<String[]>>> getAllConflictsStatesDirectRulesSynthesis(List<List<List<String[]>>> allConflictsStatesDirectRules){
+//        List<List<List<String[]>>> synthesisOfDeviceConflictsStatesDirectRules=new ArrayList<>();
+//
+//    }
+    ////综合不同conflicts的直接原因，对于两个conflicts状态导致直接原因，如果冲突状态、导致冲突的原因和触发时间都相同，则可以综合为一个
+    public static List<List<List<String[]>>> getSynthesisOfDeviceConflictsStatesDirectRules(List<List<List<String[]>>> synthesisOfDeviceConflictsStatesDirectRules, List<List<String[]>> singleConflictStatesDirectRules){
+        for (List<List<String[]>> conflictStatesDirectRules:synthesisOfDeviceConflictsStatesDirectRules){
+            if (isTwoStatesDirectRulesSame(conflictStatesDirectRules,singleConflictStatesDirectRules)){
+                return synthesisOfDeviceConflictsStatesDirectRules;
+            }
+        }
+        synthesisOfDeviceConflictsStatesDirectRules.add(singleConflictStatesDirectRules);
+        return synthesisOfDeviceConflictsStatesDirectRules;
+    }
+    ///判断两个状态原因是否相同，规则和触发时间
+    public static boolean isTwoStatesDirectRulesSame(List<List<String[]>> statesDirectRules1,List<List<String[]>> statesDirectRules2){
+        for (int i=0;i<statesDirectRules2.size();i++){
+            boolean stateExist=false;
+            for (int j=0;j<statesDirectRules1.size();j++){
+                if (statesDirectRules2.get(i).get(0)[0].equals(statesDirectRules1.get(j).get(0)[0])){
+                    ///状态相同
+                    stateExist=true;
+                    ////接下来判断规则是否相同
+                    for (int m=1;m<statesDirectRules2.get(i).size();m++){
+                        ///看这条规则和触发时间是否存在
+                        boolean ruleExist=false;
+                        String[] ruleTriggerTime2=statesDirectRules2.get(i).get(m);
+                        for (int n=1;n<statesDirectRules1.get(j).size();n++){
+                            String[] ruleTriggerTime1=statesDirectRules1.get(j).get(m);
+                            if (ruleTriggerTime1[0].equals(ruleTriggerTime2[0])&&ruleTriggerTime1[1].equals(ruleTriggerTime2[1])){
+                                ruleExist=true;
+                                break;
+                            }
+                        }
+                        if (!ruleExist){
+                            return false;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        return true;
+    }
+
+
+
+    ////综合jitter原因
+    public static List<List<DeviceStateAndCausingRules>> getDeviceJitterStatesCausingRulesSynthesize(List<List<DeviceStateAndCausingRules>> deviceAllJitterStatesRuleAndPreRules){
+        List<List<DeviceStateAndCausingRules>> synthesizedDeviceAllStatesRuleAndPreRules=new ArrayList<>();
+        /////首先对每一段jitter都分别进行综合，最后再对所有jitter一起综合
+        List<DeviceStateAndCausingRules> firstSynthesizedSingleStatesRuleAndPreRules=getSingleJitterStatesCausingRulesSynthesized(deviceAllJitterStatesRuleAndPreRules.get(0));
+        synthesizedDeviceAllStatesRuleAndPreRules.add(firstSynthesizedSingleStatesRuleAndPreRules);
+        for (int i=1;i<deviceAllJitterStatesRuleAndPreRules.size();i++){
+            List<DeviceStateAndCausingRules> synthesizedSingleJitterCausingRuleAndPreRules=getSingleJitterStatesCausingRulesSynthesized(deviceAllJitterStatesRuleAndPreRules.get(i));
+            ///跟前面的进行综合
+            getStatesCausingRulesSynthesized(synthesizedDeviceAllStatesRuleAndPreRules,synthesizedSingleJitterCausingRuleAndPreRules);
+        }
+        return synthesizedDeviceAllStatesRuleAndPreRules;
+    }
+
+    ////对一段jitter的原因进行综合
+    public static List<DeviceStateAndCausingRules> getSingleJitterStatesCausingRulesSynthesized(List<DeviceStateAndCausingRules> singleJitterStatesRuleAndPreRules){
+        List<DeviceStateAndCausingRules> synthesizedSingleJitterCausingRuleAndPreRules=new ArrayList<>();
+        synthesizedSingleJitterCausingRuleAndPreRules.add(singleJitterStatesRuleAndPreRules.get(0));  ////先添加第一个
+        for (int i=0;i<singleJitterStatesRuleAndPreRules.size();i++){
+            ///判断在综合里是否已经存在
+            DeviceStateAndCausingRules deviceStateAndCausingRules1=singleJitterStatesRuleAndPreRules.get(i);
+            boolean exist=false;
+            for (DeviceStateAndCausingRules deviceStateAndCausingRules2:synthesizedSingleJitterCausingRuleAndPreRules){
+                if (isTwoStateCausingRulesSame(deviceStateAndCausingRules1,deviceStateAndCausingRules2)){
+                    exist=true;
+                    break;
+                }
+            }
+            if (!exist){
+                ///不存在就添加
+                synthesizedSingleJitterCausingRuleAndPreRules.add(deviceStateAndCausingRules1);
+            }
+        }
+        return synthesizedSingleJitterCausingRuleAndPreRules;
+    }
+
+    ////综合冲突原因
+    public static List<List<DeviceStateAndCausingRules>> getDeviceConflictStatesCausingRulesSynthesize(List<List<DeviceStateAndCausingRules>> deviceAllConflictStatesRuleAndPreRules){
+        List<List<DeviceStateAndCausingRules>> synthesizedDeviceAllStatesRuleAndPreRules=new ArrayList<>();
+        synthesizedDeviceAllStatesRuleAndPreRules.add(deviceAllConflictStatesRuleAndPreRules.get(0));
+        for (int i=1;i<deviceAllConflictStatesRuleAndPreRules.size();i++){
+            getStatesCausingRulesSynthesized(synthesizedDeviceAllStatesRuleAndPreRules,deviceAllConflictStatesRuleAndPreRules.get(i));
+        }
+        return synthesizedDeviceAllStatesRuleAndPreRules;
+    }
+    ////综合原因
+    public static void getStatesCausingRulesSynthesized(List<List<DeviceStateAndCausingRules>> synthesizedDeviceAllStatesRuleAndPreRules,List<DeviceStateAndCausingRules> toBeSynthesizedStatesCausingRules){
+        for (List<DeviceStateAndCausingRules> deviceStateAndCausingRulesList:synthesizedDeviceAllStatesRuleAndPreRules){
+            ///看状态和相关规则组成是否与待合并的相同、
+            boolean allExist=true;
+            for (DeviceStateAndCausingRules stateCausingRules:toBeSynthesizedStatesCausingRules){
+                boolean exist=false;
+                for (DeviceStateAndCausingRules otherStateCausingRules:deviceStateAndCausingRulesList){
+                    if(isTwoStateCausingRulesSame(stateCausingRules,otherStateCausingRules)){
+                        exist=true;
+                    }
+                }
+                if (!exist){
+                    allExist=false;
+                    break;
+                }
+            }
+            if (allExist){
+                return;
+            }
+        }
+        synthesizedDeviceAllStatesRuleAndPreRules.add(toBeSynthesizedStatesCausingRules);
+    }
+    ////判断两个stateCausingRules是否相同
+    public static boolean isTwoStateCausingRulesSame(DeviceStateAndCausingRules deviceStateAndCausingRules1,DeviceStateAndCausingRules deviceStateAndCausingRules2){
+        if (deviceStateAndCausingRules1.getDeviceName()==deviceStateAndCausingRules2.getDeviceName()&&
+                deviceStateAndCausingRules1.getStateName().equals(deviceStateAndCausingRules2.getStateName())){
+            ////首先设备状态名要相同
+            ////判断规则是否相同
+            for (RuleAndPreRule ruleAndPreRule1:deviceStateAndCausingRules1.getCausingRulesAndPreRules()){
+                boolean exist=false;
+                for (RuleAndPreRule ruleAndPreRule2:deviceStateAndCausingRules2.getCausingRulesAndPreRules()){
+                    if (ruleAndPreRule1.getCurrentRule()== ruleAndPreRule2.getCurrentRule()){
+                        if (isTwoRuleAndPreRuleSame(ruleAndPreRule1,ruleAndPreRule2)){
+                            exist=true;
+                        }
+                        break;
+                    }
+                }
+                if (!exist){
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+    ////获得一个场景下某设备所有冲突/jitter的直接原因、前驱原因，用于后续的综合
+    public static List<List<DeviceStateAndCausingRules>> getDeviceAllStatesRuleAndPreRules(List<List<List<String[]>>> deviceAllStatesDirectRules,
+                                                                                          HashMap<String,DataTimeValue> dataTimeValueHashMap,HashMap<String,RuleAndPreRule> ruleNameRuleAndPreRuleHashMap,HashMap<String,Rule> ruleHashMap){
+        HashMap<String,RuleAndPreRule> ruleTimeRuleAndPreRuleHashMap=new HashMap<>();
+        List<List<DeviceStateAndCausingRules>> deviceAllStatesRuleAndPreRules=new ArrayList<>();
+        for (List<List<String[]>> conflictStatesDirectRules:deviceAllStatesDirectRules){
+
+            List<DeviceStateAndCausingRules> conflictStatesAndCausingRules=new ArrayList<>();
+            for (List<String[]> stateDirectRules:conflictStatesDirectRules){
+                ///每个状态
+                DeviceStateAndCausingRules deviceStateAndCausingRules=getDeviceStateAndCausingRulesForStateDirectRules(stateDirectRules,ruleTimeRuleAndPreRuleHashMap,dataTimeValueHashMap,ruleNameRuleAndPreRuleHashMap,ruleHashMap);
+                conflictStatesAndCausingRules.add(deviceStateAndCausingRules);
+            }
+            deviceAllStatesRuleAndPreRules.add(conflictStatesAndCausingRules);
+        }
+        return deviceAllStatesRuleAndPreRules;
+    }
+
+
+    /////将List<String[]> 格式的stateDirectRule转为DeviceStateAndCausingRules类，并获得直接原因的前驱原因
+    public static DeviceStateAndCausingRules getDeviceStateAndCausingRulesForStateDirectRules(List<String[]> stateDirectRules,HashMap<String,RuleAndPreRule> ruleTimeRuleAndPreRuleHashMap,
+                                                                                              HashMap<String,DataTimeValue> dataTimeValueHashMap,HashMap<String,RuleAndPreRule> ruleNameRuleAndPreRuleHashMap,HashMap<String,Rule> ruleHashMap){
+        String[] deviceStateNameValue=stateDirectRules.get(0);   ///0-deviceName, 1-stateName, 2-stateValue
+        DeviceStateAndCausingRules deviceStateAndCausingRules=new DeviceStateAndCausingRules();
+        deviceStateAndCausingRules.setDeviceName(deviceStateNameValue[0]);   ////设备名
+        deviceStateAndCausingRules.setStateName(deviceStateNameValue[1]);   ////状态名
+        deviceStateAndCausingRules.setStateValue(Integer.parseInt(deviceStateNameValue[2]));   ////状态值
+        for (int i=1;i<stateDirectRules.size();i++){
+            ///获得规则和触发时间  0-rule, 1-triggeredTime
+            String[] ruleTriggeredTime=stateDirectRules.get(i);
+            String ruleName=ruleTriggeredTime[0];    ///规则名
+            double triggeredTime=Double.parseDouble(ruleTriggeredTime[1]);   ////触发时间
+
+            RuleAndPreRule ruleAndTriggeredPreRule=ruleTimeRuleAndPreRuleHashMap.get(ruleName+":"+triggeredTime);  ///看是否已经计算过
+            if (ruleAndTriggeredPreRule==null) {  ///没有计算过
+                ruleAndTriggeredPreRule=new RuleAndPreRule();
+                ruleAndTriggeredPreRule.setCurrentRule(ruleHashMap.get(ruleName));
+                RuleAndPreRule ruleAndPreRule=ruleNameRuleAndPreRuleHashMap.get(ruleName);
+                ////获得触发规则的触发了的前驱规则
+                getRuleTriggeredPreRules(triggeredTime,dataTimeValueHashMap,ruleAndTriggeredPreRule,ruleAndPreRule);
+                ruleTimeRuleAndPreRuleHashMap.put(ruleName+":"+triggeredTime,ruleAndTriggeredPreRule);
+            }
+
+            deviceStateAndCausingRules.getCausingRulesAndPreRules().add(ruleAndTriggeredPreRule);
+        }
+        return deviceStateAndCausingRules;
+    }
+
+
+    ////获得一个场景下某设备的所有冲突的直接原因
+    public static List<List<List<String[]>>> getDeviceConflictStatesDirectRulesInAScenario(DeviceConflict deviceConflict,List<DataTimeValue> dataTimeValues,DeviceInstance deviceInstance,HashMap<String,Rule> ruleHashMap){
+        List<List<List<String[]>>> deviceAllConflictStatesDirectRules=new ArrayList<>();   ////一次conflict对应一个List<List<String[]>>
+        for (List<Double> conflictTimeValue:deviceConflict.getConflictTimeValues()){
+            ////遍历每次冲突,分别找到对应状态的规则  一个stateDirectRules对应一个List<String[]>
+            List<List<String[]>> singleConflictStatesDirectRules=getSingleConflictStatesDirectRules(conflictTimeValue,dataTimeValues,deviceInstance,ruleHashMap);
+            if (singleConflictStatesDirectRules==null) {
+                continue;
+            }
+            deviceAllConflictStatesDirectRules.add(singleConflictStatesDirectRules);
+        }
+        return deviceAllConflictStatesDirectRules;
+    }
+    ////获得某次conflict直接原因,分别获得此冲突所涉及的状态的原因,conflictTimeValue给出冲突时间和冲突的状态取值,一个state对应一个List<String[]>
+    public static List<List<String[]>> getSingleConflictStatesDirectRules(List<Double> conflictTimeValue,List<DataTimeValue> dataTimeValues,DeviceInstance deviceInstance,HashMap<String,Rule> ruleHashMap){
+
+        double conflictTime=conflictTimeValue.get(0);   ////冲突时间
+        List<List<String[]>> singleConflictStatesDirectRules=new ArrayList<>();
+        for (int i=1;i<conflictTimeValue.size();i++){
+            double stateValue=conflictTimeValue.get(i);
+            ////获得该状态的原因
+            List<String[]> stateCausingRules=getStateCausingRules(deviceInstance.getInstanceName(),(int) stateValue,conflictTime,deviceInstance,ruleHashMap,dataTimeValues);
+            if (stateCausingRules.size()>1){
+                ///表明有相应的触发规则,因为get(0)上存的是设备状态信息
+                singleConflictStatesDirectRules.add(stateCausingRules);
+            }
+        }
+        if (singleConflictStatesDirectRules.size()<2){
+            ////有些状态找不出相应的规则，conflict失效
+            return null;
+        }
+        return singleConflictStatesDirectRules;
+    }
+
+
+
+    ////获得一个场景下所有jitter直接原因
+    public static List<List<List<String[]>>> getDeviceJitterStatesDirectRulesInAScenario(DeviceJitter deviceJitter,List<DataTimeValue> dataTimeValues,DeviceInstance deviceInstance,HashMap<String,Rule> ruleHashMap){
+        List<List<List<String[]>>> deviceAllJitterStatesDirectRules=new ArrayList<>();   ////一段jitter对应一个List<List<String[]>>
+        for (List<double[]> jitterTimeValue:deviceJitter.getJitterTimeValues()){
+            List<List<String[]>> singleJitterStatesDirectRules=getSingleJitterStatesDirectRules(jitterTimeValue,dataTimeValues,deviceInstance,ruleHashMap);
+            if (singleJitterStatesDirectRules==null){
+                continue;
+            }
+            deviceAllJitterStatesDirectRules.add(singleJitterStatesDirectRules);
+        }
+        return deviceAllJitterStatesDirectRules;
+    }
+    /////获得某一段jitter的直接原因，分别获得每个状态的直接原因，List<double[]>, 一次抖动jitterTimeValue.get(0)[0]=time, jitterTimeValue.get(0)[1]=value...，一个state对应一个List<String[]>
+    public static List<List<String[]>> getSingleJitterStatesDirectRules(List<double[]> jitterTimeValue,List<DataTimeValue> dataTimeValues,DeviceInstance deviceInstance,HashMap<String,Rule> ruleHashMap){
+        List<List<String[]>> singleJitterStatesDirectRules=new ArrayList<>();
+        for (double[] timeValue:jitterTimeValue){
+            double stateTime=timeValue[0];
+            int stateValue=(int) timeValue[1];
+            ///获得该状态的直接原因
+            List<String[]> stateCausingRules=getStateCausingRules(deviceInstance.getInstanceName(),stateValue,stateTime,deviceInstance,ruleHashMap,dataTimeValues);
+            if (stateCausingRules.size()>1){
+                ///表明有相应的触发规则,因为get(0)上存的是设备状态信息
+                singleJitterStatesDirectRules.add(stateCausingRules);
+            }
+        }
+        if (singleJitterStatesDirectRules.size()<2){
+            ///jitter失效
+        }
+        return singleJitterStatesDirectRules;
+    }
+    ///判断两个rulePreRule是否相同
+    public static boolean isTwoRuleAndPreRuleSame(RuleAndPreRule ruleAndPreRule1,RuleAndPreRule ruleAndPreRule2){
+        if (ruleAndPreRule1==ruleAndPreRule2){
+            return true;
+        }
+        if (ruleAndPreRule1.getCurrentRule()!=ruleAndPreRule2.getCurrentRule()){
+            ///如果当前规则都不同，则不同
+            return false;
+        }
+        if (ruleAndPreRule1.getPreRules().size()!=ruleAndPreRule2.getPreRules().size()){
+            ///如果前置规则数量不同，则不同
+            return false;
+        }
+        ///判断前置规则是否
+        for (int i=0;i<ruleAndPreRule1.getPreRules().size();i++){
+            if (!isTwoRuleAndPreRuleSame(ruleAndPreRule1.getPreRules().get(i),ruleAndPreRule2.getPreRules().get(i))){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    ///找某个时间触发的规则的前驱规则，找到前驱规则中可触发的规则，因此需要输入当前规则及其前驱规则，看前驱规则能否触发
+    public static void getRuleTriggeredPreRules(double time,HashMap<String,DataTimeValue> dataTimeValueHashMap,RuleAndPreRule ruleAndTriggeredPreRule,RuleAndPreRule ruleAndPreRule){
+        for (RuleAndPreRule preRule:ruleAndPreRule.getPreRules()){
+            ////遍历前驱规则，看在time时间之前能否被触发
+            DataTimeValue dataTimeValue=dataTimeValueHashMap.get(preRule.getCurrentRule().getRuleName());
+            double preTriggeredTime=canRuleBeTriggeredInDuration(dataTimeValue,0.0,time);
+            if (preTriggeredTime>0){
+                ////能被触发则添加该规则到ruleAndPreRule的preRule中，同时看该preRule的前驱规则能否被触发
+                RuleAndPreRule triggeredPreRule=new RuleAndPreRule();
+                triggeredPreRule.setCurrentRule(preRule.getCurrentRule());
+                ruleAndTriggeredPreRule.getPreRules().add(triggeredPreRule);
+                getRuleTriggeredPreRules(preTriggeredTime,dataTimeValueHashMap,triggeredPreRule,preRule);
+            }
+        }
+    }
+    ///找所有规则在IFD中的前驱规则，为所谓是否触发
+    public static List<RuleAndPreRule> getAllRulePreRules(HashMap<String, IFDGraph.GraphNode> graphNodeHashMap,HashMap<String,Rule> ruleHashMap){
+        List<RuleAndPreRule> allRulePreRules=new ArrayList<>();
+        for (Map.Entry<String,Rule> ruleEntry:ruleHashMap.entrySet()){
+            Rule rule=ruleEntry.getValue();
+            RuleAndPreRule currentRule=new RuleAndPreRule();
+            currentRule.setCurrentRule(rule);
+            getRulePreRules(graphNodeHashMap.get(rule.getRuleName()),currentRule,ruleHashMap);
+            allRulePreRules.add(currentRule);
+        }
+        return allRulePreRules;
+    }
+    ///找某条规则在IFD中的前驱规则，无所谓是否触发
+    public static void getRulePreRules(IFDGraph.GraphNode ruleNode,RuleAndPreRule currentRule,HashMap<String,Rule> ruleHashMap){
+        ruleNode.setTraversed(true);
+        for (IFDGraph.GraphNodeArrow triggerArrow:ruleNode.getpNodeArrowList()){
+            IFDGraph.GraphNode triggerNode=triggerArrow.getGraphNode();   ///rule节点前面的节点为trigger节点
+            if (!triggerNode.isTraversed()&&triggerNode.getRelatedInstanceAndColor()[1].equals("darkseagreen1")){
+                triggerNode.setTraversed(true);  ///没被遍历过，并且是设备状态的trigger
+                ///且是设备状态的trigger
+                ///往前找action
+                for (IFDGraph.GraphNodeArrow actionArrow:triggerNode.getpNodeArrowList()){
+                    if (actionArrow.getColor().equals("red")&&actionArrow.getStyle().equals("")){
+                        ///找到红色的实线的边
+                        IFDGraph.GraphNode actionNode=actionArrow.getGraphNode();  ///action节点
+                        if (actionNode.getShape().equals("record")&&!actionNode.isTraversed()){
+                            actionNode.setTraversed(true);  ///没有遍历过的action
+                            ///找到rule
+                            for (IFDGraph.GraphNodeArrow ruleArrow:actionNode.getpNodeArrowList()){
+                                IFDGraph.GraphNode otherRuleNode=ruleArrow.getGraphNode();
+                                if (!otherRuleNode.isTraversed()){ ///找没有遍历过的rule
+                                    otherRuleNode.setTraversed(true);
+                                    ///是前驱规则
+                                    RuleAndPreRule preRule=new RuleAndPreRule();
+                                    preRule.setCurrentRule(ruleHashMap.get(otherRuleNode.getName()));
+                                    currentRule.getPreRules().add(preRule);
+                                    ///递归找其他前驱规则
+                                    getRulePreRules(otherRuleNode,preRule,ruleHashMap);
+                                    ///把graphNodes的traversed重新置为false
+//                                    setTraversedFalse(graphNodeHashMap);
+//                                    ///把初始的ruleNode置为true
+//                                    ruleNode.setTraversed(true);
+//                                    otherRuleNode.setTraversed(true);
+                                    otherRuleNode.setTraversed(false);
+                                }
+                            }
+                            actionNode.setTraversed(false);
+                        }
+                    }
+                }
+
+            }
+            triggerNode.setTraversed(false);
+        }
+        ruleNode.setTraversed(false);
+    }
+
+    ////找某个时间设备某个状态发生的原因,定位rule。List<String[]> deviceStateCausingRules第一项存设备状态以及状态值信息，后面存规则和触发时间
+    public static List<String[]> getStateCausingRules(String deviceInstanceName,int stateValue,double time,DeviceInstance deviceInstance,HashMap<String,Rule> ruleHashMap,List<DataTimeValue> dataTimeValues){
+        List<String[]> deviceStateCausingRules=new ArrayList<>();
+        String[] deviceStateNameValue=new String[3];   ///记录设备名、状态、状态对应取值
+        deviceStateNameValue[0]=deviceInstanceName; ///设备名
+        deviceStateNameValue[2]=stateValue+""; ///设备状态取值
+        deviceStateCausingRules.add(deviceStateNameValue);  ///第一项都是存设备信息
+        ///先找到状态信息，状态名和状态对应的sync
+        String sync="";
+        for (DeviceType.StateSyncValueEffect stateSyncValueEffect:deviceInstance.getDeviceType().getStateSyncValueEffects()){
+            if (Integer.parseInt(stateSyncValueEffect.getValue())==stateValue){
+                sync=stateSyncValueEffect.getSynchronisation();
+                deviceStateNameValue[1]=stateSyncValueEffect.getStateName();  ///状态名
+                break;
+            }
+        }
+        for (DataTimeValue dataTimeValue:dataTimeValues){
+            if (dataTimeValue.getDataName().indexOf("rule")>=0){
+                ///是规则相关仿真路径
+                Rule rule=ruleHashMap.get(dataTimeValue.getDataName());  ///获得相应的规则信息
+                ///判断该规则是否能导致相关state
+                if (isRuleRelatedToInstanceSynchronisation(rule,deviceInstanceName,sync)){
+                    ///看能否被触发
+                    double triggeredTime=canRuleBeTriggeredInDuration(dataTimeValue,time,time);
+                    if (triggeredTime>0.0){
+                        ///可以被触发
+                        String[] ruleTriggeredTime=new String[2];  //规则和触发时间
+                        ruleTriggeredTime[0]=dataTimeValue.getDataName(); ///规则名
+                        ruleTriggeredTime[1]=triggeredTime+"";  ///触发时间
+                        deviceStateCausingRules.add(ruleTriggeredTime);
+                    }
+                }
+            }
+        }
+        return deviceStateCausingRules;
+    }
+    ///看某个规则是否发送相应的sync，从而表明该规则是否能造成相应的状态
+    public static boolean isRuleRelatedToInstanceSynchronisation(Rule rule,String deviceInstanceName,String synchronisation){
+        for (String action: rule.getAction()){
+            String[] instanceSync=action.split("\\.");
+            if (instanceSync[0].trim().equals(deviceInstanceName)&&instanceSync[1].trim().equals(synchronisation)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    ////jitter定位找出一段jitter中，每次状态变化的原因
 
     ///验证所有设备，看是否存在状态冲突
     public static List<DeviceConflict> getDevicesConflict(List<DataTimeValue> dataTimeValues){
@@ -279,14 +768,27 @@ public class AnalysisService {
         return deviceJitter;
     }
 
+    /////特定于某个场景找原因，给建议,对于涉及设备状态的可以改变
+    // attribute<(<=,>,>=)value,看有没有能改变attribute的规则
+    ////instance.state，如果是设备的话，看有没有相关规则，
+    ////TODO
+    public static void getPropertyReachableReasonAndGiveAdvise(List<double[]> satDurations, List<DataTimeValue> dataTimeValues,List<PropertyElementCheckResult> propertyElementCheckResults,InstanceLayer instanceLayer,List<Rule> rules){
+        if (satDurations.size()>0){
+            ///有满足的情况
 
-    ////获得一条property所有element同时满足的时间段区间
+        }
+    }
+
+    ////获得单个场景下一条property所有element同时满足的时间段区间
     public static List<double[]> getPropertyConformDurations(List<DataTimeValue> dataTimeValues,String property,InstanceLayer instanceLayer){
+        ////获得单个场景每个property组成满足的时间段
         List<PropertyElementCheckResult> propertyElementCheckResults=getPropertyConformTimeValues(dataTimeValues,property,instanceLayer);
+        ////获得单个场景下property中同时满足的时间段
         List<double[]> durations=getConformTogetherDurations(propertyElementCheckResults);
         return durations;
     }
-    ////分别获得所有element满足的时间段区间
+
+    ////单个场景下分别获得所有element满足的时间段区间
     public static List<PropertyElementCheckResult> getPropertyConformTimeValues(List<DataTimeValue> dataTimeValues,String property,InstanceLayer instanceLayer){
         String[] propertyElements=property.split("&");
         List<PropertyElementCheckResult> propertyElementCheckResults=new ArrayList<>();
@@ -336,8 +838,10 @@ public class AnalysisService {
                 }
             }
             if (relatedDataTimeValue!=null){
+                /////对该element的检测结果
                 PropertyElementCheckResult propertyElementCheckResult=getPropertyElementConformTimeValues(relatedDataTimeValue,propertyElementForm,relatedInstance,neg);
                 propertyElementCheckResult.setElementContent(propertyElement);
+                propertyElementCheckResult.setElementForm(propertyElementForm);
                 propertyElementCheckResult.setNeg(neg);
                 System.out.println(propertyElementCheckResult);
                 propertyElementCheckResults.add(propertyElementCheckResult);
@@ -527,7 +1031,7 @@ public class AnalysisService {
     }
     ///添加满足的区间，区间左边和区间右边
     public static void addSatTimeValue(List<double[][]> satTimeValues,double[] currentTimeValue,double[] nextTimeValue){
-        if (currentTimeValue[0]>=nextTimeValue[0]) return;
+        if (currentTimeValue[0]>=nextTimeValue[0]) return;  ////currentTime不能大于nextTime
         int satTimeValueSize=satTimeValues.size();
         if (satTimeValueSize>0){
             ///看开始时间能不能衔接上最后一个结束时间，如果能就直接将结束时间改为当前结束时间，否则创建新的时间段

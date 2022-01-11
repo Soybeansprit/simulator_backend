@@ -21,7 +21,7 @@ public class SimulationService {
 
     }
 
-    ////获取仿真结果并解析
+    ////获取仿真结果并解析,并将解析的仿真结果写到txt文件中
     public static List<DataTimeValue> parseSimulationResult(String simulationResult, InstanceLayer instanceLayer,String resultFilePath,String resultFileName){
         /**直接获得的仿真结果数据如下所示，对其进行解析
          * coppm:

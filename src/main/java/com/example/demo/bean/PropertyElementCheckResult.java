@@ -6,7 +6,8 @@ import java.util.List;
 public class PropertyElementCheckResult {
     private String dataName="";   ///涉及数据名
     private String instanceName="";  ///涉及实例名
-    private String elementContent="";  ///内容
+    private String elementContent="";  ///内容,好像是不包括neg的
+    private String[] elementForm;  ///解析elementContent
     private boolean neg=false;   ///是否是取反
     private List<double[][]> satTimeValues=new ArrayList<>();  ///记录每次满足状态的开始时间和结束时间 [0]开始时间,[1]结束时间
 
@@ -24,6 +25,14 @@ public class PropertyElementCheckResult {
 
     public void setElementContent(String elementContent) {
         this.elementContent = elementContent;
+    }
+
+    public String[] getElementForm() {
+        return elementForm;
+    }
+
+    public void setElementForm(String[] elementForm) {
+        this.elementForm = elementForm;
     }
 
     public boolean isNeg() {

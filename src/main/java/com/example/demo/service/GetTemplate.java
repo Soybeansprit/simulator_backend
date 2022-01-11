@@ -438,10 +438,10 @@ public class GetTemplate {
 	
 	
 	public static void deleteFileLine(String path1,String path2,int lineNum) {
+		FileWriter fw=null;
+		BufferedWriter bw=null;
 		try (FileReader fr=new FileReader(path1);
-				BufferedReader br=new BufferedReader(fr);
-				FileWriter fw=new FileWriter(path2);
-				BufferedWriter bw=new BufferedWriter(fw)){
+				BufferedReader br=new BufferedReader(fr)){
 			StringBuilder sb=new StringBuilder();
 			String line="";
 			int count=0;
@@ -452,11 +452,22 @@ public class GetTemplate {
 				}
 				sb.append(line+"\r\n");
 			}
+			fw=new FileWriter(path2);
+			bw=new BufferedWriter(fw);
 			bw.write(sb.toString());
 			
 		} catch (IOException e) {
 			// TODO: handle exception
 			e.printStackTrace();
+		}finally {
+			try {
+				fw.flush();
+				bw.flush();
+				bw.close();
+				fw.close();
+			}catch (IOException e){
+				e.printStackTrace();
+			}
 		}
 	}
 	

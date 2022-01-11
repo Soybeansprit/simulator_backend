@@ -36,7 +36,7 @@ public class ScenarioTree {
 	
 	public static class SceneChild {
 		////场景树子节点的名字和其子节点取值
-		private String name="";
+		private String name="";     ////场景名
 		private List<AttributeValue> children=new ArrayList<AttributeValue>();
 		
 		
@@ -72,8 +72,8 @@ public class ScenarioTree {
 	
 	public static class AttributeValue {
 		///////场景树中各可设置属性赋值
-		private String name="";
-		private double value=0;
+		private String name="";   ////属性名
+		private double value=0;    ////属性值
 		public String getName() {
 			return name;
 		}

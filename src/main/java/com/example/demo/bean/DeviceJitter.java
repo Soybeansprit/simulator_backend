@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 某个设备在整个仿真过程中的抖动
+ * 记录某个设备在整个仿真过程中的抖动
  * */
 public class DeviceJitter {
     private String instanceName="";   ///实例名，设备名

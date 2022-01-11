@@ -2,7 +2,9 @@ package com.example.demo.bean;
 
 import java.util.ArrayList;
 import java.util.List;
-
+/**
+ * 实例层
+ * */
 public class InstanceLayer {
     private HumanInstance humanInstance=new HumanInstance();
     private AttributeEntityInstance attributeEntityInstance=new AttributeEntityInstance();

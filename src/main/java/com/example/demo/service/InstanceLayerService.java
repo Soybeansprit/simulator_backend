@@ -39,6 +39,10 @@ public class InstanceLayerService {
         Properties properties=PropertyService.getProperties(filePath, instanceInformationFileName);
         for(String key:properties.stringPropertyNames()){
             if (key.equals("locations")){
+                if(modelLayer.getHuman().getStateValues().size()>0){
+                    ///前面自定义的空间位置信息优先
+                    continue;
+                }
                 ///假如实例信息表中有空间信息
                 ///空间信息，然后生成人的模型
                 String locationDetail=properties.getProperty(key).trim();

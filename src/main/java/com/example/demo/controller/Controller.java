@@ -8,6 +8,9 @@ import java.util.HashMap;
 import java.util.List;
 
 
+import com.example.demo.bean.*;
+import com.example.demo.service.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.dom4j.DocumentException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -19,33 +22,15 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.example.demo.bean.Attribute;
-import com.example.demo.bean.BiddableType;
-import com.example.demo.bean.DeviceDetail;
-import com.example.demo.bean.DeviceType;
-import com.example.demo.bean.EnvironmentModel;
 import com.example.demo.bean.IFDGraph.GraphNode;
 import com.example.demo.bean.OutputConstruct.DeclarationQueryResult;
 import com.example.demo.bean.OutputConstruct.EnvironmentStatic;
 import com.example.demo.bean.OutputConstruct.ScenePropertyResult;
-import com.example.demo.bean.PropertyVerifyResult;
-import com.example.demo.bean.Rule;
-import com.example.demo.bean.Scene;
 import com.example.demo.bean.ScenarioTree.ScenesTree;
-import com.example.demo.bean.SensorType;
-import com.example.demo.bean.StaticAnalysisResult;
-import com.example.demo.bean.Trigger;
 import com.example.demo.bean.InputConstruct.EnvironmentRule;
 import com.example.demo.bean.InputConstruct.SceneEnvironmentProperty;
 import com.example.demo.bean.InputConstruct.SceneEnvironmentRule;
 import com.example.demo.bean.InputConstruct.SceneTreeDevice;
-import com.example.demo.service.AddressService;
-import com.example.demo.service.DynamicAnalysisService;
-import com.example.demo.service.RuleService;
-import com.example.demo.service.SimulationThreadService;
-import com.example.demo.service.StaticAnalysisService;
-import com.example.demo.service.SystemModelService;
-import com.example.demo.service.TemplGraphService;
 
 
 @CrossOrigin
@@ -256,6 +241,54 @@ public class Controller {
 		/////场景分析
 		DynamicAnalysisService.getSingleScenarioDynamicAnalysis(scene, environmentModel.getDevices(), graphNodes, rulesMap,simulationTime,equivalentTime,intervalTime);
 		return scene;
+	}
+
+	@RequestMapping("/uploadModelFile")
+	@ResponseBody
+	public ModelLayer uploadModelFile(@RequestParam("file") MultipartFile uploadedFile,@RequestParam("locations") String locationsStr) throws DocumentException, IOException {
+		//////////////上传的环境本体文件，存储在D:\\workspace位置
+		if (uploadedFile == null) {
+			System.out.println("上传失败，无法找到文件！");
+		}
+		//上传xml文件
+		String fileName = uploadedFile.getOriginalFilename();
+		String filePath=AddressService.MODEL_FILE_PATH;
+		BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(filePath+fileName));
+
+		outputStream.write(uploadedFile.getBytes());
+		outputStream.flush();
+		outputStream.close();
+		//逻辑处理
+		///解析模型文件，获得模型层
+		ObjectMapper objectMapper=new ObjectMapper();
+		List<String> locations=objectMapper.readValue(locationsStr,List.class);
+		ModelLayer modelLayer= ModelLayerService.getModelLayer(filePath,fileName,fileName,locations);
+		System.out.println(fileName + "上传成功");
+		return modelLayer;
+	}
+
+	@RequestMapping("/uploadInstanceInfomationFile")
+	@ResponseBody
+	public InstanceLayer uploadInstanceInfomationFile(@RequestParam("file") MultipartFile uploadedFile,@RequestParam("modelLayer") String modelLayerStr) throws DocumentException, IOException {
+		//////////////上传的环境本体文件，存储在D:\\workspace位置
+		if (uploadedFile == null) {
+			System.out.println("上传失败，无法找到文件！");
+		}
+		//上传xml文件
+		String fileName = uploadedFile.getOriginalFilename();
+		String filePath=AddressService.MODEL_FILE_PATH;
+		BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(filePath+fileName));
+
+		outputStream.write(uploadedFile.getBytes());
+		outputStream.flush();
+		outputStream.close();
+		//逻辑处理
+		///解析模型文件，获得模型层
+		ObjectMapper objectMapper=new ObjectMapper();
+		ModelLayer modelLayer=objectMapper.readValue(modelLayerStr,ModelLayer.class);
+		InstanceLayer instanceLayer= InstanceLayerService.getInstanceLayer(filePath,fileName,modelLayer);
+		System.out.println(fileName + "上传成功");
+		return instanceLayer;
 	}
 	
 }
