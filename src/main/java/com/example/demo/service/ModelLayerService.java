@@ -161,7 +161,7 @@ public class ModelLayerService {
         for (GetTemplate.Location location:template.getLocations()){
             if (!location.getName().equals("")){
                 ///状态信息，状态名，状态id
-                DeviceType.StateSyncValueEffect stateSyncValueEffect=deviceType.new StateSyncValueEffect();
+                DeviceType.StateSyncValueEffect stateSyncValueEffect=new DeviceType.StateSyncValueEffect();
                 stateSyncValueEffect.setStateName(location.getName());
                 stateSyncValueEffect.setStateId(location.getId());
                 deviceType.getStateSyncValueEffects().add(stateSyncValueEffect);
@@ -319,7 +319,7 @@ public class ModelLayerService {
                 String[] invariants=location.getInvariant().split("&&");  ///temperature'==dtemper&&humidity'==dhumi
                 for (String invariant:invariants){
                     String[] attributeDelta=invariant.split("'==");  ///temperature'==dtemper => attributeDelta[0]="temperature", attributeDelta[1]="dtemper"
-                    AttributeEntityType.Attribute attribute=attributeEntityType.new Attribute();
+                    AttributeEntityType.Attribute attribute=new AttributeEntityType.Attribute();
                     attribute.setAttribute(attributeDelta[0].trim());
                     attribute.setContent(invariant.trim());
                     attribute.setDelta(attributeDelta[1].trim());

@@ -7,15 +7,18 @@ import java.util.List;
  * 冲突、抖动
  * */
 public class Scenario {
-    private int scenarioNum=0;   ////场景名
-    private List<DataTimeValue> dataTimeValues=new ArrayList<>();
+    private String scenarioName="";  ////场景名
+    private List<DataTimeValue> dataTimeValues=new ArrayList<>();  ///仿真路径
+    private List<DeviceConflict> deviceConflicts=new ArrayList<>(); ///设备冲突分析
+    private List<DeviceJitter> deviceJitters=new ArrayList<>();///设备抖动分析
 
-    public int getScenarioNum() {
-        return scenarioNum;
+
+    public String getScenarioName() {
+        return scenarioName;
     }
 
-    public void setScenarioNum(int scenarioNum) {
-        this.scenarioNum = scenarioNum;
+    public void setScenarioName(String scenarioName) {
+        this.scenarioName = scenarioName;
     }
 
     public List<DataTimeValue> getDataTimeValues() {
@@ -24,5 +27,21 @@ public class Scenario {
 
     public void setDataTimeValues(List<DataTimeValue> dataTimeValues) {
         this.dataTimeValues = dataTimeValues;
+    }
+
+    public List<DeviceConflict> getDeviceConflicts() {
+        return deviceConflicts;
+    }
+
+    public void setDeviceConflicts(List<DeviceConflict> deviceConflicts) {
+        this.deviceConflicts = deviceConflicts;
+    }
+
+    public List<DeviceJitter> getDeviceJitters() {
+        return deviceJitters;
+    }
+
+    public void setDeviceJitters(List<DeviceJitter> deviceJitters) {
+        this.deviceJitters = deviceJitters;
     }
 }

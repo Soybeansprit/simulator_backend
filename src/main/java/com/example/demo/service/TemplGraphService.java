@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Scanner;
@@ -20,14 +19,11 @@ import com.example.demo.bean.ModelGraph.TemplGraph;
 import com.example.demo.bean.ModelGraph.TemplGraphNode;
 import com.example.demo.bean.ModelGraph.TemplTransition;
 import com.example.demo.bean.Rule;
-import com.example.demo.bean.ScenarioTree.ScenesTree;
 import com.example.demo.bean.SensorType;
 import com.example.demo.bean.StaticAnalysisResult;
-import com.example.demo.bean.Action;
-import com.example.demo.bean.Attribute;
+import com.example.demo.bean.Attribute_;
 import com.example.demo.bean.BiddableType;
 import com.example.demo.bean.DeviceDetail;
-import com.example.demo.bean.Trigger;
 import com.example.demo.service.GetTemplate.Branchpoint;
 import com.example.demo.service.GetTemplate.Label;
 import com.example.demo.service.GetTemplate.Location;
@@ -212,7 +208,7 @@ public class TemplGraphService {
 		List<TemplGraph> controlledDevices=new ArrayList<TemplGraph>();
 		List<TemplGraph> sensors=new ArrayList<TemplGraph>();
 		List<TemplGraph> biddables=new ArrayList<TemplGraph>();
-		List<Attribute> attributes=new ArrayList<>();		
+		List<Attribute_> attributes=new ArrayList<>();
 		boolean existAttribute=false;//用来判断有没有attribute模型
 		for(TemplGraph templGraph:templGraphs) {
 			if(templGraph.getDeclaration().indexOf("controlled_device")>=0) {
@@ -416,7 +412,7 @@ public class TemplGraphService {
 	}
 	
 	//////////device, state, action, value
-	public static List<DeviceType> getDeviceTypes(List<TemplGraph> controlledDevices,List<Attribute> attributes){
+	public static List<DeviceType> getDeviceTypes(List<TemplGraph> controlledDevices,List<Attribute_> attributes){
 		List<DeviceType> devices=new ArrayList<DeviceType>();
 		for(TemplGraph controlledDevice:controlledDevices) {
 			if(controlledDevice.getDeclaration().indexOf("controlled_device")>=0) {
@@ -427,7 +423,7 @@ public class TemplGraphService {
 		return devices;
 	}
 	
-	public static DeviceType getDeviceType(TemplGraph controlledDevice,List<Attribute> attributes) {
+	public static DeviceType getDeviceType(TemplGraph controlledDevice,List<Attribute_> attributes) {
 		/////添加设备对环境属性的影响
 		DeviceType device=new DeviceType();
 		device.setName(controlledDevice.getName());;
@@ -460,7 +456,7 @@ public class TemplGraphService {
 								if(assignment.indexOf("(")>0) {
 									String delta=assignment.substring(0, assignment.indexOf("="));
 									String stateDelta=assignment.substring(assignment.indexOf("("), assignment.indexOf("-")).substring("(".length());   ///cooldt									
-									for(Attribute attribute:attributes) {
+									for(Attribute_ attribute:attributes) {
 										if(attribute.getDelta().equals(delta)) {
 											////找到对应属性
 											String[] effect=new String[3];
@@ -565,15 +561,15 @@ public class TemplGraphService {
 		return biddableType;
 	}
 	
-	public static List<Attribute> getAttributes(TemplGraph attributeTempl){
+	public static List<Attribute_> getAttributes(TemplGraph attributeTempl){
 		////根据模型获得各属性参数,该模型只有一个状态，状态上是不变式
-		List<Attribute> attributes=new ArrayList<>();
+		List<Attribute_> attributes=new ArrayList<>();
 		TemplGraphNode node=attributeTempl.getTemplGraphNodes().get(0);
 		String invariantContent=node.getInvariant();
 		String[] invariants=invariantContent.split("&&");
 		for(String invariant : invariants) {
 			invariant=invariant.trim();
-			Attribute attribute=new Attribute();
+			Attribute_ attribute=new Attribute_();
 			attribute.setContent(invariant);
 			attribute.setAttribute(invariant.substring(0, invariant.indexOf("'==")));
 			attribute.setDelta(invariant.substring(invariant.indexOf("'==")+"'==".length()).trim());

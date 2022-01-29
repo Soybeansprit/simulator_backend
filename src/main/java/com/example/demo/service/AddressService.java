@@ -10,6 +10,7 @@ public class AddressService {
 	public final static String IFD_FILE_PATH="D:\\workspace\\ifdFile\\";
 	public final static String IFD_FILE_NAME="ifd.dot";
 	public final static String SIMULATE_RESULT_FILE_PATH="D:\\workspace\\resultFile\\";
+	public final static String SYSTEM="window";
 
 //	public final static String MODEL_FILE_PATH= "/home/komorebi/Documents/workspace/java-workspace/TAPs-Simulator/data/modelFile/";
 //	public final static String UPPAAL_PATH="/home/komorebi/Documents/workspace/tool/uppaal64-4.1.24/bin-Linux/";

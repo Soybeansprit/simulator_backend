@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 import com.example.demo.bean.*;
@@ -25,7 +26,6 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.demo.bean.IFDGraph.GraphNode;
 import com.example.demo.bean.OutputConstruct.DeclarationQueryResult;
 import com.example.demo.bean.OutputConstruct.EnvironmentStatic;
-import com.example.demo.bean.OutputConstruct.ScenePropertyResult;
 import com.example.demo.bean.ScenarioTree.ScenesTree;
 import com.example.demo.bean.InputConstruct.EnvironmentRule;
 import com.example.demo.bean.InputConstruct.SceneEnvironmentProperty;
@@ -99,7 +99,7 @@ public class Controller {
 		List<DeviceType> deviceTypes=environmentRule.getEnvironmentModel().getDeviceTypes();
 		List<BiddableType> biddableTypes=environmentRule.getEnvironmentModel().getBiddables();
 		List<SensorType> sensorTypes=environmentRule.getEnvironmentModel().getSensors();
-		List<Attribute> attributes=environmentRule.getEnvironmentModel().getAttributes();
+		List<Attribute_> attributes=environmentRule.getEnvironmentModel().getAttributes();
 		////先生成控制器模型，，包括一些参数声明，modelDeclaration，query；
 		long generateStartTime=System.currentTimeMillis();
 		SystemModelService.generateContrModel(AddressService.MODEL_FILE_PATH,AddressService.changed_model_file_Name, rules, devices, biddableTypes);
@@ -126,7 +126,7 @@ public class Controller {
 		List<DeviceType> deviceTypes=environmentRule.getEnvironmentModel().getDeviceTypes();
 		List<BiddableType> biddableTypes=environmentRule.getEnvironmentModel().getBiddables();
 		List<SensorType> sensorTypes=environmentRule.getEnvironmentModel().getSensors();
-		List<Attribute> attributes=environmentRule.getEnvironmentModel().getAttributes();
+		List<Attribute_> attributes=environmentRule.getEnvironmentModel().getAttributes();
 		////ruleMap
 		HashMap<String,Rule> ruleMap=new HashMap<>();
 		for(Rule rule:rules) {
@@ -267,9 +267,9 @@ public class Controller {
 		return modelLayer;
 	}
 
-	@RequestMapping("/uploadInstanceInfomationFile")
+	@RequestMapping("/uploadInstanceInformationFile")
 	@ResponseBody
-	public InstanceLayer uploadInstanceInfomationFile(@RequestParam("file") MultipartFile uploadedFile,@RequestParam("modelLayer") String modelLayerStr) throws DocumentException, IOException {
+	public OutputConstruct.InstanceLayerOutput uploadInstanceInformationFile(@RequestParam("file") MultipartFile uploadedFile,@RequestParam("modelLayer") String modelLayerStr) throws DocumentException, IOException {
 		//////////////上传的环境本体文件，存储在D:\\workspace位置
 		if (uploadedFile == null) {
 			System.out.println("上传失败，无法找到文件！");
@@ -287,8 +287,254 @@ public class Controller {
 		ObjectMapper objectMapper=new ObjectMapper();
 		ModelLayer modelLayer=objectMapper.readValue(modelLayerStr,ModelLayer.class);
 		InstanceLayer instanceLayer= InstanceLayerService.getInstanceLayer(filePath,fileName,modelLayer);
+		OutputConstruct.InstanceLayerOutput instanceLayerOutput=new OutputConstruct.InstanceLayerOutput();
+		instanceLayerOutput.setInstanceLayer(instanceLayer);
+		instanceLayerOutput.setModelLayer(modelLayer);
 		System.out.println(fileName + "上传成功");
-		return instanceLayer;
+		return instanceLayerOutput;
 	}
+
+	/**
+	 * 解析规则，生成交互环境模型，并生成信息流图
+	 * */
+	@RequestMapping("/genererateInteractiveEnvironment")
+	@ResponseBody
+	public OutputConstruct.InteractiveLayerAndRules genererateInteractiveEnvironment(@RequestBody InputConstruct.ModelInstanceLayerAndRuleStrLists modelInstanceLayerAndRuleStrLists) throws IOException {
+
+		ModelLayer modelLayer=modelInstanceLayerAndRuleStrLists.getModelLayer();
+		InstanceLayer instanceLayer=modelInstanceLayerAndRuleStrLists.getInstanceLayer();
+		List<String> ruleTextLines=modelInstanceLayerAndRuleStrLists.getRuleTestLines();
+		List<Rule> rules=RuleService.getRuleList(ruleTextLines);
+		HashMap<String,Trigger> triggerMap=SystemModelGenerationService.getTriggerMapFromRules(rules,instanceLayer);
+		HashMap<String,Action> actionMap=SystemModelGenerationService.getActionMapFromRules(rules);
+		InstanceLayer interactiveEnvironment=SystemModelGenerationService.getInteractiveEnvironment(instanceLayer,modelLayer,triggerMap,actionMap);
+		HashMap<String, Instance> interactiveInstanceMap=InstanceLayerService.getInstanceMap(interactiveEnvironment);
+		String ifdFileName="ifd.dot";
+		StaticAnalysisService.generateIFD(triggerMap,actionMap,rules,interactiveEnvironment,interactiveInstanceMap,ifdFileName,AddressService.IFD_FILE_PATH);
+		OutputConstruct.InteractiveLayerAndRules interactiveLayerAndRules=new OutputConstruct.InteractiveLayerAndRules();
+		interactiveLayerAndRules.setInteractiveInstance(interactiveEnvironment);
+		interactiveLayerAndRules.setRules(rules);
+		interactiveLayerAndRules.setIfdFileName(ifdFileName);
+		return interactiveLayerAndRules;
+	}
+
+	/**
+	 * 生成单个场景对应的环境模型
+	 * */
+	@RequestMapping("/generateSingleScenario")
+	@ResponseBody
+	public List<String> generateSingleScenario(@RequestBody InputConstruct.SingleScenarioGenerateInput singleScenarioGenerateInput)  {
+		////生成多个场景的模型文件，运行时环境模型，还需要返回场景树
+		////先解析规则
+		ModelLayer modelLayer=singleScenarioGenerateInput.getModelLayer();
+		InstanceLayer instanceLayer=singleScenarioGenerateInput.getInstanceLayer();
+		List<Rule> rules=singleScenarioGenerateInput.getRules();
+		HashMap<String,Trigger> triggerMap=SystemModelGenerationService.getTriggerMapFromRules(rules,instanceLayer);
+		HashMap<String,Action> actionMap=SystemModelGenerationService.getActionMapFromRules(rules);
+		InstanceLayer interactiveEnvironment= singleScenarioGenerateInput.getInteractiveInstance();
+		HashMap<String, Instance> interactiveInstanceMap=InstanceLayerService.getInstanceMap(interactiveEnvironment);
+		String simulationTime=singleScenarioGenerateInput.getSimulationTime();
+		String modelFileName=singleScenarioGenerateInput.getModelFileName();
+		String tempModelFileName="temp-"+modelFileName;
+		List<String[]> attributeValues=singleScenarioGenerateInput.getAttributeValues();
+		String[] intoLocationTime=SystemModelGenerationService.getIntoLocationTime(simulationTime,instanceLayer.getHumanInstance());
+		SystemModelGenerationService.generateCommonModelFile(simulationTime,intoLocationTime,AddressService.MODEL_FILE_PATH,modelFileName,AddressService.MODEL_FILE_PATH,tempModelFileName,instanceLayer,rules,triggerMap,actionMap,interactiveEnvironment,interactiveInstanceMap);
+		String singleModelFileName="single-scenario-"+modelFileName;
+		SystemModelGenerationService.generateSingleScenario(AddressService.MODEL_FILE_PATH,tempModelFileName,AddressService.MODEL_FILE_PATH,singleModelFileName,modelLayer,rules,attributeValues);
+		List<String> fileName=new ArrayList<>();
+		fileName.add(singleModelFileName);
+		return fileName;
+	}
+
+	/**
+	 * 仿真单个场景
+	 * */
+	@RequestMapping("/simulateSingleScenario")
+	@ResponseBody
+	public Scenario simulateSingleScenario(@RequestBody InstanceLayer instanceLayer,String modelFileName)  {
+		String simulationResult=SimulationService.getSimulationResult(AddressService.UPPAAL_PATH,AddressService.MODEL_FILE_PATH,modelFileName,AddressService.SYSTEM);
+		String modelFilePrefix=modelFileName.substring(0,modelFileName.indexOf(".xml"));
+		String resultFileName=modelFilePrefix+".txt";
+		List<DataTimeValue> dataTimeValues=SimulationService.parseSimulationResult(simulationResult,instanceLayer,AddressService.SIMULATE_RESULT_FILE_PATH,resultFileName);
+		Scenario scenario=new Scenario();
+		scenario.setScenarioName(modelFilePrefix);
+		scenario.setDataTimeValues(dataTimeValues);
+		return scenario;
+	}
+	/**
+	 * 生成单个场景对应的环境模型
+	 * */
+	@RequestMapping("/genereteMultipleScenarios")
+	@ResponseBody
+	public ScenarioTree.ScenesTree genereteMultipleScenarios(@RequestBody InputConstruct.MultiScenarioGenerateInput multiScenarioGenerateInput)  {
+		////生成多个场景的模型文件，运行时环境模型，还需要返回场景树
+		////先解析规则
+		ModelLayer modelLayer=multiScenarioGenerateInput.getModelLayer();
+		InstanceLayer instanceLayer=multiScenarioGenerateInput.getInstanceLayer();
+		List<Rule> rules=multiScenarioGenerateInput.getRules();
+		HashMap<String,Trigger> triggerMap=SystemModelGenerationService.getTriggerMapFromRules(rules,instanceLayer);
+		HashMap<String,Action> actionMap=SystemModelGenerationService.getActionMapFromRules(rules);
+		InstanceLayer interactiveEnvironment= multiScenarioGenerateInput.getInteractiveInstance();
+		HashMap<String, Instance> interactiveInstanceMap=InstanceLayerService.getInstanceMap(interactiveEnvironment);
+		String simulationTime=multiScenarioGenerateInput.getSimulationTime();
+		String modelFileName=multiScenarioGenerateInput.getModelFileName();
+		String tempModelFileName="temp-"+modelFileName;
+		String[] intoLocationTime=SystemModelGenerationService.getIntoLocationTime(simulationTime,instanceLayer.getHumanInstance());
+		SystemModelGenerationService.generateCommonModelFile(simulationTime,intoLocationTime,AddressService.MODEL_FILE_PATH,modelFileName,AddressService.MODEL_FILE_PATH,tempModelFileName,instanceLayer,rules,triggerMap,actionMap,interactiveEnvironment,interactiveInstanceMap);
+		ScenarioTree.ScenesTree scenesTree=SystemModelGenerationService.generateMultiScenariosAccordingToTriggers(modelFileName,AddressService.MODEL_FILE_PATH,tempModelFileName,AddressService.MODEL_FILE_PATH,modelLayer,rules,triggerMap);
+
+		return scenesTree;
+	}
+
+	/**
+	 * 仿真所有场景
+	 * */
+	@RequestMapping("/simulateMultipleScenario")
+	@ResponseBody
+	public List<Scenario> simulateMultipleScenario(@RequestBody InputConstruct.MultiScenarioSimulateInput multiScenarioSimulateInput)  {
+		ScenarioTree.ScenesTree scenesTree=multiScenarioSimulateInput.getScenesTree();
+		String initModelFileName= multiScenarioSimulateInput.getModelFileName();
+		InstanceLayer instanceLayer= multiScenarioSimulateInput.getInstanceLayer();
+		List<Scenario> scenarios=SimulationService.getScenesTreeScenarioSimulationDataTimeValues(scenesTree,initModelFileName,instanceLayer,AddressService.UPPAAL_PATH,AddressService.MODEL_FILE_PATH,AddressService.SYSTEM,AddressService.SIMULATE_RESULT_FILE_PATH);
+
+		return scenarios;
+	}
+
+	@RequestMapping("/calculateDeviceStatesDuration")
+	@ResponseBody
+	public List<String[]> calculateDeviceStatesDuration(@RequestBody InputConstruct.ConsumptionInput consumptionInput){
+		DataTimeValue dataTimeValue=consumptionInput.getDataTimeValue();
+		DeviceInstance deviceInstance= consumptionInput.getDeviceInstance();
+		List<String[]> deviceStatesDuration=AnalysisService.getDeviceStatesDuration(dataTimeValue,deviceInstance);
+		return deviceStatesDuration;
+	}
+
+	@RequestMapping("/searchAllScenariosConflict")
+	@ResponseBody
+	public List<Scenario> searchAllScenariosConflict(@RequestBody List<Scenario> scenarios) {
+		for (Scenario scenario:scenarios){
+			List<DeviceConflict> deviceConflicts=AnalysisService.getDevicesConflict(scenario.getDataTimeValues());
+			scenario.setDeviceConflicts(deviceConflicts);
+		}
+		return scenarios;
+	}
+
+	@RequestMapping("/searchAllScenariosJitter")
+	@ResponseBody
+	public List<Scenario> searchAllScenariosJitter(@RequestBody List<Scenario> scenarios,String intervalTime,String simulationTime,String equivalentTime) {
+		double interval=Double.parseDouble(intervalTime)/(Double.parseDouble(equivalentTime)*3600)*Double.parseDouble(simulationTime);
+		for (Scenario scenario:scenarios){
+			List<DeviceJitter> deviceJitters=AnalysisService.getDevicesJitter(scenario.getDataTimeValues(),interval);
+			scenario.setDeviceJitters(deviceJitters);
+		}
+		return scenarios;
+	}
+
+	@RequestMapping("/locateAllScenariosConflict")
+	@ResponseBody
+	public List<List<List<DeviceStateAndCausingRules>>> locateAllScenariosConflict(@RequestBody InputConstruct.LocationInput locationInput) {
+		List<Scenario> scenarios=locationInput.getScenarios();
+		List<Rule> rules=locationInput.getRules();
+		List<DeviceInstance> deviceInstances=locationInput.getDeviceInstances();
+		String ifdFileName=locationInput.getIfdFileName();
+		HashMap<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesHashMap=AnalysisService.getDeviceConflictAllStatesRuleAndPreRulesHashMap(rules,ifdFileName,scenarios,deviceInstances);
+
+		List<List<List<DeviceStateAndCausingRules>>> allSynthesizedDeviceAllStatesRuleAndPreRules=new ArrayList<>();
+		for (Map.Entry<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesEntry:deviceAllStatesRuleAndPreRulesHashMap.entrySet()){
+			List<List<DeviceStateAndCausingRules>> deviceAllStatesRuleAndPreRules=deviceAllStatesRuleAndPreRulesEntry.getValue();
+			if (deviceAllStatesRuleAndPreRules.size()>0){
+				AnalysisService.getDeviceConflictOrJitterStatesCausingRulesSynthesized(deviceAllStatesRuleAndPreRules);
+				allSynthesizedDeviceAllStatesRuleAndPreRules.add(deviceAllStatesRuleAndPreRules);
+			}
+		}
+
+		return allSynthesizedDeviceAllStatesRuleAndPreRules;
+	}
+
+	@RequestMapping("/locateAllScenariosJitter")
+	@ResponseBody
+	public List<List<List<DeviceStateAndCausingRules>>> locateAllScenariosJitter(@RequestBody InputConstruct.LocationInput locationInput) {
+		List<Scenario> scenarios=locationInput.getScenarios();
+		List<Rule> rules=locationInput.getRules();
+		List<DeviceInstance> deviceInstances=locationInput.getDeviceInstances();
+		String ifdFileName=locationInput.getIfdFileName();
+		HashMap<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesHashMap=AnalysisService.getDeviceJitterAllStatesRuleAndPreRulesHashMap(rules,ifdFileName,scenarios,deviceInstances);
+
+		List<List<List<DeviceStateAndCausingRules>>> allSynthesizedDeviceAllStatesRuleAndPreRules=new ArrayList<>();
+		for (Map.Entry<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesEntry:deviceAllStatesRuleAndPreRulesHashMap.entrySet()){
+			List<List<DeviceStateAndCausingRules>> deviceAllStatesRuleAndPreRules=deviceAllStatesRuleAndPreRulesEntry.getValue();
+			if (deviceAllStatesRuleAndPreRules.size()>0){
+				///综合原因
+				AnalysisService.getDeviceConflictOrJitterStatesCausingRulesSynthesized(deviceAllStatesRuleAndPreRules);
+
+				allSynthesizedDeviceAllStatesRuleAndPreRules.add(deviceAllStatesRuleAndPreRules);
+			}
+		}
+
+		return allSynthesizedDeviceAllStatesRuleAndPreRules;
+	}
+
+	@RequestMapping("/searchSingleScenarioConflict")
+	@ResponseBody
+	public Scenario searchSingleScenarioConflict(@RequestBody Scenario scenario) {
+		List<DeviceConflict> deviceConflicts=AnalysisService.getDevicesConflict(scenario.getDataTimeValues());
+		scenario.setDeviceConflicts(deviceConflicts);
+		return scenario;
+	}
+
+	@RequestMapping("/searchSingleScenarioJitter")
+	@ResponseBody
+	public Scenario searchSingleScenarioJitter(@RequestBody Scenario scenario,String intervalTime,String simulationTime,String equivalentTime) {
+		double interval=Double.parseDouble(intervalTime)/(Double.parseDouble(equivalentTime)*3600)*Double.parseDouble(simulationTime);
+		List<DeviceJitter> deviceJitters=AnalysisService.getDevicesJitter(scenario.getDataTimeValues(),interval);
+		scenario.setDeviceJitters(deviceJitters);
+		return scenario;
+	}
+
+	@RequestMapping("/locateSingleScenariosAllConflict")
+	@ResponseBody
+	public List<List<List<DeviceStateAndCausingRules>>> locateSingleScenariosAllConflict(@RequestBody InputConstruct.LocationInput locationInput) {
+		List<Scenario> scenarios=locationInput.getScenarios();
+		List<Rule> rules=locationInput.getRules();
+		List<DeviceInstance> deviceInstances=locationInput.getDeviceInstances();
+		String ifdFileName=locationInput.getIfdFileName();
+		HashMap<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesHashMap=AnalysisService.getDeviceConflictAllStatesRuleAndPreRulesHashMap(rules,ifdFileName,scenarios,deviceInstances);
+		List<List<List<DeviceStateAndCausingRules>>> devicesAllStatesRuleAndPreRules=new ArrayList<>();
+		for (Map.Entry<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesEntry:deviceAllStatesRuleAndPreRulesHashMap.entrySet()){
+			List<List<DeviceStateAndCausingRules>> deviceAllStatesRuleAndPreRules=deviceAllStatesRuleAndPreRulesEntry.getValue();
+			devicesAllStatesRuleAndPreRules.add(deviceAllStatesRuleAndPreRules);
+		}
+		return devicesAllStatesRuleAndPreRules;
+	}
+
+
+
+	@RequestMapping("/locateSingleScenariosAllJitter")
+	@ResponseBody
+	public List<List<List<DeviceStateAndCausingRules>>> locateSingleScenariosAllJitter(@RequestBody InputConstruct.LocationInput locationInput) {
+		List<Scenario> scenarios=locationInput.getScenarios();
+		List<Rule> rules=locationInput.getRules();
+		List<DeviceInstance> deviceInstances=locationInput.getDeviceInstances();
+		String ifdFileName=locationInput.getIfdFileName();
+		HashMap<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesHashMap=AnalysisService.getDeviceJitterAllStatesRuleAndPreRulesHashMap(rules,ifdFileName,scenarios,deviceInstances);
+		List<List<List<DeviceStateAndCausingRules>>> devicesAllStatesRuleAndPreRules=new ArrayList<>();
+		for (Map.Entry<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesEntry:deviceAllStatesRuleAndPreRulesHashMap.entrySet()){
+			List<List<DeviceStateAndCausingRules>> deviceAllStatesRuleAndPreRules=deviceAllStatesRuleAndPreRulesEntry.getValue();
+			devicesAllStatesRuleAndPreRules.add(deviceAllStatesRuleAndPreRules);
+		}
+		return devicesAllStatesRuleAndPreRules;
+	}
+
+	@RequestMapping("/getCausingRulesSynthesized")
+	@ResponseBody
+	public List<List<List<DeviceStateAndCausingRules>>> getCausingRulesSynthesized(@RequestBody List<List<List<DeviceStateAndCausingRules>>> devicesAllStatesRuleAndPreRules) {
+
+		for (List<List<DeviceStateAndCausingRules>> deviceAllStatesRuleAndPreRules:devicesAllStatesRuleAndPreRules){
+			AnalysisService.getDeviceConflictOrJitterStatesCausingRulesSynthesized(deviceAllStatesRuleAndPreRules);
+		}
+		return devicesAllStatesRuleAndPreRules;
+	}
+
+
 	
 }

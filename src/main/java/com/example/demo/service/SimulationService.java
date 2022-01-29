@@ -6,7 +6,12 @@ import org.springframework.stereotype.Service;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 仿真后获得仿真路径，对仿真路径进行解析
@@ -86,6 +91,15 @@ public class SimulationService {
             }
         }
 
+        getDataTimeValue(dataTimeValue,trace);
+        return dataTimeValue;
+    }
+
+    public static void getDataTimeValue(DataTimeValue dataTimeValue, String trace){
+        int index=trace.indexOf(": (");
+        if (index<0){
+            return;
+        }
         int rIndex=trace.lastIndexOf(")");
         trace=trace.substring(index+": (".length(),rIndex);    ///trace：0,0) (0,0) (300.0099999998757,0
         String[] timeValueStrs=trace.split("\\) \\(");   ///按 ) ( 切割
@@ -113,7 +127,6 @@ public class SimulationService {
             }
             dataTimeValue.getTimeValues().add(timeValue);
         }
-        return dataTimeValue;
     }
 
     ////把仿真结果写入到文档中
@@ -213,5 +226,51 @@ public class SimulationService {
         command.append("./verifyta -O std "+filePath+fileName);
         return command.toString();
     }
+
+
+    ///对多个场景的仿真,如果resultFilePath为""，则不生成仿真trace文件
+    public static List<Scenario> getScenesTreeScenarioSimulationDataTimeValues(ScenarioTree.ScenesTree scenesTree,String initModelFileName,InstanceLayer instanceLayer,
+                                                                     String uppaalPath,String modelFilePath,String system,String resultFilePath){
+        ////可以考虑多线程完成
+        final String modelFilePrefix=initModelFileName.substring(0,initModelFileName.indexOf(".xml"));
+        List<Scenario> scenarios=new ArrayList<>();
+        ExecutorService executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(1000));
+        for (int i=0;i<scenesTree.getChildren().size();i++){
+            final String scenarioId=scenesTree.getChildren().get(i).getName();
+            final String modelFileName=modelFilePrefix+"-"+scenarioId+".xml";
+            Runnable runnable=()->{
+                ///先仿真
+                String simulationResult=getSimulationResult(uppaalPath,modelFilePath,modelFileName,system);
+                ///再解析出dataTimeValue
+                String resultFileName=modelFilePrefix+"-"+scenarioId+".txt";
+                List<DataTimeValue> dataTimeValues=parseSimulationResult(simulationResult,instanceLayer,resultFilePath,resultFileName);
+                Scenario scenario=new Scenario();
+                scenario.setScenarioName(scenarioId);
+                scenario.setDataTimeValues(dataTimeValues);
+                scenarios.add(scenario);
+            };
+            executorService.submit(runnable);
+        }
+        executorService.shutdown();
+        try {
+            executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        ////排序
+        Comparator<Scenario> c=new Comparator<Scenario>() {
+            @Override
+            public int compare(Scenario o1, Scenario o2) {
+                int sceneNum1=Integer.parseInt(o1.getScenarioName().substring("scenario-".length()));
+                int sceneNum2=Integer.parseInt(o2.getScenarioName().substring("scenario-".length()));
+                return sceneNum1-sceneNum2;
+            }
+        };
+        scenarios.sort(c);
+        return scenarios;
+    }
+
 
 }

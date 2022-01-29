@@ -23,7 +23,7 @@ import org.dom4j.io.SAXReader;
 import org.dom4j.io.XMLWriter;
 
 import com.example.demo.bean.Action;
-import com.example.demo.bean.Attribute;
+import com.example.demo.bean.Attribute_;
 import com.example.demo.bean.BiddableType;
 import com.example.demo.bean.DeviceDetail;
 import com.example.demo.bean.DeviceType;
@@ -41,9 +41,9 @@ import com.example.demo.bean.ScenarioTree.AttributeValue;
 public class SystemModelService {
 	
 	///////////////生成一个最佳场景
-	public static void generateBestScenarioModel(List<Rule> rules,List<DeviceDetail> devices,List<DeviceType> deviceTypes,
-			List<BiddableType> biddableTypes,List<SensorType> sensorTypes,List<Attribute> attributes,String modelFileName,String modelFilePath,
-			List<GraphNode> graphNodes,String bestScenarioFileName,String simulationTime) throws DocumentException, IOException {
+	public static void generateBestScenarioModel(List<Rule> rules, List<DeviceDetail> devices, List<DeviceType> deviceTypes,
+												 List<BiddableType> biddableTypes, List<SensorType> sensorTypes, List<Attribute_> attributes, String modelFileName, String modelFilePath,
+												 List<GraphNode> graphNodes, String bestScenarioFileName, String simulationTime) throws DocumentException, IOException {
 		/////获得所有模型
 		List<TemplGraph> templGraphs=TemplGraphService.getTemplGraphs(modelFileName, modelFilePath);
 		/////获得控制器模型
@@ -89,7 +89,7 @@ public class SystemModelService {
 	}
 	
 	////生成单个最佳场景	
-	public static List<String[]> getBestScenarioAttributesValue(List<GraphNode> graphNodes,List<DeviceDetail> devices,List<BiddableType> biddables,List<Attribute> attributes,HashMap<String,Rule> ruleMap) {
+	public static List<String[]> getBestScenarioAttributesValue(List<GraphNode> graphNodes, List<DeviceDetail> devices, List<BiddableType> biddables, List<Attribute_> attributes, HashMap<String,Rule> ruleMap) {
 
 		HashMap<String,DeviceDetail> deviceMap=new HashMap<>();
 		for(DeviceDetail device:devices) {
@@ -102,7 +102,7 @@ public class SystemModelService {
 		List<String[]> attributesValue=new ArrayList<>();
 		
 		////分类获得初始条件规则，获得各attribute的初始值
-		for(Attribute attribute:attributes) {
+		for(Attribute_ attribute:attributes) {
 			String[] attributeValue=new String[3];
 			attributeValue[0]="clock";
 			attributeValue[1]=attribute.getAttribute();
@@ -319,8 +319,8 @@ public class SystemModelService {
 	}
 	
 	///////////////生成多个场景，根据temperature等biddable类型的的trigger取值分段获得
-	public static void generateAllScenarios(List<Action> actions,List<Trigger> triggers,List<String[]> declarations,List<DeviceDetail> devices,List<DeviceType> deviceTypes,
-			List<BiddableType> biddables,List<SensorType> sensors,List<Attribute> attributes, String fileName,String filePath,String simulationTime) throws DocumentException, IOException {
+	public static void generateAllScenarios(List<Action> actions, List<Trigger> triggers, List<String[]> declarations, List<DeviceDetail> devices, List<DeviceType> deviceTypes,
+											List<BiddableType> biddables, List<SensorType> sensors, List<Attribute_> attributes, String fileName, String filePath, String simulationTime) throws DocumentException, IOException {
 		
 		////////找到涉及相同causal类型的属性的triggers，分别获得分段点，用于多个场景的初始值分段赋值
 		List<List<Trigger>> attributesSameTriggers=new ArrayList<List<Trigger>>();
@@ -555,7 +555,7 @@ public class SystemModelService {
 	}
 	
 	///////获得模型声明
-	public static String getModelDeclaration(List<Action> actions,List<Trigger> triggers,List<DeviceDetail> devices,List<BiddableType> biddables,List<TemplGraph> controllers,List<Attribute> attributes , String simulationTime) {
+	public static String getModelDeclaration(List<Action> actions, List<Trigger> triggers, List<DeviceDetail> devices, List<BiddableType> biddables, List<TemplGraph> controllers, List<Attribute_> attributes , String simulationTime) {
 		StringBuilder sb=new StringBuilder();
 		////先实例化
 		////Person的实例化需要知道仿真时间，先等等
@@ -691,10 +691,10 @@ public class SystemModelService {
 	
 	
 	/////////////获得各参数的声明
-	public static List<String[]> generateDeclaration(List<Rule> rules,List<BiddableType> biddableTypes,List<DeviceType> deviceTypes,List<SensorType> sensorTypes,List<Attribute> attributes,List<TemplGraph> templGraphs) {
+	public static List<String[]> generateDeclaration(List<Rule> rules, List<BiddableType> biddableTypes, List<DeviceType> deviceTypes, List<SensorType> sensorTypes, List<Attribute_> attributes, List<TemplGraph> templGraphs) {
 		List<String[]> declarations=new ArrayList<String[]>();  ////clock temperature 10.0
 		if(attributes!=null) {
-			for(Attribute attribute:attributes) {
+			for(Attribute_ attribute:attributes) {
 				////先根据attribute获得对应参数
 				String[] declaration=new String[3];
 				declaration[0]="clock";
@@ -1045,8 +1045,8 @@ public class SystemModelService {
 		
 	}
 	
-	public static DeclarationQueryResult generateModelDeclarationAndQuery(String modelFilePath,String changedFileName,List<Rule> rules,List<DeviceDetail> devices,List<DeviceType> deviceTypes,
-			List<BiddableType> biddableTypes,List<SensorType> sensorTypes,List<Attribute> attributes,String simulationTime) throws DocumentException, IOException {
+	public static DeclarationQueryResult generateModelDeclarationAndQuery(String modelFilePath, String changedFileName, List<Rule> rules, List<DeviceDetail> devices, List<DeviceType> deviceTypes,
+																		  List<BiddableType> biddableTypes, List<SensorType> sensorTypes, List<Attribute_> attributes, String simulationTime) throws DocumentException, IOException {
 		SAXReader reader= new SAXReader();
 		Document document = reader.read(new File(modelFilePath+changedFileName));
 		Element rootElement=document.getRootElement();

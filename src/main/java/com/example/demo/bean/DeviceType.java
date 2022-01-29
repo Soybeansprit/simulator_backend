@@ -42,6 +42,9 @@ public class DeviceType extends EntityType{
 	}
 
 	public static class StateEffect{
+		public StateEffect() {
+		}
+
 		private String state="";
 		private List<String[]> effects=new ArrayList<>();
 		public String getState() {
@@ -84,7 +87,10 @@ public class DeviceType extends EntityType{
 	}
 
 	////状态信息
-	public class StateSyncValueEffect{
+	public static class StateSyncValueEffect{
+		public StateSyncValueEffect() {
+		}
+
 		private String stateName="";  ///状态名
 		private String stateId="";    ///对应xml文件中的节点id
 		private String synchronisation="";   ///对应同步信号通道

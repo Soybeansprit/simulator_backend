@@ -112,6 +112,250 @@ public class InputConstruct {
 		}
 		
 	}
-	
+
+
+
+	public static class ModelInstanceLayerAndRuleStrLists{
+		private ModelLayer modelLayer=new ModelLayer();
+		private InstanceLayer instanceLayer=new InstanceLayer();
+		private List<String> ruleTestLines=new ArrayList<>();
+
+		public ModelLayer getModelLayer() {
+			return modelLayer;
+		}
+
+		public void setModelLayer(ModelLayer modelLayer) {
+			this.modelLayer = modelLayer;
+		}
+
+		public InstanceLayer getInstanceLayer() {
+			return instanceLayer;
+		}
+
+		public void setInstanceLayer(InstanceLayer instanceLayer) {
+			this.instanceLayer = instanceLayer;
+		}
+
+		public List<String> getRuleTestLines() {
+			return ruleTestLines;
+		}
+
+		public void setRuleTestLines(List<String> ruleTestLines) {
+			this.ruleTestLines = ruleTestLines;
+		}
+	}
+
+	public static class SingleScenarioGenerateInput{
+		private String modelFileName="";
+		private ModelLayer modelLayer=new ModelLayer();
+		private InstanceLayer instanceLayer=new InstanceLayer();
+		private InstanceLayer interactiveInstance=new InstanceLayer();
+		private List<Rule> rules=new ArrayList<>();
+		private String simulationTime="";
+		private List<String[]> attributeValues=new ArrayList<>();
+
+		public String getModelFileName() {
+			return modelFileName;
+		}
+
+		public void setModelFileName(String modelFileName) {
+			this.modelFileName = modelFileName;
+		}
+
+		public ModelLayer getModelLayer() {
+			return modelLayer;
+		}
+
+		public void setModelLayer(ModelLayer modelLayer) {
+			this.modelLayer = modelLayer;
+		}
+
+		public InstanceLayer getInstanceLayer() {
+			return instanceLayer;
+		}
+
+		public void setInstanceLayer(InstanceLayer instanceLayer) {
+			this.instanceLayer = instanceLayer;
+		}
+
+		public InstanceLayer getInteractiveInstance() {
+			return interactiveInstance;
+		}
+
+		public void setInteractiveInstance(InstanceLayer interactiveInstance) {
+			this.interactiveInstance = interactiveInstance;
+		}
+
+		public List<Rule> getRules() {
+			return rules;
+		}
+
+		public void setRules(List<Rule> rules) {
+			this.rules = rules;
+		}
+
+		public String getSimulationTime() {
+			return simulationTime;
+		}
+
+		public void setSimulationTime(String simulationTime) {
+			this.simulationTime = simulationTime;
+		}
+
+		public List<String[]> getAttributeValues() {
+			return attributeValues;
+		}
+
+		public void setAttributeValues(List<String[]> attributeValues) {
+			this.attributeValues = attributeValues;
+		}
+	}
+
+	public static class MultiScenarioGenerateInput {
+		private String modelFileName="";
+		private ModelLayer modelLayer=new ModelLayer();
+		private InstanceLayer instanceLayer=new InstanceLayer();
+		private InstanceLayer interactiveInstance=new InstanceLayer();
+		private List<Rule> rules=new ArrayList<>();
+		private String simulationTime="";
+
+		public String getModelFileName() {
+			return modelFileName;
+		}
+
+		public void setModelFileName(String modelFileName) {
+			this.modelFileName = modelFileName;
+		}
+
+		public ModelLayer getModelLayer() {
+			return modelLayer;
+		}
+
+		public void setModelLayer(ModelLayer modelLayer) {
+			this.modelLayer = modelLayer;
+		}
+
+		public InstanceLayer getInstanceLayer() {
+			return instanceLayer;
+		}
+
+		public void setInstanceLayer(InstanceLayer instanceLayer) {
+			this.instanceLayer = instanceLayer;
+		}
+
+		public InstanceLayer getInteractiveInstance() {
+			return interactiveInstance;
+		}
+
+		public void setInteractiveInstance(InstanceLayer interactiveInstance) {
+			this.interactiveInstance = interactiveInstance;
+		}
+
+		public List<Rule> getRules() {
+			return rules;
+		}
+
+		public void setRules(List<Rule> rules) {
+			this.rules = rules;
+		}
+
+		public String getSimulationTime() {
+			return simulationTime;
+		}
+
+		public void setSimulationTime(String simulationTime) {
+			this.simulationTime = simulationTime;
+		}
+	}
+
+	public static class MultiScenarioSimulateInput {
+		private String modelFileName="";
+		private InstanceLayer instanceLayer=new InstanceLayer();
+		private ScenesTree scenesTree=new ScenesTree();
+
+		public String getModelFileName() {
+			return modelFileName;
+		}
+
+		public void setModelFileName(String modelFileName) {
+			this.modelFileName = modelFileName;
+		}
+
+		public InstanceLayer getInstanceLayer() {
+			return instanceLayer;
+		}
+
+		public void setInstanceLayer(InstanceLayer instanceLayer) {
+			this.instanceLayer = instanceLayer;
+		}
+
+		public ScenesTree getScenesTree() {
+			return scenesTree;
+		}
+
+		public void setScenesTree(ScenesTree scenesTree) {
+			this.scenesTree = scenesTree;
+		}
+	}
+
+	public static class ConsumptionInput{
+		private DataTimeValue dataTimeValue=new DataTimeValue();
+		private DeviceInstance deviceInstance=new DeviceInstance();
+
+		public DataTimeValue getDataTimeValue() {
+			return dataTimeValue;
+		}
+
+		public void setDataTimeValue(DataTimeValue dataTimeValue) {
+			this.dataTimeValue = dataTimeValue;
+		}
+
+		public DeviceInstance getDeviceInstance() {
+			return deviceInstance;
+		}
+
+		public void setDeviceInstance(DeviceInstance deviceInstance) {
+			this.deviceInstance = deviceInstance;
+		}
+	}
+
+	public static class LocationInput{
+		private List<DeviceInstance> deviceInstances=new ArrayList<>();
+		private List<Scenario> scenarios=new ArrayList<>();
+		private List<Rule> rules=new ArrayList<>();
+		private String ifdFileName="";
+
+		public List<DeviceInstance> getDeviceInstances() {
+			return deviceInstances;
+		}
+
+		public void setDeviceInstances(List<DeviceInstance> deviceInstances) {
+			this.deviceInstances = deviceInstances;
+		}
+
+		public List<Scenario> getScenarios() {
+			return scenarios;
+		}
+
+		public List<Rule> getRules() {
+			return rules;
+		}
+
+		public void setRules(List<Rule> rules) {
+			this.rules = rules;
+		}
+
+		public void setScenarios(List<Scenario> scenarios) {
+			this.scenarios = scenarios;
+		}
+
+		public String getIfdFileName() {
+			return ifdFileName;
+		}
+
+		public void setIfdFileName(String ifdFileName) {
+			this.ifdFileName = ifdFileName;
+		}
+	}
 	
 }

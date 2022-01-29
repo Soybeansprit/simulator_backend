@@ -20,7 +20,10 @@ public class AttributeEntityType extends EntityType{
         this.attributes = attributes;
     }
 
-    public class Attribute{
+    public static class Attribute{
+        public Attribute() {
+        }
+
         private String content="";  ///内容 temperature'==dtemper   更改了模型，添加了一个Attribute模型，用来表示各个属性的变化
         private String attribute="";  ////temperature
         private String delta="";  ////dtemper

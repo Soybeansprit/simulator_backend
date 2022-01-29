@@ -11,10 +11,8 @@ import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
 
 import javax.print.Doc;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import javax.xml.crypto.Data;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -33,19 +31,21 @@ import java.util.concurrent.TimeUnit;
 public class SystemModelGenerationService {
     public static void main(String[] args) throws DocumentException, IOException {
 
-        String ruleText="rule1: IF Bulb_0.bon  AND temperature>30 THEN AirConditioner_0.turn_ac_cool\n" +
-                "\n" +
-                "rule2: IF AirConditioner_0.cool THEN Window_0.close_window\n" +
-                "\n" +
-                "rule3 : IF coppm>80 THEN  Humidifier_0.turn_hum_on\n" +
-                "\n" +
-                "rule4: IF Emma.living_room THEN Window_0.open_window, Bulb_0.turn_bulb_on\n" +
-                "\n" +
-                "IF Rain.isRain THEN Window_0.close_window\n" +
-                "IF temperature<10 THEN AirConditioner_0.turn_ac_heat\n" +
-                "IF temperature<25 THEN AirConditioner_0.turn_ac_off\n" +
-                "\n" +
-                "IF Bulb_0.boff for 3 THEN TV_0.turn_tv_off   ";
+        String ruleText="IF co2ppm>800 THEN purifier_0.turn_ap_on\n" +
+                "IF co2ppm<=800 THEN purifier_0.turn_ap_off\n" +
+                "IF humidity>=50 THEN humidifier_0.turn_hum_off\n" +
+                "IF humidity<50 THEN humidifier_0.turn_hum_on\n" +
+                "IF ac_0.cool THEN window_0.close_window\n" +
+                "IF ac_0.heat THEN window_0.close_window\n" +
+                "IF emma.out THEN vacuum_0.turn_vacuum_off\n" +
+                "IF fan_0.fon THEN heater_0.turn_heat_off\n" +
+                "IF temperature>28 THEN fan_0.turn_fan_on\n" +
+                "IF temperature<24 THEN ac_0.turn_ac_heat\n" +
+                "IF temperature<28 THEN fan_0.turn_fan_off\n" +
+                "IF temperature>24 THEN ac_0.turn_ac_off\n" +
+                "IF alarm_0.alarmon THEN window_0.open_window\n" +
+                "IF tv_0.tvon THEN audio_0.turn_audio_on\n" +
+                "IF brightness>20000 THEN bulb_0.turn_bulb_off\n";
         List<String> locations=new ArrayList<>();
 //        locations.add("living_room");
 //        locations.add("kitchen");
@@ -53,100 +53,169 @@ public class SystemModelGenerationService {
 //        locations.add("bedroom");
 //        locations.add("out");
         ModelLayer modelLayer=ModelLayerService.getModelLayer("D:\\example\\例子\\","ontology.xml","changed-ontology.xml",locations);
-        InstanceLayer instanceLayer=InstanceLayerService.getInstanceLayer("D:\\example\\例子\\","information.properties",modelLayer);
-        List<Rule> rules=RuleService.getRuleList(ruleText);
-        HashMap<String,Trigger> triggerMap=getTriggerMapFromRules(rules,instanceLayer);
-        HashMap<String,Action> actionMap=getActionMapFromRules(rules);
-        InstanceLayer interactiveEnvironment=getInteractiveEnvironment(instanceLayer,modelLayer,triggerMap,actionMap);
-        HashMap<String, Instance> interactiveInstanceMap=InstanceLayerService.getInstanceMap(interactiveEnvironment);
-        ///生成IFD
-        StaticAnalysisService.generateIFD(triggerMap,actionMap,rules,interactiveEnvironment,interactiveInstanceMap,"ifd.dot","D:\\example\\例子\\");
-        String[] intoLocationTime=getIntoLocationTime("300",instanceLayer.getHumanInstance());
-        generateCommonModelFile("300",intoLocationTime,"D:\\example\\例子\\","changed-ontology.xml",instanceLayer,rules,triggerMap,actionMap,interactiveEnvironment,interactiveInstanceMap);
-        List<String[]> attributeValues=new ArrayList<>();
-        String[] attributeValue1={"temperature","40.0"};
-        String[] attributeValue2={"coppm","100.0"};
-        attributeValues.add(attributeValue1);
-        attributeValues.add(attributeValue2);
-        generateSingleScenario("D:\\example\\例子\\","changed-ontology.xml","D:\\example\\例子\\test\\","new-scenario.xml",modelLayer,rules,attributeValues);
+        InstanceLayer instanceLayer=InstanceLayerService.getInstanceLayer("D:\\example\\例子\\实验\\","bianhan-information.properties",modelLayer);
+//        List<Rule> rules=RuleService.getRuleList(ruleText);
+//        HashMap<String,Trigger> triggerMap=getTriggerMapFromRules(rules,instanceLayer);
+//        HashMap<String,Action> actionMap=getActionMapFromRules(rules);
+//        InstanceLayer interactiveEnvironment=getInteractiveEnvironment(instanceLayer,modelLayer,triggerMap,actionMap);
+//        HashMap<String, Instance> interactiveInstanceMap=InstanceLayerService.getInstanceMap(interactiveEnvironment);
+//        ///生成IFD
+//        StaticAnalysisService.generateIFD(triggerMap,actionMap,rules,interactiveEnvironment,interactiveInstanceMap,"ifd.dot","D:\\example\\例子\\");
+//        String[] intoLocationTime=getIntoLocationTime("300",instanceLayer.getHumanInstance());
+//        generateCommonModelFile("300",intoLocationTime,"D:\\example\\例子\\","changed-ontology.xml","D:\\example\\例子\\","changed-ontology.xml",instanceLayer,rules,triggerMap,actionMap,interactiveEnvironment,interactiveInstanceMap);
+//        List<String[]> attributeValues=new ArrayList<>();
+//        String[] attributeValue1={"temperature","35.0"};
+//        String[] attributeValue2={"co2ppm","500.0"};
+//        String[] attributeValue3={"humidity","40.0"};
+//        String[] attributeValue4={"brightness","500.0"};
+//        attributeValues.add(attributeValue1);
+//        attributeValues.add(attributeValue2);
+//        attributeValues.add(attributeValue3);
+//        attributeValues.add(attributeValue4);
+//        generateSingleScenario("D:\\example\\例子\\","changed-ontology.xml","D:\\example\\例子\\实验\\","yx-es.xml",modelLayer,rules,attributeValues);
+//
+////        getInteractiveEnvironment(instanceLayer,modelLayer,rules,"D:\\example\\例子\\","changed-ontology.xml");
+//        String simulationResult=SimulationService.getSimulationResult(AddressService.UPPAAL_PATH,"D:\\example\\例子\\实验\\","yx-es.xml","windows");
+//        List<DataTimeValue> dataTimeValues=SimulationService.parseSimulationResult(simulationResult,instanceLayer,"D:\\example\\例子\\实验\\","yx-es.txt");
+////
+//        double temperSat=AnalysisService.getSatisfaction("temperature",24,28,dataTimeValues);
+//        double humiSat=AnalysisService.getSatisfaction("humidity",50,Double.MAX_VALUE,dataTimeValues);
+//        double co2Sat=AnalysisService.getSatisfaction("co2ppm",-Double.MAX_VALUE,800,dataTimeValues);
+//        double brightSat=AnalysisService.getSatisfaction("brightness",300,Double.MAX_VALUE,dataTimeValues);
+//        System.out.println(temperSat);
+//        System.out.println(humiSat);
+//        System.out.println(co2Sat);
+//        System.out.println(brightSat);
+//        System.out.println();
 
-//        getInteractiveEnvironment(instanceLayer,modelLayer,rules,"D:\\example\\例子\\","changed-ontology.xml");
-        String simulationResult=SimulationService.getSimulationResult(AddressService.UPPAAL_PATH,"D:\\example\\例子\\test\\","new-scenario.xml","windows");
-        List<DataTimeValue> dataTimeValues=SimulationService.parseSimulationResult(simulationResult,instanceLayer,"D:\\example\\例子\\test\\","new-scenario.txt");
-        double satisfaction=AnalysisService.getSatisfaction("temperature",5.0,9.0,dataTimeValues);
-        System.out.println(satisfaction);
-        List<List<String[]>> deviceStatesDurationList=AnalysisService.getDeviceStatesDurationList(dataTimeValues,instanceLayer);
-        System.out.println(deviceStatesDurationList);
-        List<DeviceConflict> deviceConflicts=AnalysisService.getDevicesConflict(dataTimeValues);
-        System.out.println(deviceConflicts);
-        List<DeviceJitter> deviceJitters=AnalysisService.getDevicesJitter(dataTimeValues,3);
-        System.out.println(deviceJitters);
-        AnalysisService.getPropertyConformDurations(dataTimeValues,"!temperature<8&AirConditioner_0.heat",instanceLayer);
-//        List<List<List<String[]>>> allDeviceConflictDirectRules=AnalysisService.getAllDeviceConflictDirectRules(deviceConflicts,dataTimeValues,instanceLayer,rules);
-//        for (List<List<String[]>> allConflictTimeAndRelatedRules:allDeviceConflictDirectRules){
-//            List<List<String[]>> synthesizedConflictDirectRules=AnalysisService.getConflictDirectRulesSynthesize(allConflictTimeAndRelatedRules);
-//            System.out.println(synthesizedConflictDirectRules);
+
+//        List<List<String[]>> deviceStatesDurationList=AnalysisService.getDeviceStatesDurationList(dataTimeValues,instanceLayer);
+//        System.out.println(deviceStatesDurationList);
+//        List<DeviceConflict> deviceConflicts=AnalysisService.getDevicesConflict(dataTimeValues);
+//        System.out.println(deviceConflicts);
+//        List<DeviceJitter> deviceJitters=AnalysisService.getDevicesJitter(dataTimeValues,3);
+//        System.out.println(deviceJitters);
+//        AnalysisService.getPropertyConformDurations(dataTimeValues,"!temperature<8&AirConditioner_0.heat",instanceLayer);
+////        List<List<List<String[]>>> allDeviceConflictDirectRules=AnalysisService.getAllDeviceConflictDirectRules(deviceConflicts,dataTimeValues,instanceLayer,rules);
+////        for (List<List<String[]>> allConflictTimeAndRelatedRules:allDeviceConflictDirectRules){
+////            List<List<String[]>> synthesizedConflictDirectRules=AnalysisService.getConflictDirectRulesSynthesize(allConflictTimeAndRelatedRules);
+////            System.out.println(synthesizedConflictDirectRules);
+////        }
+//        HashMap<String,Rule> ruleHashMap=new HashMap<>();
+//        for (Rule rule:rules){
+//            ruleHashMap.put(rule.getRuleName(),rule);
 //        }
-        HashMap<String,Rule> ruleHashMap=new HashMap<>();
-        for (Rule rule:rules){
-            ruleHashMap.put(rule.getRuleName(),rule);
-        }
-        HashMap<String,DataTimeValue> dataTimeValueHashMap=new HashMap<>();
+//        HashMap<String,DataTimeValue> dataTimeValueHashMap=new HashMap<>();
+//        for (DataTimeValue dataTimeValue:dataTimeValues){
+//            dataTimeValueHashMap.put(dataTimeValue.getDataName(),dataTimeValue);
+//        }
+//        RuleAndPreRule currentRule=new RuleAndPreRule();
+//        currentRule.setCurrentRule(ruleHashMap.get("rule2"));
+//
+//        List<IFDGraph.GraphNode> graphNodes=StaticAnalysisService.parseIFDAndGetIFDNode("D:\\example\\例子\\","ifd.dot");
+//        HashMap<String, IFDGraph.GraphNode> graphNodeHashMap=new HashMap<>();
+//        for (IFDGraph.GraphNode graphNode:graphNodes){
+//            graphNodeHashMap.put(graphNode.getName(),graphNode);
+//        }
+//        List<RuleAndPreRule> allRulePreRules=AnalysisService.getAllRulePreRules(graphNodeHashMap,ruleHashMap);
+//        HashMap<String,RuleAndPreRule> ruleNameRuleAndPreRuleMap=new HashMap<>();
+//        for (RuleAndPreRule ruleAndPreRule:allRulePreRules){
+//            ruleNameRuleAndPreRuleMap.put(ruleAndPreRule.getCurrentRule().getRuleName(),ruleAndPreRule);
+//        }
+//        for (DeviceConflict deviceConflict:deviceConflicts){
+//            if (deviceConflict.getConflictTimeValues().size()<=0){
+//                continue;
+//            }
+//            for (DeviceInstance deviceInstance:instanceLayer.getDeviceInstances()){
+//
+//                if (deviceConflict.getInstanceName().equals(deviceInstance.getInstanceName())){
+//
+//                    List<List<List<String[]>>> deviceAllConflictStatesDirectRules=AnalysisService.getDeviceConflictStatesDirectRulesInAScenario(deviceConflict,dataTimeValues,deviceInstance,ruleHashMap);
+//                    List<List<DeviceStateAndCausingRules>> deviceAllStatesRuleAndPreRules=AnalysisService.getDeviceAllStatesRuleAndPreRules(deviceAllConflictStatesDirectRules,dataTimeValueHashMap,ruleNameRuleAndPreRuleMap,ruleHashMap);
+//                    ///综合原因
+//                    List<List<DeviceStateAndCausingRules>> synthesizedDeviceAllStatesRuleAndPreRules=AnalysisService.getDeviceConflictStatesCausingRulesSynthesize(deviceAllStatesRuleAndPreRules);
+//                    System.out.println(synthesizedDeviceAllStatesRuleAndPreRules);
+//                    break;
+//                }
+//            }
+//
+//        }
+//        for (DeviceJitter deviceJitter:deviceJitters){
+//            if (deviceJitter.getJitterTimeValues().size()<=0){
+//                continue;
+//            }
+//            for (DeviceInstance deviceInstance:instanceLayer.getDeviceInstances()){
+//                if (deviceJitter.getInstanceName().equals(deviceInstance.getInstanceName())){
+//                    List<List<List<String[]>>> deviceAllJitterStatesDirectRules=AnalysisService.getDeviceJitterStatesDirectRulesInAScenario(deviceJitter,dataTimeValues,deviceInstance,ruleHashMap);
+//                    ///转成DeviceStateAndCausingRules格式
+//                    List<List<DeviceStateAndCausingRules>> deviceAllJitterStatesRuleAndPreRules=AnalysisService.getDeviceAllStatesRuleAndPreRules(deviceAllJitterStatesDirectRules,dataTimeValueHashMap,ruleNameRuleAndPreRuleMap,ruleHashMap);
+//                    ///综合原因
+//                    List<List<DeviceStateAndCausingRules>> synthesizedAllJitterStatesRuleAndPreRules=AnalysisService.getDeviceJitterStatesCausingRulesSynthesize(deviceAllJitterStatesRuleAndPreRules);
+//                    System.out.println(synthesizedAllJitterStatesRuleAndPreRules);
+//                }
+//            }
+//        }
+//
+//
+//
+//        IFDGraph.GraphNode ruleNode=graphNodeHashMap.get("rule2");
+//        AnalysisService.getRulePreRule(ruleNode,graphNodeHashMap,currentRule,ruleHashMap,2.06,dataTimeValueHashMap);
+//        System.out.println(currentRule);
+
+
+        List<DataTimeValue> dataTimeValues=getDataTimeValuesFromTxt("D:\\example\\例子\\实验\\","zwh-weekday-bp.txt");
         for (DataTimeValue dataTimeValue:dataTimeValues){
-            dataTimeValueHashMap.put(dataTimeValue.getDataName(),dataTimeValue);
-        }
-        RuleAndPreRule currentRule=new RuleAndPreRule();
-        currentRule.setCurrentRule(ruleHashMap.get("rule2"));
-
-        List<IFDGraph.GraphNode> graphNodes=StaticAnalysisService.parseIFDAndGetIFDNode("D:\\example\\例子\\","ifd.dot");
-        HashMap<String, IFDGraph.GraphNode> graphNodeHashMap=new HashMap<>();
-        for (IFDGraph.GraphNode graphNode:graphNodes){
-            graphNodeHashMap.put(graphNode.getName(),graphNode);
-        }
-        List<RuleAndPreRule> allRulePreRules=AnalysisService.getAllRulePreRules(graphNodeHashMap,ruleHashMap);
-        HashMap<String,RuleAndPreRule> ruleNameRuleAndPreRuleMap=new HashMap<>();
-        for (RuleAndPreRule ruleAndPreRule:allRulePreRules){
-            ruleNameRuleAndPreRuleMap.put(ruleAndPreRule.getCurrentRule().getRuleName(),ruleAndPreRule);
-        }
-        for (DeviceConflict deviceConflict:deviceConflicts){
-            if (deviceConflict.getConflictTimeValues().size()<=0){
-                continue;
-            }
-            for (DeviceInstance deviceInstance:instanceLayer.getDeviceInstances()){
-
-                if (deviceConflict.getInstanceName().equals(deviceInstance.getInstanceName())){
-
-                    List<List<List<String[]>>> deviceAllConflictStatesDirectRules=AnalysisService.getDeviceConflictStatesDirectRulesInAScenario(deviceConflict,dataTimeValues,deviceInstance,ruleHashMap);
-                    List<List<DeviceStateAndCausingRules>> deviceAllStatesRuleAndPreRules=AnalysisService.getDeviceAllStatesRuleAndPreRules(deviceAllConflictStatesDirectRules,dataTimeValueHashMap,ruleNameRuleAndPreRuleMap,ruleHashMap);
-                    ///综合原因
-                    List<List<DeviceStateAndCausingRules>> synthesizedDeviceAllStatesRuleAndPreRules=AnalysisService.getDeviceConflictStatesCausingRulesSynthesize(deviceAllStatesRuleAndPreRules);
-                    System.out.println(synthesizedDeviceAllStatesRuleAndPreRules);
-                    break;
-                }
-            }
-
-        }
-        for (DeviceJitter deviceJitter:deviceJitters){
-            if (deviceJitter.getJitterTimeValues().size()<=0){
-                continue;
-            }
-            for (DeviceInstance deviceInstance:instanceLayer.getDeviceInstances()){
-                if (deviceJitter.getInstanceName().equals(deviceInstance.getInstanceName())){
-                    List<List<List<String[]>>> deviceAllJitterStatesDirectRules=AnalysisService.getDeviceJitterStatesDirectRulesInAScenario(deviceJitter,dataTimeValues,deviceInstance,ruleHashMap);
-                    ///转成DeviceStateAndCausingRules格式
-                    List<List<DeviceStateAndCausingRules>> deviceAllJitterStatesRuleAndPreRules=AnalysisService.getDeviceAllStatesRuleAndPreRules(deviceAllJitterStatesDirectRules,dataTimeValueHashMap,ruleNameRuleAndPreRuleMap,ruleHashMap);
-                    ///综合原因
-                    List<List<DeviceStateAndCausingRules>> synthesizedAllJitterStatesRuleAndPreRules=AnalysisService.getDeviceJitterStatesCausingRulesSynthesize(deviceAllJitterStatesRuleAndPreRules);
-                    System.out.println(synthesizedAllJitterStatesRuleAndPreRules);
+            if (dataTimeValue.getDataName().indexOf("deviceName")>=0){
+                for (DeviceInstance deviceInstance:instanceLayer.getDeviceInstances()){
+                    if (deviceInstance.getInstanceName().equals(dataTimeValue.getInstanceName())){
+                        List<String[]> deviceStatesDuration=AnalysisService.getDeviceStatesDuration(dataTimeValue,deviceInstance);
+                        System.out.println("  "+deviceInstance.getInstanceName());
+                        for (String[] deviceStateDuration:deviceStatesDuration){
+                            System.out.println("     "+deviceStateDuration[1]+" : " +deviceStateDuration[2] +"s");
+                        }
+                        break;
+                    }
                 }
             }
         }
+//        double temperSat=AnalysisService.getSatisfaction("temperature",10.0,30,dataTimeValues);
+//        double humiSat=AnalysisService.getSatisfaction("humidity",60.0,Double.MAX_VALUE,dataTimeValues);
+//        double co2Sat=AnalysisService.getSatisfaction("co2ppm",-Double.MIN_VALUE,800,dataTimeValues);
+//        double brightSat=AnalysisService.getSatisfaction("brightness",300,Double.MAX_VALUE,dataTimeValues);
+//        System.out.println(temperSat);
+//        System.out.println(humiSat);
+//        System.out.println(co2Sat);
+//        System.out.println(brightSat);
+//        System.out.println();
+    }
 
+    public static List<DataTimeValue> getDataTimeValuesFromTxt(String filePath,String fileName){
+        List<DataTimeValue> dataTimeValues=new ArrayList<>();
+        try (FileReader fr=new FileReader(filePath+fileName);
+             BufferedReader br=new BufferedReader(fr)){
 
+            String line="";
+            while((line=br.readLine())!=null) {
+                if (line.trim().equals("")){
+                    continue;
+                }
+                int index=line.indexOf(":");
+                String dataName=line.substring(0,index);
+                DataTimeValue dataTimeValue=new DataTimeValue();
+                dataTimeValue.setDataName(dataName);
+                if (dataName.indexOf("deviceName")>=0){
+                    String instanceName=dataName.substring(dataName.indexOf("deviceName=")+"deviceName=".length(),dataName.indexOf(","));
+                    dataTimeValue.setInstanceName(instanceName);
+                }
+                SimulationService.getDataTimeValue(dataTimeValue,line);
+                dataTimeValues.add(dataTimeValue);
+            }
 
-        IFDGraph.GraphNode ruleNode=graphNodeHashMap.get("rule2");
-        AnalysisService.getRulePreRule(ruleNode,graphNodeHashMap,currentRule,ruleHashMap,2.06,dataTimeValueHashMap);
-        System.out.println(currentRule);
+        } catch (IOException e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+        return dataTimeValues;
     }
 
 //    public static InstanceLayer getInteractiveEnvironment(InstanceLayer instanceLayer,ModelLayer modelLayer, List<Rule> rules,String filePath,String changedModelFileName) throws DocumentException, IOException {
@@ -1021,6 +1090,9 @@ public class SystemModelGenerationService {
                         attributeValueSet.setValue(Double.parseDouble(attributeValue[1]));
                         sceneChild.addChildren(attributeValueSet);
                     }
+                    ScenarioTree.AttributeValue attributeValue=new ScenarioTree.AttributeValue();
+                    attributeValue.setName("scenario-"+scenarioId +" details");
+                    sceneChild.addChildren(attributeValue);
                     scenesTree.addChildren(sceneChild);
                     generateScenario(filePath1,fileName1,filePath2,fileNameWithoutSuffix+"-scenario-"+scenarioId+".xml",modelLayer.getAttributeEntity(),sameDeclaration,attributeValuesList.get(scenarioId));
                 }catch (DocumentException e){
@@ -1038,14 +1110,22 @@ public class SystemModelGenerationService {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+        ////排序一下场景的顺序啊
+        Comparator<ScenarioTree.SceneChild> c= (o1, o2) -> {
+            int sceneNum1=Integer.parseInt(o1.getName().substring("scenario-".length()));
+            int sceneNum2=Integer.parseInt(o2.getName().substring("scenario-".length()));
+            return sceneNum1-sceneNum2;
+        };
+        scenesTree.getChildren().sort(c);
         return scenesTree;
     }
 
     ///根据trigger给attribute分段取值，不同排列组合对应不同场景，从而生成不同系统模型
-    public static void generateMultiScenariosAccordingToTriggers(String filePath1,String fileName1,String filePath2,ModelLayer modelLayer,List<Rule> rules,HashMap<String,Trigger> triggerMap){
+    public static ScenarioTree.ScenesTree generateMultiScenariosAccordingToTriggers(String initModelFileName,String filePath1,String fileName1,String filePath2,ModelLayer modelLayer,List<Rule> rules,HashMap<String,Trigger> triggerMap){
         List<List<String[]>> attributeValuesList=getInitialValuesForAttributes(modelLayer.getAttributeEntity(),triggerMap);
-        String fileNameWithoutSuffix=fileName1.substring(0,fileName1.indexOf(".xml"));
-        generateMultiScenarios(filePath1,fileName1,filePath2,fileNameWithoutSuffix,modelLayer,rules,attributeValuesList);
+        String fileNameWithoutSuffix=initModelFileName.substring(0,initModelFileName.indexOf(".xml"));
+        ScenarioTree.ScenesTree scenesTree=generateMultiScenarios(filePath1,fileName1,filePath2,fileNameWithoutSuffix,modelLayer,rules,attributeValuesList);
+        return scenesTree;
     }
 
     ///全局变量声明中，attribute的取值与TAP规则的trigger有关，找到与该attribute相关的trigger，按不同值分段，给每一段都分别取值。
@@ -1146,11 +1226,11 @@ public class SystemModelGenerationService {
     }
 
     ///生成共同的文件
-    public static void generateCommonModelFile(String simulationTime,String[] intoLocationTime,String filePath,String changedModelFileName,InstanceLayer instanceLayer,List<Rule> rules,HashMap<String,Trigger> triggerMap,HashMap<String,Action> actionMap,InstanceLayer interactiveEnvironment,HashMap<String,Instance> interactiveInstanceMap){
+    public static void generateCommonModelFile(String simulationTime,String[] intoLocationTime,String filePath1,String modelFileName1,String filePath2,String modelFileName2,InstanceLayer instanceLayer,List<Rule> rules,HashMap<String,Trigger> triggerMap,HashMap<String,Action> actionMap,InstanceLayer interactiveEnvironment,HashMap<String,Instance> interactiveInstanceMap){
         ///生成控制器模型
         try {
             SAXReader reader= new SAXReader();
-            Document document = reader.read(new File(filePath+changedModelFileName));
+            Document document = reader.read(new File(filePath1+modelFileName1));
             Element rootElement=document.getRootElement();
 //		System.out.println(rootElement.getName());
             List<Element> templateElements=rootElement.elements("template");
@@ -1173,7 +1253,7 @@ public class SystemModelGenerationService {
             setSystemDeclaration(rootElement,modelDeclaration,"",query);
 
             ///写入xml文件中
-            writeTheXMLFile(document,filePath,changedModelFileName);
+            writeTheXMLFile(document,filePath2,modelFileName2);
         }catch (IOException e){
             e.printStackTrace();
         }catch (DocumentException e){

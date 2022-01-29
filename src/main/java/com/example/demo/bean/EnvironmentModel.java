@@ -10,12 +10,12 @@ public class EnvironmentModel {
 	private List<BiddableType> biddables=new ArrayList<BiddableType>();
 	private List<DeviceType> deviceTypes=new ArrayList<>();
 	/////添加Attribute
-	private List<Attribute> attributes=new ArrayList<>();
+	private List<Attribute_> attributes=new ArrayList<>();
 
-	public List<Attribute> getAttributes() {
+	public List<Attribute_> getAttributes() {
 		return attributes;
 	}
-	public void setAttributes(List<Attribute> attributes) {
+	public void setAttributes(List<Attribute_> attributes) {
 		this.attributes = attributes;
 	}
 	public List<DeviceType> getDeviceTypes() {
