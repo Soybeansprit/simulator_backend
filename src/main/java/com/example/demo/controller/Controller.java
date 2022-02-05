@@ -83,8 +83,8 @@ public class Controller {
 		EnvironmentModel environmentModel=TemplGraphService.getEnvironmentModel(initModelFileName, AddressService.changed_model_file_Name, AddressService.MODEL_FILE_PATH, propertyFileName);
 		System.out.println("time getting environmentModel:"+(System.currentTimeMillis()-environmentStartTime));
 		////静态分析
-		StaticAnalysisResult staticAnalysisResult=StaticAnalysisService.getStaticAnalaysisResult(rules, AddressService.IFD_FILE_NAME,  AddressService.IFD_FILE_PATH, environmentModel);
-		EnvironmentStatic environmentStatic=new EnvironmentStatic(environmentModel, staticAnalysisResult);
+		StaticAnalysisResult1 staticAnalysisResult1 =StaticAnalysisService.getStaticAnalaysisResult(rules, AddressService.IFD_FILE_NAME,  AddressService.IFD_FILE_PATH, environmentModel);
+		EnvironmentStatic environmentStatic=new EnvironmentStatic(environmentModel, staticAnalysisResult1);
 		return environmentStatic;
 	}
 	
@@ -319,6 +319,19 @@ public class Controller {
 	}
 
 	/**
+	 * 静态分析
+	 * */
+	@RequestMapping("/getStaticAnalysis")
+	@ResponseBody
+	public StaticAnalysisResult getStaticAnalysis(@RequestBody InputConstruct.StaticAnalysisInput staticAnalysisInput) throws IOException {
+		List<Rule> rules=staticAnalysisInput.getRules();
+		InstanceLayer interactiveEnvironment= staticAnalysisInput.getInstanceLayer();
+		StaticAnalysisResult staticAnalysisResult=StaticAnalysisService.getStaticAnalysisResult(rules,AddressService.IFD_FILE_PATH,"temp-ifd.dot",interactiveEnvironment);
+		return staticAnalysisResult;
+	}
+
+
+	/**
 	 * 生成单个场景对应的环境模型
 	 * */
 	@RequestMapping("/generateSingleScenario")
@@ -346,6 +359,31 @@ public class Controller {
 		return fileName;
 	}
 
+	@RequestMapping("/generateBestScenario")
+	@ResponseBody
+	public OutputConstruct.BestScenarioOutput generateBestScenario(@RequestBody InputConstruct.BestScenarioGenerateInput bestScenarioGenerateInput) {
+		ModelLayer modelLayer=bestScenarioGenerateInput.getModelLayer();
+		InstanceLayer instanceLayer=bestScenarioGenerateInput.getInstanceLayer();
+		List<Rule> rules=bestScenarioGenerateInput.getRules();
+		HashMap<String,Trigger> triggerMap=SystemModelGenerationService.getTriggerMapFromRules(rules,instanceLayer);
+		HashMap<String,Action> actionMap=SystemModelGenerationService.getActionMapFromRules(rules);
+		InstanceLayer interactiveEnvironment= bestScenarioGenerateInput.getInteractiveInstance();
+		HashMap<String, Instance> interactiveInstanceMap=InstanceLayerService.getInstanceMap(interactiveEnvironment);
+		String simulationTime=bestScenarioGenerateInput.getSimulationTime();
+		String modelFileName=bestScenarioGenerateInput.getModelFileName();
+		String tempModelFileName="temp-"+modelFileName;
+		String ifdFileName= bestScenarioGenerateInput.getIfdFileName();
+		List<String[]> attributeValues=SystemModelGenerationService.setAttributeValues(AddressService.IFD_FILE_PATH,ifdFileName);
+		String[] intoLocationTime=SystemModelGenerationService.getIntoLocationTime(simulationTime,instanceLayer.getHumanInstance());
+		SystemModelGenerationService.generateCommonModelFile(simulationTime,intoLocationTime,AddressService.MODEL_FILE_PATH,modelFileName,AddressService.MODEL_FILE_PATH,tempModelFileName,instanceLayer,rules,triggerMap,actionMap,interactiveEnvironment,interactiveInstanceMap);
+		String bestModelFileName="best-scenario-"+modelFileName;
+		SystemModelGenerationService.generateSingleScenario(AddressService.MODEL_FILE_PATH,tempModelFileName,AddressService.MODEL_FILE_PATH,bestModelFileName,modelLayer,rules,attributeValues);
+		OutputConstruct.BestScenarioOutput bestScenarioOutput=new OutputConstruct.BestScenarioOutput();
+		bestScenarioOutput.setBestScenarioFileName(bestModelFileName);
+		bestScenarioOutput.setAttributeValues(attributeValues);
+		return bestScenarioOutput;
+	}
+
 	/**
 	 * 仿真单个场景
 	 * */
@@ -361,6 +399,9 @@ public class Controller {
 		scenario.setDataTimeValues(dataTimeValues);
 		return scenario;
 	}
+
+
+
 	/**
 	 * 生成单个场景对应的环境模型
 	 * */
@@ -535,6 +576,53 @@ public class Controller {
 		return devicesAllStatesRuleAndPreRules;
 	}
 
+	@RequestMapping("/getAttributeSatisfaction")
+	@ResponseBody
+	public double AttributeSatisfaction(@RequestBody InputConstruct.SatisfactionInput satisfactionInput) {
+		String attribute= satisfactionInput.getAttribute();
+		double lowValue=-Double.MAX_VALUE;
+		double highValue=Double.MAX_VALUE;
+		if (!satisfactionInput.getLowValue().equals("")){
+			lowValue=Double.parseDouble(satisfactionInput.getLowValue());
+		}
+		if (!satisfactionInput.getHighValue().equals("")){
+			highValue=Double.parseDouble(satisfactionInput.getHighValue());
+		}
+		List<DataTimeValue> dataTimeValues=satisfactionInput.getDataTimeValues();
+		double satisfaction=AnalysisService.getSatisfaction(attribute,lowValue,highValue,dataTimeValues);
+		System.out.println(satisfaction);
+		return satisfaction;
+	}
 
-	
+	@RequestMapping("/getOtherAnalysis")
+	@ResponseBody
+	public OutputConstruct.OtherAnalysisOutput getOtherAnalysis(@RequestBody List<Scenario> scenarios) {
+
+		List<List<String[]>> deviceCannotBeTurnedOffOrOnListOfDifferentScenarios=new ArrayList<>();
+		List<List<String>> notTriggeredRulesOfDifferentScenarios=new ArrayList<>();
+		for (Scenario scenario:scenarios){
+			List<String[]> deviceCannotBeTurnedOffOrOnList=AnalysisService.getDeviceCannotBeTurnedOffOrOnListInAScenario(scenario.getDataTimeValues());
+			deviceCannotBeTurnedOffOrOnListOfDifferentScenarios.add(deviceCannotBeTurnedOffOrOnList);
+			List<String> notTriggeredRules=AnalysisService.getNotTriggeredRulesInAScenario(scenario.getDataTimeValues());
+			notTriggeredRulesOfDifferentScenarios.add(notTriggeredRules);
+		}
+		List<String> deviceCannotBeTurnedOffList=AnalysisService.getDeviceCannotBeTurnedOffListInAll(deviceCannotBeTurnedOffOrOnListOfDifferentScenarios);
+		List<String> notTriggeredRulesInAll=AnalysisService.getNotTriggeredRulesInAll(notTriggeredRulesOfDifferentScenarios);
+		OutputConstruct.OtherAnalysisOutput otherAnalysisOutput=new OutputConstruct.OtherAnalysisOutput();
+		otherAnalysisOutput.setDeviceCannotBeTurnedOffList(deviceCannotBeTurnedOffList);
+		otherAnalysisOutput.setNotTriggeredRulesInAll(notTriggeredRulesInAll);
+		return otherAnalysisOutput;
+	}
+	@RequestMapping("/getPropertiesAnalysis")
+	@ResponseBody
+	public List<PropertyAnalysisResult> getPropertiesAnalysis(@RequestBody InputConstruct.PropertyAnalysisInput propertyAnalysisInput) {
+		List<Scenario> scenarios=propertyAnalysisInput.getScenarios();
+		List<Rule> rules=propertyAnalysisInput.getRules();
+		List<String> properties=propertyAnalysisInput.getProperties();
+		InstanceLayer instanceLayer= propertyAnalysisInput.getInstanceLayer();
+		List<PropertyAnalysisResult> propertyAnalysisResults=AnalysisService.getPropertiesAnalysisResultAllScenarios(scenarios,instanceLayer,rules,properties);
+		return propertyAnalysisResults;
+
+	}
+
 }

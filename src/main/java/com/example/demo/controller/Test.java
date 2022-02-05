@@ -1,32 +1,16 @@
 package com.example.demo.controller;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Random;
-import java.util.Scanner;
 
+import com.example.demo.bean.*;
 import org.dom4j.DocumentException;
 
-import com.example.demo.bean.BiddableType;
-import com.example.demo.bean.Conflict;
-import com.example.demo.bean.ConflictReason;
-import com.example.demo.bean.DeviceDetail;
-import com.example.demo.bean.DeviceType;
-import com.example.demo.bean.EnvironmentModel;
 import com.example.demo.bean.IFDGraph.GraphNode;
-import com.example.demo.bean.JitterReason;
-import com.example.demo.bean.PropertyVerifyResult;
-import com.example.demo.bean.Rule;
-import com.example.demo.bean.RuleNode;
 import com.example.demo.bean.ScenarioTree.ScenesTree;
-import com.example.demo.bean.Scene;
-import com.example.demo.bean.SensorType;
-import com.example.demo.bean.StaticAnalysisResult;
+import com.example.demo.bean.StaticAnalysisResult1;
 import com.example.demo.service.DynamicAnalysisService;
-import com.example.demo.service.GetTemplate;
 import com.example.demo.service.RuleService;
 import com.example.demo.service.StaticAnalysisService;
 import com.example.demo.service.SystemModelService;
@@ -131,7 +115,7 @@ public class Test {
 			rulesMap.put(rule.getRuleName(), rule);
 		}
 		////静态分析
-		StaticAnalysisResult staticAnalsisResult=StaticAnalysisService.getStaticAnalaysisResult(rules, ifdFileName, filePath, environmentModel);
+		StaticAnalysisResult1 staticAnalsisResult=StaticAnalysisService.getStaticAnalaysisResult(rules, ifdFileName, filePath, environmentModel);
 
 		List<GraphNode> graphNodes=StaticAnalysisService.getIFDNode(ifdFileName, filePath);
 		SystemModelService.generateContrModel(filePath,modelFileName2, staticAnalsisResult.getUsableRules(), environmentModel.getDevices(), environmentModel.getBiddables());

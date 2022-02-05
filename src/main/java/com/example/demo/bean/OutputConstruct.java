@@ -6,15 +6,15 @@ import java.util.List;
 public class OutputConstruct {
 	public static class EnvironmentStatic{
 		private EnvironmentModel environmentModel;
-		private StaticAnalysisResult staticAnalysisResult;
+		private StaticAnalysisResult1 staticAnalysisResult1;
 		
 		public EnvironmentStatic() {
 			super();
 		}
-		public EnvironmentStatic(EnvironmentModel environmentModel, StaticAnalysisResult staticAnalysisResult) {
+		public EnvironmentStatic(EnvironmentModel environmentModel, StaticAnalysisResult1 staticAnalysisResult1) {
 			super();
 			this.environmentModel = environmentModel;
-			this.staticAnalysisResult = staticAnalysisResult;
+			this.staticAnalysisResult1 = staticAnalysisResult1;
 		}
 		public EnvironmentModel getEnvironmentModel() {
 			return environmentModel;
@@ -22,11 +22,11 @@ public class OutputConstruct {
 		public void setEnvironmentModel(EnvironmentModel environmentModel) {
 			this.environmentModel = environmentModel;
 		}
-		public StaticAnalysisResult getStaticAnalysisResult() {
-			return staticAnalysisResult;
+		public StaticAnalysisResult1 getStaticAnalysisResult() {
+			return staticAnalysisResult1;
 		}
-		public void setStaticAnalysisResult(StaticAnalysisResult staticAnalysisResult) {
-			this.staticAnalysisResult = staticAnalysisResult;
+		public void setStaticAnalysisResult(StaticAnalysisResult1 staticAnalysisResult1) {
+			this.staticAnalysisResult1 = staticAnalysisResult1;
 		}
 		
 	}
@@ -137,6 +137,48 @@ public class OutputConstruct {
 
 		public void setIfdFileName(String ifdFileName) {
 			this.ifdFileName = ifdFileName;
+		}
+	}
+
+	public static class OtherAnalysisOutput{
+		private List<String> deviceCannotBeTurnedOffList=new ArrayList<>();
+		private List<String> notTriggeredRulesInAll=new ArrayList<>();
+
+		public List<String> getDeviceCannotBeTurnedOffList() {
+			return deviceCannotBeTurnedOffList;
+		}
+
+		public void setDeviceCannotBeTurnedOffList(List<String> deviceCannotBeTurnedOffList) {
+			this.deviceCannotBeTurnedOffList = deviceCannotBeTurnedOffList;
+		}
+
+		public List<String> getNotTriggeredRulesInAll() {
+			return notTriggeredRulesInAll;
+		}
+
+		public void setNotTriggeredRulesInAll(List<String> notTriggeredRulesInAll) {
+			this.notTriggeredRulesInAll = notTriggeredRulesInAll;
+		}
+	}
+
+	public static class BestScenarioOutput{
+		private List<String[]> attributeValues=new ArrayList<>();
+		private String bestScenarioFileName="";
+
+		public List<String[]> getAttributeValues() {
+			return attributeValues;
+		}
+
+		public void setAttributeValues(List<String[]> attributeValues) {
+			this.attributeValues = attributeValues;
+		}
+
+		public String getBestScenarioFileName() {
+			return bestScenarioFileName;
+		}
+
+		public void setBestScenarioFileName(String bestScenarioFileName) {
+			this.bestScenarioFileName = bestScenarioFileName;
 		}
 	}
 }

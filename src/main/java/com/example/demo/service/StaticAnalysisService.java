@@ -19,10 +19,10 @@ import com.example.demo.bean.IFDGraph.GraphNodeArrow;
 public class StaticAnalysisService {	
 	
 	/////获得静态分析的结果
-	public static StaticAnalysisResult getStaticAnalaysisResult(List<Rule> rules, String ifdFileName,String filePath,EnvironmentModel environmentModel ) throws DocumentException, IOException {
+	public static StaticAnalysisResult1 getStaticAnalaysisResult(List<Rule> rules, String ifdFileName, String filePath, EnvironmentModel environmentModel ) throws DocumentException, IOException {
 
-		StaticAnalysisResult staticAnalysisResult=new StaticAnalysisResult();
-		staticAnalysisResult.setTotalRules(rules);
+		StaticAnalysisResult1 staticAnalysisResult1 =new StaticAnalysisResult1();
+		staticAnalysisResult1.setTotalRules(rules);
 		////返回可用的rules和各种错误
 		HashMap<String,Rule> mapRules=new HashMap<String,Rule>();
 		for(Rule rule:rules) {
@@ -124,13 +124,70 @@ public class StaticAnalysisService {
 			}
 		}
 		System.out.println("incomleteTime:"+(System.currentTimeMillis()-incompleteStartTime));
-//		staticAnalysisResult.setIncorrectRules(incorrectRules);
-		staticAnalysisResult.setUnusedRules(unusedRules);
+//		staticAnalysisResult1.setIncorrectRules(incorrectRules);
+		staticAnalysisResult1.setUnusedRules(unusedRules);
+		staticAnalysisResult1.setRedundantRules(redundantRules);
+		staticAnalysisResult1.setIncompleteness(incompleteness);
+		staticAnalysisResult1.setUsableRules(newRules);
+		return staticAnalysisResult1;
+		
+	}
+
+	public static StaticAnalysisResult getStaticAnalysisResult(List<Rule> rules,String ifdFilePath,String ifdFileName,InstanceLayer instanceLayer) throws IOException {
+
+		HashMap<String,Instance> instanceHashMap=InstanceLayerService.getInstanceMap(instanceLayer);
+		HashMap<String,Rule> ruleHashMap=AnalysisService.getRuleHashMap(rules);
+		///删除重复的
+		List<Rule>  newRules=deleteRepeat(rules);
+		////重新生成IFD图
+		HashMap<String,Trigger> triggerHashMap=SystemModelGenerationService.getTriggerMapFromRules(rules,instanceLayer);
+		HashMap<String,Action> actionHashMap=SystemModelGenerationService.getActionMapFromRules(rules);
+		generateIFD(triggerHashMap,actionHashMap,newRules,instanceLayer,instanceHashMap,ifdFileName,ifdFilePath);
+		////解析ifd
+		List<GraphNode> graphNodes=parseIFDAndGetIFDNode(ifdFilePath,ifdFileName);
+		HashMap<String,GraphNode> graphNodeHashMap=AnalysisService.getGraphNodeHashMap(graphNodes);
+		///找不能触发的规则
+		List<UnusedRuleAndReason> unusedRuleAndReasons=new ArrayList<>();
+		for (int i=newRules.size()-1;i>=0;i--){
+			Rule rule=newRules.get(i);
+			GraphNode ruleNode=graphNodeHashMap.get(rule.getRuleName());
+			////找
+			String reason=ruleUnusedReason(ruleNode,instanceLayer.getDeviceInstances());
+			if (!reason.equals("")){
+				UnusedRuleAndReason unusedRuleAndReason=new UnusedRuleAndReason();
+				unusedRuleAndReason.setUnusedRule(rule);
+				unusedRuleAndReason.setReason(reason);
+				unusedRuleAndReasons.add(unusedRuleAndReason);
+				newRules.remove(i);
+			}
+		}
+		////重新生成IFD
+		triggerHashMap=SystemModelGenerationService.getTriggerMapFromRules(newRules,instanceLayer);
+		actionHashMap=SystemModelGenerationService.getActionMapFromRules(newRules);
+		generateIFD(triggerHashMap,actionHashMap,newRules,instanceLayer,instanceHashMap,ifdFileName,ifdFilePath);
+		graphNodes=parseIFDAndGetIFDNode(ifdFilePath,ifdFileName);
+		graphNodeHashMap=AnalysisService.getGraphNodeHashMap(graphNodes);
+		////找冗余
+		List<List<Rule>> redundantRules=new ArrayList<>();
+		for (Rule rule:newRules){
+			GraphNode ruleNode=graphNodeHashMap.get(rule.getRuleName());
+			List<GraphNode> redundantNodes=getRedundant(ruleNode);
+			if (redundantNodes.size()>1){
+				List<Rule> redundantRule=new ArrayList<>();
+				for (GraphNode graphNode:redundantNodes){
+					redundantRule.add(ruleHashMap.get(graphNode.getName()));
+				}
+				redundantRules.add(redundantRule);
+			}
+		}
+		////找incompleteness
+		List<DeviceInstance> cannotOffDevices=getIncomplete(graphNodes,instanceLayer.getDeviceInstances());
+		StaticAnalysisResult staticAnalysisResult=new StaticAnalysisResult();
+		staticAnalysisResult.setCannotOffDevices(cannotOffDevices);
+		staticAnalysisResult.setUnusedRuleAndReasons(unusedRuleAndReasons);
 		staticAnalysisResult.setRedundantRules(redundantRules);
-		staticAnalysisResult.setIncompleteness(incompleteness);
 		staticAnalysisResult.setUsableRules(newRules);
 		return staticAnalysisResult;
-		
 	}
 	
 	////////////////////获得不正确的规则
@@ -196,7 +253,488 @@ public class StaticAnalysisService {
 		}
 		return newRules;
 	}
-	
+/**
+ * 静态分析
+ * 判断一条规则是否能发生，即判断其triggers是否都能满足
+ * 如果不能触发，则给出不能触发的原因，反之原因为""
+ * */
+	public static String ruleUnusedReason(GraphNode ruleNode,List<DeviceInstance> deviceInstances){
+		ruleNode.setTraversed(true);
+		List<GraphNode> triggerNodes=new ArrayList<GraphNode>();
+		String reason="";
+		for (GraphNodeArrow triggerArrow:ruleNode.getpNodeArrowList()){
+			///triggerNode
+			GraphNode triggerNode=triggerArrow.getGraphNode();   ///rule节点前面的节点为trigger节点
+			///先判断是否合法
+			boolean legal=false;
+			if (!triggerNode.getRelatedInstanceAndColor()[1].equals("")){
+				legal=true;
+			}
+//			for(GraphNodeArrow ppArrow:triggerNode.getpNodeArrowList()) {
+//				if(ppArrow.getColor().indexOf("lightpink")>=0) {
+//					legal=true;
+//					break;
+//				}
+//			}
+			if(!legal) {
+				//////////trigger不合法
+//				correct=false;
+				reason="Trigger: "+triggerNode.getLabel()+" illegal.";
+				System.out.println(reason);
+//				isUnused=true;
+				ruleNode.setTraversed(false);
+				return reason;
+			}
+			triggerNodes.add(triggerNode);
+		}
+		///////////trigger之间矛盾
+		for(int i=0;i<triggerNodes.size();i++) {
+			GraphNode triggerNode1=triggerNodes.get(i);
+			for(int j=i+1;j<triggerNodes.size();j++) {
+				GraphNode triggerNode2=triggerNodes.get(j);
+				if(isContra(triggerNode1, triggerNode2)) {
+//					isUnused=true;
+					reason="Trigger: "+triggerNode1.getLabel()+" "+triggerNode2.getLabel()+" has a logical contradiction.";
+					System.out.println(reason);
+					ruleNode.setTraversed(false);
+					return reason;
+				}
+			}
+		}
+		////////////trigger是state，但是非初始状态且没有条件触发
+		for (GraphNode triggerNode:triggerNodes){
+			String[] triggerForm=RuleService.getTriggerForm(triggerNode.getLabel());
+			if (triggerForm[1].contains(".")){
+				///看是不是某个设备
+				for (DeviceInstance deviceInstance:deviceInstances){
+					if (deviceInstance.getInstanceName().equals(triggerForm[0])){
+						///是设备状态
+						///看是不是初始状态
+						for (DeviceType.StateSyncValueEffect stateSyncValueEffect:deviceInstance.getDeviceType().getStateSyncValueEffects()){
+							if (stateSyncValueEffect.getStateName().equals(triggerForm[2])){
+								///找到对应状态
+								if (!stateSyncValueEffect.getValue().equals("0")){
+									////不为0则不是初始状态
+									///看是否有前驱规则
+									boolean hasPreRule=false;
+									for (GraphNodeArrow actionArrow:triggerNode.getpNodeArrowList()){
+										GraphNode actionNode=actionArrow.getGraphNode();
+										if (actionNode.getShape().equals("record")){
+											////看触发该action的规则能否被触发
+											boolean canRuleBeTriggered=false;
+											for (GraphNodeArrow pRuleArrow:actionNode.getpNodeArrowList()){
+												GraphNode pRuleNode= pRuleArrow.getGraphNode();
+												if(pRuleNode.getShape().equals("hexagon")&&!pRuleNode.isTraversed()){
+													hasPreRule=true;
+													reason=ruleUnusedReason(pRuleNode,deviceInstances);
+													if (reason.equals("")){
+														canRuleBeTriggered=true;
+														break;
+													}
+												}
+
+											}
+											if (!canRuleBeTriggered){
+												///只要有规则能触发该triggerNode，则该trigger可满足，反之不能
+												reason="No rule can satisfy "+triggerNode.getLabel()+".";
+												System.out.println(reason);
+												ruleNode.setTraversed(false);
+												return reason;
+											}
+										}
+									}
+									if (!hasPreRule){
+										////如果没有前驱规则，则无法被触发
+										reason="No rule can satisfy "+triggerNode.getLabel()+".";
+										System.out.println(reason);
+										ruleNode.setTraversed(false);
+										return reason;
+									}
+								}
+								break;
+							}
+						}
+						break;
+					}
+				}
+			}
+		}
+		ruleNode.setTraversed(false);
+		return reason;
+	}
+	///////////trigger之间矛盾
+	public static boolean isContra(GraphNode triggerNode1,GraphNode triggerNode2){
+		String[] triggerForm1=RuleService.getTriggerForm(triggerNode1.getLabel());
+		String[] triggerForm2=RuleService.getTriggerForm(triggerNode2.getLabel());
+		if (triggerForm1[0].equals(triggerForm2[0])){
+			////只有相同属性或实体才可能冲突
+			if (triggerForm1[1].equals(".")){
+				if (!triggerForm1[2].equals(triggerForm2[2])){
+					////相同实体不同状态，冲突
+					return true;
+				}
+			}else {
+				//同一属性的取值矛盾 attribute<(<=,>,>=)value
+				double val1=Double.parseDouble(triggerForm1[2]);
+				double val2=Double.parseDouble(triggerForm2[2]);
+				if(triggerForm1[1].contains(">")) {
+					if(triggerForm2[1].contains("<")) {
+						if(val1>=val2) {
+							return true;
+						}
+					}
+				}else if(triggerForm1[1].contains("<")) {
+					if(triggerForm2[1].contains(">")) {
+						if(val1<=val2) {
+							return true;
+						}
+					}
+				}
+			}
+
+		}
+		return false;
+	}
+
+	/**
+	 * 冗余：一条规则r1与另一条规则r2冗余表明，
+	 * r1的trigger满足的情况下，r2的trigger都能满足，
+	 *且r1的action蕴含于r2的action中
+	 * */
+////////////////////获得冗余的规则
+	public static List<GraphNode> getRedundant(GraphNode ruleNode) {
+		List<GraphNode> redundantNodes=new ArrayList<GraphNode>();
+		List<GraphNode> otherCauseRuleNodes=new ArrayList<GraphNode>();
+		redundantNodes.add(ruleNode);
+
+		boolean allActionHasOtherRule=true;
+		first:
+		for(GraphNodeArrow actionArrow:ruleNode.getcNodeArrowList()) {
+			GraphNode actionNode=actionArrow.getGraphNode();
+			boolean existOtherRule=false;
+			for(GraphNodeArrow ruleArrow:actionNode.getpNodeArrowList()) {
+				GraphNode otherRuleNode=ruleArrow.getGraphNode();
+				/////////还有其他规则能发起该action
+				if(otherRuleNode.getShape().equals("hexagon")&&!otherRuleNode.getName().equals(ruleNode.getName())) {
+					existOtherRule=true;
+					otherCauseRuleNodes.add(otherRuleNode);
+					if(containActionNode(ruleNode, otherRuleNode)) {
+						/////////////otherRule包含rule的所有action
+						///看other规则是否最终能被该规则触发
+						List<GraphNode> pathRuleLists=canBeTriggeredByRuleNode(ruleNode,otherRuleNode,"");
+						if(pathRuleLists.size()>0) {
+							////////////且otherRule的triggers都能回溯到ruleNode的triggers
+							/////说明是冗余的
+							redundantNodes.addAll(pathRuleLists);
+							break first;
+						}
+					}
+				}
+			}
+			if(!existOtherRule) {
+				//////////////如果没有其他规则能发起该rule的某个action，那这条规则不会冗余
+				allActionHasOtherRule=false;
+				break;
+			}
+		}
+		if(allActionHasOtherRule&&redundantNodes.size()==1) {
+			////如果其action都能被其他一组rule执行，但是没有一条与它冗余
+			/////则看这一组规则各自的triggers能否回溯到该rule的triggers
+			for(GraphNode otherRuleNode:otherCauseRuleNodes) {
+				List<GraphNode> pathRuleList=canBeTriggeredByRuleNode(ruleNode,otherRuleNode,"");
+				redundantNodes.addAll(pathRuleList);
+			}
+		}
+		if(redundantNodes.size()>1) {
+			///////在上述基础上看其他一组规则能否执行这条规则的所有actions
+			for(GraphNodeArrow actionArrow:ruleNode.getcNodeArrowList()) {
+				boolean existActionNode=false;
+				second:
+				for(int i=1;i<redundantNodes.size();i++) {
+					for(GraphNodeArrow reActionArrow:redundantNodes.get(i).getcNodeArrowList()) {
+						if(actionArrow.getGraphNode().getName().equals(reActionArrow.getGraphNode().getName())) {
+							existActionNode=true;
+							break second;
+						}
+					}
+				}
+				if(!existActionNode) {
+					redundantNodes.clear();
+					redundantNodes.add(ruleNode);
+					break;
+				}
+			}
+
+		}
+		return redundantNodes;
+	}
+	///看otherRuleNode的trigger是否都能在ruleNode触发的前提下触发
+	public static List<GraphNode> canBeTriggeredByRuleNode(GraphNode ruleNode,GraphNode otherRuleNode,String function){
+
+		List<GraphNode> pathRuleNodes=new ArrayList<>();
+		List<GraphNode> triggerNodes=new ArrayList<>();
+		List<GraphNode> actionNodes=new ArrayList<>();
+		////获得ruleNode的所有trigger节点
+		for(GraphNodeArrow triggerArrow:ruleNode.getpNodeArrowList()) {
+			triggerNodes.add(triggerArrow.getGraphNode());
+		}
+		for (GraphNodeArrow actionArrow:ruleNode.getcNodeArrowList()){
+			actionNodes.add(actionArrow.getGraphNode());
+		}
+		otherRuleNode.setTraversed(true);
+
+		////看otherRule的每个triggerNode是否都能回溯到triggerNodes中的一个
+		boolean canAllBeTriggered=true;
+		first:
+		for (GraphNodeArrow triggerArrow: otherRuleNode.getpNodeArrowList()){
+			GraphNode triggerNode= triggerArrow.getGraphNode();
+			boolean canBeTriggered=false;
+			if (triggerNodes.contains(triggerNode)){
+				////直接包含在triggerNodes中
+				canBeTriggered=true;
+				continue first;
+			}
+
+			for (GraphNodeArrow triggerPreArrow: triggerNode.getpNodeArrowList()){
+				////前驱节点
+				GraphNode preNode=triggerPreArrow.getGraphNode();
+				if (preNode.getShape().equals("doubleoctagon")){
+					continue ;
+				}
+				////preNode可能是trigger也可能是action
+				if (triggerNodes.contains(preNode)){
+					///如果是trigger节点
+					/////前驱包含在triggerNodes中
+					canBeTriggered=true;
+					continue first;
+				}
+				if (preNode.getShape().equals("record")){
+					////如果是action节点
+					if (triggerPreArrow.getStyle().equals("")){
+						///如果是action，对于静态分析的冗余分析，只考虑实线的action
+						for (GraphNodeArrow preRuleArrow:preNode.getpNodeArrowList()){
+							GraphNode preRuleNode=preRuleArrow.getGraphNode();
+							if (!preRuleNode.isTraversed()&&preRuleNode.getShape().equals("hexagon")){
+								////看是否存在前驱规则在该规则触发的情况下触发,非该规则
+								List<GraphNode> otherPathRuleNodes= canBeTriggeredByRuleNode(ruleNode,preRuleNode,"");
+								if (otherPathRuleNodes.size()>0){
+									canBeTriggered=true;
+									for (GraphNode pathRuleNode:otherPathRuleNodes){
+										if (!pathRuleNodes.contains(pathRuleNode)){
+											pathRuleNodes.add(pathRuleNode);
+										}
+									}
+									continue first;
+								}
+
+							}
+
+						}
+					}
+					if (function.equals("bestScenario")&&triggerPreArrow.getStyle().equals("dashed")){
+						/////对于寻找最佳仿真场景的情况，还需要考虑虚线的action
+						/**
+						 * 查看tj红色实线的后继trigger tm节点（tm与tj涉及相同属性，
+						 * 连接同一sensor或device），如果存在tm会触发某条规则Rm，
+						 * Rm中存在某个action am，am与ak属于同一设备，且am到tj没有连线，
+						 * 则ak无法触发tj，如果tj的所有红色虚线的前驱action 都无法触发tj，则tj不能满足，否则tj能满足
+						 * */
+						///先找相同设备的其他action
+						List<GraphNode> otherActionRelatedRuleNodes=new ArrayList<>();
+						for (GraphNodeArrow preArrow:preNode.getpNodeArrowList()){
+							GraphNode deviceNode=preArrow.getGraphNode();
+							if (deviceNode.getFillcolor().equals("darkseagreen1")){
+								///设备节点
+								for (GraphNodeArrow deActionArrow: deviceNode.getcNodeArrowList()){
+									GraphNode otherActionNode=deActionArrow.getGraphNode();
+									if (otherActionNode.getShape().equals("record")){
+										////action
+										if (!otherActionNode.getLabel().equals(preNode.getLabel())){
+											///看是否不指向当前trigger
+											boolean pointToTrigger=false;
+											for (GraphNodeArrow nextOtherActionArrow: otherRuleNode.getcNodeArrowList()){
+												GraphNode nextTriggerNode= nextOtherActionArrow.getGraphNode();
+												if (nextTriggerNode.getLabel().equals(triggerNode.getLabel())){
+													pointToTrigger=true;
+													break;
+												}
+											}
+											if (!pointToTrigger){
+												////存在otheAction
+												for (GraphNodeArrow otherRuleArrow: otherActionNode.getpNodeArrowList()){
+													GraphNode otherActionRuleNode=otherRuleArrow.getGraphNode();
+													if (otherActionRuleNode.getShape().equals("hexagon")){
+														otherActionRelatedRuleNodes.add(otherActionRuleNode);
+													}
+												}
+											}
+										}
+									}
+								}
+								break;
+							}
+						}
+						for (GraphNode ruleNode1:pathRuleNodes){
+							for (GraphNode ruleNode2:otherActionRelatedRuleNodes){
+								if (ruleNode1.getName().equals(ruleNode2.getName())){
+									////会被前面的一些规则所阻止，则该trigger无法被触发
+									canAllBeTriggered=false;
+									break first;
+								}
+							}
+						}
+						/////找后继trigger节点,是当前trigger能直接蕴含的
+						for (GraphNodeArrow triggerChArrow:triggerNode.getcNodeArrowList()){
+							GraphNode cTriggerNode=triggerChArrow.getGraphNode();
+							if (cTriggerNode.getShape().equals("oval")){
+								////找该trigger的rule，看这个rule能否触发其他action
+								for (GraphNodeArrow cTriggerRuleArrow: cTriggerNode.getcNodeArrowList()){
+									GraphNode cTriggerRuleNode=cTriggerRuleArrow.getGraphNode();
+									if (cTriggerRuleNode.getShape().equals("hexagon")){
+										////rule节点，判断otherActionRelatedRuleNodes能否在该rule前提下触发
+										for (GraphNode ruleNode2:otherActionRelatedRuleNodes){
+											List<GraphNode> otherPathRuleNodes=canBeTriggeredByRuleNode(cTriggerRuleNode,ruleNode2,"");
+											if (otherPathRuleNodes.size()>0){
+												//会被该规则阻止，该trigger无法被触发
+												canAllBeTriggered=false;
+												break first;
+											}
+										}
+									}
+								}
+							}
+						}
+						canBeTriggered=true;
+						continue first;
+					}
+
+
+				}
+			}
+
+			canAllBeTriggered=false;
+			break first;
+		}
+		if (canAllBeTriggered){
+			pathRuleNodes.add(otherRuleNode);
+		}else {
+			pathRuleNodes.clear();
+		}
+		otherRuleNode.setTraversed(false);
+		return pathRuleNodes;
+	}
+
+
+
+	///////////otherRule的action是否包含rule的action
+	public static boolean containActionNode(GraphNode ruleNode,GraphNode otherRuleNode) {
+		boolean contain=true;
+		for(GraphNodeArrow actionArrow:ruleNode.getcNodeArrowList()) {
+			GraphNode actionNode=actionArrow.getGraphNode();
+			boolean exist=false;
+			for(GraphNodeArrow otherActionArrow:otherRuleNode.getcNodeArrowList()) {
+				if(otherActionArrow.getGraphNode().getName().equals(actionNode.getName())) {
+					exist=true;
+					break;
+				}
+			}
+			if(!exist) {
+				contain=false;
+			}
+		}
+		return contain;
+	}
+
+
+	/**
+	 * 获得incompleteness
+	 * 在删除unused rules之后
+	 * 获取设备节点，然后看其action节点是否有关的action
+	 * */
+	public static List<DeviceInstance> getIncomplete(List<GraphNode> graphNodes,List<DeviceInstance> deviceInstances){
+		List<DeviceInstance> cannotOffDevices=new ArrayList<>();
+		HashMap<String,List<String>> instanceActionsHashMap=new HashMap<>();
+
+		for (GraphNode graphNode:graphNodes){
+			if (graphNode.getShape().equals("record")){
+				if (graphNode.getRelatedInstanceAndColor()[1].equals("darkseagreen1")){
+					String content=graphNode.getLabel();
+					String instanceName=content.substring(0,content.indexOf("."));
+					String action=content.substring(content.indexOf(".")+1);
+					List<String> actions=instanceActionsHashMap.get(instanceName);
+					if (actions==null){
+						actions=new ArrayList<>();
+						actions.add(action);
+						instanceActionsHashMap.put(instanceName,actions);
+					}else {
+						actions.add(action);
+					}
+				}
+			}
+		}
+		for (Map.Entry<String,List<String>> instanceActionEntry:instanceActionsHashMap.entrySet()){
+			String instanceName=instanceActionEntry.getKey();
+			List<String> actions=instanceActionEntry.getValue();
+			for (DeviceInstance deviceInstance:deviceInstances){
+				if (deviceInstance.getInstanceName().equals(instanceName)){
+					////找到对应设备
+					boolean existOff=false;  ////判断是否有关闭的action
+
+					for (String action:actions){
+						for (DeviceType.StateSyncValueEffect stateSyncValueEffect:deviceInstance.getDeviceType().getStateSyncValueEffects()){
+							if (stateSyncValueEffect.getSynchronisation().equals(action)){
+								if (stateSyncValueEffect.getValue().equals("0")){
+									existOff=true;
+								}
+								break;
+							}
+						}
+					}
+					if (!existOff){
+						///不存在
+						cannotOffDevices.add(deviceInstance);
+					}
+					break;
+				}
+			}
+		}
+//		for (GraphNode graphNode:graphNodes){
+//			if (graphNode.getFillcolor().equals("darkseagreen1")){
+//				///设备节点
+//				///看其action节点有没有off的节点
+//				DeviceInstance relatedDeviceInstance=new DeviceInstance();
+//				for (DeviceInstance deviceInstance:deviceInstances){
+//					if(deviceInstance.getInstanceName().equals(graphNode.getName())){
+//						relatedDeviceInstance=deviceInstance;
+//						break;
+//					}
+//				}
+//				boolean existOff=false;
+//				for (GraphNodeArrow actionArrow:graphNode.getcNodeArrowList()){
+//					///看是否存在让该设备关闭的action
+//					GraphNode actionNode=actionArrow.getGraphNode();
+//					if (actionNode.getShape().equals("record")){
+//						String content=actionNode.getLabel();
+//						String action=content.substring(content.indexOf(".")+1);
+//						for (DeviceType.StateSyncValueEffect stateSyncValueEffect:relatedDeviceInstance.getDeviceType().getStateSyncValueEffects()){
+//							if (stateSyncValueEffect.getSynchronisation().equals(action)){
+//								if (stateSyncValueEffect.getValue().equals("0")){
+//									existOff=true;
+//								}
+//								break;
+//							}
+//						}
+//					}
+//				}
+//				if (!existOff){
+//					cannotOffDevices.add(relatedDeviceInstance);
+//				}
+//			}
+//		}
+		return cannotOffDevices;
+	}
+
+
 	public static List<ErrorReason> getUnused(List<GraphNode> ruleNodes,List<DeviceDetail> devices,List<BiddableType> biddables,HashMap<String,Rule> mapRules){
 		List<ErrorReason> unusedRules=new ArrayList<ErrorReason>();
 		for(GraphNode ruleNode:ruleNodes) {
@@ -515,24 +1053,7 @@ public class StaticAnalysisService {
 	}
 	
 	
-	///////////otherRule的action是否包含rule的action
-	public static boolean containActionNode(GraphNode ruleNode,GraphNode otherRuleNode) {
-		boolean contain=true;
-		for(GraphNodeArrow cArrow:ruleNode.getcNodeList()) {
-			GraphNode actionNode=cArrow.getGraphNode();
-			boolean exist=false;
-			for(GraphNodeArrow othercArrow:otherRuleNode.getcNodeList()) {
-				if(othercArrow.getGraphNode().getName().equals(actionNode.getName())) {
-					exist=true;
-					break;
-				}
-			}
-			if(!exist) {
-				contain=false;
-			}
-		}
-		return contain;
-	}
+
 	
 	//////////////////获得incompleteness
 	public static List<DeviceDetail> getIncompleteness(List<DeviceDetail> devices,List<Action> actions) {
@@ -755,7 +1276,7 @@ public class StaticAnalysisService {
 						if (str.indexOf("shape=\"doubleoctagon\"")>=0){
 							///对应实体名和颜色
 							instanceColorMap.put(nodeName,fillColor);
-							continue;
+//							continue;   选择添加实体节点
 						}
 						///创建新节点
 						GraphNode graphNode=new GraphNode(nodeName,shape,fillColor,label);
@@ -791,14 +1312,14 @@ public class StaticAnalysisService {
 					/////获得前后关系的两个节点的边
 					GraphNode pGraphNode=graphNodeMap.get(nodes[0]); ///前一个节点
 					GraphNode cGraphNode=graphNodeMap.get(nodes[1]);  ///后一个节点
-					if (pGraphNode==null){
+					if (pGraphNode.getShape().equals("doubleoctagon")){
 						///表明是实体节点，给后一个节点添加实体信息，实体名和该节点颜色
 						String color=instanceColorMap.get(nodes[0]);
 						String[] relatedInstanceAndColor=new String[2];
 						relatedInstanceAndColor[0]=nodes[0];
 						relatedInstanceAndColor[1]=color;
 						cGraphNode.setRelatedInstanceAndColor(relatedInstanceAndColor);
-						continue;
+//						continue;
 					}
 					GraphNodeArrow pNodeArrow=new GraphNodeArrow();  ///对于后一个节点来说的前边，指向当前节点的边
 					GraphNodeArrow cNodeArrow=new GraphNodeArrow();    ///对于前一个节点来说的后边，从当前节点出发的边
@@ -1470,16 +1991,7 @@ public class StaticAnalysisService {
 				}
 			}
 		}
-//		for(int i=1;i<ruleTriggeredRules.size();i++) {
-//			List<Rule> subRuleTriggeredRules=rulesTriggeredRulesMap.get(ruleTriggeredRules.get(i).getRuleName());
-//			if(subRuleTriggeredRules.size()>1&&!lastRuleTriggeredRules.contains(subRuleTriggeredRules.get(0))) {
-//				///能触发其他规则,如果有两条规则之间能相互触发则不考虑。。。
-//				
-//				getRuleTriggeredRulesAll(subRuleTriggeredRules,ruleTriggeredRules, rulesTriggeredRulesMap);
-//				
-//			}
-//			ruleTriggeredRules.addAll(subRuleTriggeredRules);			
-//		}
+
 	}
 	
 	/////获得每条规则能触发的规则数量,先找到每条规则直接能触发的规则

@@ -211,6 +211,72 @@ public class InputConstruct {
 		}
 	}
 
+	public static class BestScenarioGenerateInput{
+		private String modelFileName="";
+		private ModelLayer modelLayer=new ModelLayer();
+		private InstanceLayer instanceLayer=new InstanceLayer();
+		private InstanceLayer interactiveInstance=new InstanceLayer();
+		private List<Rule> rules=new ArrayList<>();
+		private String simulationTime="";
+		private String ifdFileName="";
+
+		public String getModelFileName() {
+			return modelFileName;
+		}
+
+		public void setModelFileName(String modelFileName) {
+			this.modelFileName = modelFileName;
+		}
+
+		public ModelLayer getModelLayer() {
+			return modelLayer;
+		}
+
+		public void setModelLayer(ModelLayer modelLayer) {
+			this.modelLayer = modelLayer;
+		}
+
+		public InstanceLayer getInstanceLayer() {
+			return instanceLayer;
+		}
+
+		public void setInstanceLayer(InstanceLayer instanceLayer) {
+			this.instanceLayer = instanceLayer;
+		}
+
+		public InstanceLayer getInteractiveInstance() {
+			return interactiveInstance;
+		}
+
+		public void setInteractiveInstance(InstanceLayer interactiveInstance) {
+			this.interactiveInstance = interactiveInstance;
+		}
+
+		public List<Rule> getRules() {
+			return rules;
+		}
+
+		public void setRules(List<Rule> rules) {
+			this.rules = rules;
+		}
+
+		public String getSimulationTime() {
+			return simulationTime;
+		}
+
+		public void setSimulationTime(String simulationTime) {
+			this.simulationTime = simulationTime;
+		}
+
+		public String getIfdFileName() {
+			return ifdFileName;
+		}
+
+		public void setIfdFileName(String ifdFileName) {
+			this.ifdFileName = ifdFileName;
+		}
+	}
+
 	public static class MultiScenarioGenerateInput {
 		private String modelFileName="";
 		private ModelLayer modelLayer=new ModelLayer();
@@ -355,6 +421,105 @@ public class InputConstruct {
 
 		public void setIfdFileName(String ifdFileName) {
 			this.ifdFileName = ifdFileName;
+		}
+	}
+
+	public static class StaticAnalysisInput{
+		private List<Rule> rules=new ArrayList<>();
+		private InstanceLayer instanceLayer=new InstanceLayer();
+
+		public List<Rule> getRules() {
+			return rules;
+		}
+
+		public void setRules(List<Rule> rules) {
+			this.rules = rules;
+		}
+
+		public InstanceLayer getInstanceLayer() {
+			return instanceLayer;
+		}
+
+		public void setInstanceLayer(InstanceLayer instanceLayer) {
+			this.instanceLayer = instanceLayer;
+		}
+	}
+
+	public static class SatisfactionInput{
+		private String attribute="";
+		private String lowValue="";
+		private String highValue="";
+		private List<DataTimeValue> dataTimeValues=new ArrayList<>();
+
+		public String getAttribute() {
+			return attribute;
+		}
+
+		public void setAttribute(String attribute) {
+			this.attribute = attribute;
+		}
+
+		public String getLowValue() {
+			return lowValue;
+		}
+
+		public void setLowValue(String lowValue) {
+			this.lowValue = lowValue;
+		}
+
+		public String getHighValue() {
+			return highValue;
+		}
+
+		public void setHighValue(String highValue) {
+			this.highValue = highValue;
+		}
+
+		public List<DataTimeValue> getDataTimeValues() {
+			return dataTimeValues;
+		}
+
+		public void setDataTimeValues(List<DataTimeValue> dataTimeValues) {
+			this.dataTimeValues = dataTimeValues;
+		}
+	}
+
+	public static class PropertyAnalysisInput{
+		private List<Scenario> scenarios=new ArrayList<>();
+		private List<Rule> rules=new ArrayList<>();
+		private List<String> properties=new ArrayList<>();
+		private InstanceLayer instanceLayer=new InstanceLayer();
+
+		public List<Scenario> getScenarios() {
+			return scenarios;
+		}
+
+		public void setScenarios(List<Scenario> scenarios) {
+			this.scenarios = scenarios;
+		}
+
+		public List<Rule> getRules() {
+			return rules;
+		}
+
+		public void setRules(List<Rule> rules) {
+			this.rules = rules;
+		}
+
+		public List<String> getProperties() {
+			return properties;
+		}
+
+		public void setProperties(List<String> properties) {
+			this.properties = properties;
+		}
+
+		public InstanceLayer getInstanceLayer() {
+			return instanceLayer;
+		}
+
+		public void setInstanceLayer(InstanceLayer instanceLayer) {
+			this.instanceLayer = instanceLayer;
 		}
 	}
 	

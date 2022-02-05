@@ -726,7 +726,7 @@ public class AnalysisService {
                             ///找到rule
                             for (IFDGraph.GraphNodeArrow ruleArrow:actionNode.getpNodeArrowList()){
                                 IFDGraph.GraphNode otherRuleNode=ruleArrow.getGraphNode();
-                                if (!otherRuleNode.isTraversed()){ ///找没有遍历过的rule
+                                if (otherRuleNode.getShape().equals("hexagon")&&!otherRuleNode.isTraversed()){ ///找没有遍历过的rule
                                     otherRuleNode.setTraversed(true);
                                     ///是前驱规则
                                     RuleAndPreRule preRule=new RuleAndPreRule();
@@ -1030,28 +1030,239 @@ public class AnalysisService {
         return deviceJitter;
     }
 
-    /////特定于某个场景找原因，给建议,对于涉及设备状态的可以改变
+    /**
+     * /////特定于某个场景找原因，给建议,对于涉及设备状态的可以改变
     // attribute<(<=,>,>=)value,看有没有能改变attribute的规则
     ////instance.state，如果是设备的话，看有没有相关规则，
+    ////attribute<(<=,>,>=)value & instance.state，
     ////TODO
-    public static void getPropertyReachableReasonAndGiveAdvise(List<double[]> satDurations, List<DataTimeValue> dataTimeValues,List<PropertyElementCheckResult> propertyElementCheckResults,InstanceLayer instanceLayer,List<Rule> rules){
+    */
+    public static PropertyAnalysisResult getPropertyReachableReasonAndGiveAdvise(List<double[]> satDurations, HashMap<String,DataTimeValue> dataTimeValueHashMap,List<PropertyElementCheckResult> propertyElementCheckResults,InstanceLayer instanceLayer,List<Rule> rules){
+        PropertyAnalysisResult propertyAnalysisResult=new PropertyAnalysisResult();
         if (satDurations.size()>0){
             ///有满足的情况
+            boolean sat=false;
+            for (double[] duration:satDurations){
+                if ((duration[1]-duration[0])>1){
+                    sat=true;
+                    break;
+                }
+            }
+            if (!sat){
+                return propertyAnalysisResult;
+            }
+            propertyAnalysisResult.setReachable(true);
+            List<Rule> relatedRules=new ArrayList<>();
+            List<String> addRuleContent=new ArrayList<>();
+            if(propertyElementCheckResults.size()==1){
+                // attribute<(<=,>,>=)value,看有没有能改变attribute的规则
+                ////instance.state，如果是设备的话，看有没有相关规则，
+                String[] elementForm=propertyElementCheckResults.get(0).getElementForm();
+                ///先找到会影响相应属性的设备
+                List<DeviceInstance> relatedDeviceInstances=getRelatedDeviceInstances(propertyElementCheckResults.get(0),instanceLayer.getDeviceInstances());
+                if (!elementForm[1].equals(".")){
+                    ////然后找到对应状态
+                    ////可以添加规则开启设备来改属性
+                    // attribute<(<=,>,>=)value
+                    for (DeviceInstance deviceInstance:relatedDeviceInstances){
+                        DeviceType deviceType= deviceInstance.getDeviceType();
+                        for (DeviceType.StateSyncValueEffect stateSyncValueEffect:deviceType.getStateSyncValueEffects()){
+                            for (String[] effect:stateSyncValueEffect.getEffects()){
+                                if (effect[0].equals(elementForm[0])){
+                                    if (elementForm[1].contains(">")&&Double.parseDouble(effect[1])<0||elementForm[1].contains("<")&&Double.parseDouble(effect[1])>0){
+                                        ////添加规则
+                                        String ruleContent="IF "+elementForm[0]+elementForm[1]+elementForm[2]+" THEN "+deviceInstance.getInstanceName()+"."+stateSyncValueEffect.getSynchronisation();
+                                        addRuleContent.add(ruleContent);
+                                    }
+                                }
+                            }
+                        }
+                    }
 
+                }else {
+                    ////对于设备
+                    if (elementForm[0].equals(relatedDeviceInstances.get(0).getInstanceName())){
+                        ////是某个设备状态
+                        ////看有什么规则让它转变为这个状态了，如果有指出该规则，顺便告知添加什么规则
+                        String stateValue="0";
+                        String sync="";
+                        List<String> otherSyncs=new ArrayList<>();
+                        for (DeviceType.StateSyncValueEffect stateSyncValueEffect:relatedDeviceInstances.get(0).getDeviceType().getStateSyncValueEffects()){
+                            if (stateSyncValueEffect.getStateName().equals(elementForm[2])){
+                                stateValue=stateSyncValueEffect.getValue();
+                                sync=stateSyncValueEffect.getSynchronisation();
+
+                            }else {
+                                otherSyncs.add(stateSyncValueEffect.getSynchronisation());
+                            }
+                        }
+//                        for (double[][] timeValue: propertyElementCheckResults.get(0).getSatTimeValues()){
+//                            List<String[]> stateDirectRules=getStateCausingRules(relatedDeviceInstances.get(0).getInstanceName(),Integer.parseInt(stateValue),
+//                                    timeValue[0][0],relatedDeviceInstances.get(0),ruleHashMap,dataTimeValues);
+//                        }
+                        ///看该场景中相关设备状态规则是否会发生
+
+                        for (Rule rule:rules){
+                            if (isRuleRelatedToInstanceSynchronisation(rule,relatedDeviceInstances.get(0).getInstanceName(),sync)){
+                                DataTimeValue dataTimeValue=dataTimeValueHashMap.get(rule.getRuleName());
+                                double triggeredTime=canRuleBeTriggeredInDuration(dataTimeValue,0,dataTimeValue.getTimeValues().get(dataTimeValue.getTimeValues().size()-1)[0]);
+                                if (triggeredTime>0){
+                                    relatedRules.add(rule);
+                                }
+                            }
+
+                        }
+                        ///添加规则
+                        for (String otherSync:otherSyncs){
+                            ////添加规则
+                            String ruleContent="IF "+elementForm[0]+elementForm[1]+elementForm[2]+" THEN "+relatedDeviceInstances.get(0).getInstanceName()+"."+otherSync;
+                            addRuleContent.add(ruleContent);
+                        }
+                    }
+                }
+            }else if (propertyElementCheckResults.size()>1){
+                for (PropertyElementCheckResult propertyElementCheckResult1:propertyElementCheckResults){
+                    if (propertyElementCheckResult1.getElementForm()[1].equals(".")){
+                        List<DeviceInstance> relatedDeviceInstances=getRelatedDeviceInstances(propertyElementCheckResult1,instanceLayer.getDeviceInstances());
+                        if (relatedDeviceInstances.size()>0){
+                            ////是设备状态
+                            String sync="";
+                            List<String> otherSyncs=new ArrayList<>();
+                            for (DeviceType.StateSyncValueEffect stateSyncValueEffect:relatedDeviceInstances.get(0).getDeviceType().getStateSyncValueEffects()){
+                                if (stateSyncValueEffect.getStateName().equals(propertyElementCheckResult1.getElementForm()[2])){
+                                    sync= stateSyncValueEffect.getSynchronisation();
+                                }else {
+                                    otherSyncs.add(stateSyncValueEffect.getSynchronisation());
+                                }
+                            }
+                            for (Rule rule:rules){
+                                if (isRuleRelatedToInstanceSynchronisation(rule,relatedDeviceInstances.get(0).getInstanceName(),sync)){
+                                    DataTimeValue dataTimeValue=dataTimeValueHashMap.get(rule.getRuleName());
+                                    double triggeredTime=canRuleBeTriggeredInDuration(dataTimeValue,0,dataTimeValue.getTimeValues().get(dataTimeValue.getTimeValues().size()-1)[0]);
+                                    if (triggeredTime>0){
+                                        relatedRules.add(rule);
+                                    }
+                                }
+
+                            }
+                            for (PropertyElementCheckResult propertyElementCheckResult2:propertyElementCheckResults){
+                                if (!propertyElementCheckResult2.equals(propertyElementCheckResult1)){
+                                    ///添加规则
+                                    String[] elementForm2=propertyElementCheckResult2.getElementForm();
+                                    for (String otherSync:otherSyncs){
+                                        ////添加规则
+                                        String ruleContent="IF "+elementForm2[0]+elementForm2[1]+elementForm2[2]+" THEN "+relatedDeviceInstances.get(0).getInstanceName()+"."+otherSync;
+                                        addRuleContent.add(ruleContent);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            propertyAnalysisResult.setRelatedRules(relatedRules);
+            propertyAnalysisResult.setAddRuleContents(addRuleContent);
         }
+        return propertyAnalysisResult;
     }
 
-    ////获得单个场景下一条property所有element同时满足的时间段区间
-    public static List<double[]> getPropertyConformDurations(List<DataTimeValue> dataTimeValues,String property,InstanceLayer instanceLayer){
+    /**
+     * 获得相关设备实例
+     * */
+    public static List<DeviceInstance> getRelatedDeviceInstances(PropertyElementCheckResult propertyElementCheckResult,List<DeviceInstance> deviceInstances){
+        List<DeviceInstance> relatedDeviceInstances=new ArrayList<>();
+        if (!propertyElementCheckResult.getElementForm()[1].equals(".")){
+            // attribute<(<=,>,>=)value,看有没有能改变attribute的规则
+            ////instance.state，如果是设备的话，看有没有相关规则，
+            ///先找到会影响相应属性的设备
+            for (DeviceInstance deviceInstance:deviceInstances){
+                DeviceType deviceType=deviceInstance.getDeviceType();
+                boolean hasEffect=false;
+                first:
+                for (DeviceType.StateSyncValueEffect stateSyncValueEffect:deviceType.getStateSyncValueEffects()){
+                    for (String[] effect:stateSyncValueEffect.getEffects()){
+                        if (effect[0].equals(propertyElementCheckResult.getElementForm()[0])){
+                            hasEffect=true;
+                            break first;
+                        }
+                    }
+                }
+                if (hasEffect){
+                    relatedDeviceInstances.add(deviceInstance);
+                }
+            }
+        }else {
+            ////设备状态相关
+            for (DeviceInstance deviceInstance:deviceInstances){
+                if (deviceInstance.getInstanceName().equals(propertyElementCheckResult.getInstanceName())){
+                    relatedDeviceInstances.add(deviceInstance);
+                    break;
+                }
+            }
+        }
+        return relatedDeviceInstances;
+    }
+
+    ////获得最终结果
+    public static List<PropertyAnalysisResult> getPropertiesAnalysisResultAllScenarios(List<Scenario> scenarios,InstanceLayer instanceLayer,List<Rule> rules,List<String> properties){
+        List<PropertyAnalysisResult> propertyAnalysisResults=new ArrayList<>();
+        HashMap<String,PropertyAnalysisResult> propertyAnalysisResultHashMap=new HashMap<>();
+        for (Scenario scenario:scenarios){
+            for (String property:properties){
+                ////获得单个场景每个property组成满足的时间段
+                HashMap<String,DataTimeValue> dataTimeValueHashMap=new HashMap<>();
+                for (DataTimeValue dataTimeValue:scenario.getDataTimeValues()){
+                    dataTimeValueHashMap.put(dataTimeValue.getDataName(), dataTimeValue);
+                }
+                List<PropertyElementCheckResult> propertyElementCheckResults=getPropertyConformTimeValues(dataTimeValueHashMap,property,instanceLayer);
+                ////获得单个场景下property中同时满足的时间段
+                List<double[]> durations=getConformTogetherDurations(propertyElementCheckResults);
+                PropertyAnalysisResult propertyAnalysisResult=propertyAnalysisResultHashMap.get(property);
+                PropertyAnalysisResult newPropertyAnalysisResult=getPropertyReachableReasonAndGiveAdvise(durations,dataTimeValueHashMap,propertyElementCheckResults,instanceLayer,rules);
+                if (propertyAnalysisResult==null||!propertyAnalysisResult.isReachable()){
+                    newPropertyAnalysisResult.setProperty(property);
+                    propertyAnalysisResultHashMap.put(property,newPropertyAnalysisResult);
+                }else if (newPropertyAnalysisResult.getRelatedRules().size()>0||newPropertyAnalysisResult.getAddRuleContents().size()>0){
+                    for (Rule newRule:newPropertyAnalysisResult.getRelatedRules()){
+//                        boolean exist=false;
+//                        for (Rule rule:propertyAnalysisResult.getRelatedRules()){
+//                            if (rule.getRuleName().equals(newRule.getRuleName())){
+//                                exist=true;
+//                                break;
+//                            }
+//                        }
+                        if (!propertyAnalysisResult.getRelatedRules().contains(newRule)){
+                            propertyAnalysisResult.getRelatedRules().add(newRule);
+                        }
+                    }
+                    for (String newRuleContent: newPropertyAnalysisResult.getAddRuleContents()){
+                        if (!propertyAnalysisResult.getAddRuleContents().contains(newRuleContent)){
+                            propertyAnalysisResult.getAddRuleContents().add(newRuleContent);
+                        }
+                    }
+                }
+
+
+            }
+        }
+        for (Map.Entry<String,PropertyAnalysisResult> propertyAnalysisResultEntry:propertyAnalysisResultHashMap.entrySet()){
+            propertyAnalysisResults.add(propertyAnalysisResultEntry.getValue());
+        }
+        return propertyAnalysisResults;
+    }
+
+    ////获得单个场景下一条property所有element同时满足的时间段区间，即单场景下property可达的时间段
+    public static void getPropertyConformDurations(String simulationTime,HashMap<String,DataTimeValue> dataTimeValueHashMap,String property,InstanceLayer instanceLayer,List<Rule> rules){
         ////获得单个场景每个property组成满足的时间段
-        List<PropertyElementCheckResult> propertyElementCheckResults=getPropertyConformTimeValues(dataTimeValues,property,instanceLayer);
+        List<PropertyElementCheckResult> propertyElementCheckResults=getPropertyConformTimeValues(dataTimeValueHashMap,property,instanceLayer);
         ////获得单个场景下property中同时满足的时间段
         List<double[]> durations=getConformTogetherDurations(propertyElementCheckResults);
-        return durations;
+        PropertyAnalysisResult propertyAnalysisResult=getPropertyReachableReasonAndGiveAdvise(durations,dataTimeValueHashMap,propertyElementCheckResults,instanceLayer,rules);
+        return;
     }
 
     ////单个场景下分别获得所有element满足的时间段区间
-    public static List<PropertyElementCheckResult> getPropertyConformTimeValues(List<DataTimeValue> dataTimeValues,String property,InstanceLayer instanceLayer){
+    public static List<PropertyElementCheckResult> getPropertyConformTimeValues(HashMap<String,DataTimeValue> dataTimeValueHashMap,String property,InstanceLayer instanceLayer){
         String[] propertyElements=property.split("&");
         List<PropertyElementCheckResult> propertyElementCheckResults=new ArrayList<>();
         for (String propertyElement:propertyElements){
@@ -1065,7 +1276,8 @@ public class AnalysisService {
             DataTimeValue relatedDataTimeValue=null;
             Instance relatedInstance=null;
             if (propertyElementForm[1].equals(".")){
-                for (DataTimeValue dataTimeValue:dataTimeValues){
+                for (Map.Entry<String,DataTimeValue> dataTimeValueEntry:dataTimeValueHashMap.entrySet()){
+                    DataTimeValue dataTimeValue=dataTimeValueEntry.getValue();
                     if (dataTimeValue.getInstanceName().equals(propertyElementForm[0])){
                         relatedDataTimeValue=dataTimeValue;
                         break;
@@ -1092,7 +1304,8 @@ public class AnalysisService {
                     }
                 }
             }else {
-                for (DataTimeValue dataTimeValue:dataTimeValues){
+                for (Map.Entry<String,DataTimeValue> dataTimeValueEntry:dataTimeValueHashMap.entrySet()){
+                    DataTimeValue dataTimeValue=dataTimeValueEntry.getValue();
                     if (dataTimeValue.getDataName().equals(propertyElementForm[0])){
                         relatedDataTimeValue=dataTimeValue;
                         break;
@@ -1122,6 +1335,7 @@ public class AnalysisService {
             satDurations.add(satDuration);
         }
         for (int i=1;i<propertyElementCheckResults.size();i++){
+            ////返回满足的区间
             satDurations=getIntersection(satDurations,propertyElementCheckResults.get(i).getSatTimeValues());
         }
         return satDurations;
@@ -1321,7 +1535,7 @@ public class AnalysisService {
     ///获得实例某状态取值
     public static int getInstanceStateValue(Instance instance,String state){
         ///实体状态，找到对应状态的取值, instance.state
-        int value=0;
+        int value=-1;
         if (instance instanceof DeviceInstance){
             DeviceInstance deviceInstance=(DeviceInstance) instance;
             for (DeviceType.StateSyncValueEffect stateSyncValueEffect:deviceInstance.getDeviceType().getStateSyncValueEffects()){
@@ -1453,10 +1667,21 @@ public class AnalysisService {
             if (dataTimeValue.isDevice()){
                 ///开始两个timeValue必然是value为0.0的,因此不用看
                 if (dataTimeValue.getTimeValues().size()>2){
-                    String[] deviceNotOff=new String[2];
-                    deviceNotOff[0]=dataTimeValue.getInstanceName();
-                    deviceNotOff[1]="notOff";
-                    deviceCannotBeTurnedOffOrOnList.add(deviceNotOff);
+                    ////打开了，且后面有数据为0则表明是能关闭，而如果没有则表明不能关闭
+                    boolean canBeOff=false;
+                    for (int i=2;i<dataTimeValue.getTimeValues().size();i++){
+                        if ((int) dataTimeValue.getTimeValues().get(i)[1]==0){
+                            canBeOff=true;
+                            break;
+                        }
+                    }
+                    if(!canBeOff){
+                        String[] deviceNotOff=new String[2];
+                        deviceNotOff[0]=dataTimeValue.getInstanceName();
+                        deviceNotOff[1]="notOff";
+                        deviceCannotBeTurnedOffOrOnList.add(deviceNotOff);
+                    }
+
                 }else {
                     ///如果设备一直没打开
                     String[] deviceNotOn=new String[2];

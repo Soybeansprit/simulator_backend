@@ -9,21 +9,15 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.Scanner;
 
+import com.example.demo.bean.*;
 import org.dom4j.DocumentException;
 import org.springframework.stereotype.Service;
 
-import com.example.demo.bean.DeviceType;
 import com.example.demo.bean.DeviceType.StateEffect;
-import com.example.demo.bean.EnvironmentModel;
 import com.example.demo.bean.ModelGraph.TemplGraph;
 import com.example.demo.bean.ModelGraph.TemplGraphNode;
 import com.example.demo.bean.ModelGraph.TemplTransition;
-import com.example.demo.bean.Rule;
-import com.example.demo.bean.SensorType;
-import com.example.demo.bean.StaticAnalysisResult;
-import com.example.demo.bean.Attribute_;
-import com.example.demo.bean.BiddableType;
-import com.example.demo.bean.DeviceDetail;
+import com.example.demo.bean.StaticAnalysisResult1;
 import com.example.demo.service.GetTemplate.Branchpoint;
 import com.example.demo.service.GetTemplate.Label;
 import com.example.demo.service.GetTemplate.Location;
@@ -148,7 +142,7 @@ public class TemplGraphService {
 				"IF Fan_0.fon THEN AirConditioner_0.turn_ac_heat\r\n";
 
 		List<Rule> rules=RuleService.getRuleList(ruleText);
-		StaticAnalysisResult staticAnalsisResult=StaticAnalysisService.getStaticAnalaysisResult(rules, ifdFileName, filePath, environmentModel);
+		StaticAnalysisResult1 staticAnalsisResult=StaticAnalysisService.getStaticAnalaysisResult(rules, ifdFileName, filePath, environmentModel);
 		
 		SystemModelService.generateContrModel(filePath,modelFileName2, staticAnalsisResult.getUsableRules(), devices, biddableTypes);
 //		List<String[]> declarations=SystemModelService.generateDeclaration(rules, biddableTypes, deviceTypes, sensorTypes,controlledDevices);

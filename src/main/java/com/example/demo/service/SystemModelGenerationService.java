@@ -34,7 +34,7 @@ public class SystemModelGenerationService {
         String ruleText="IF co2ppm>800 THEN purifier_0.turn_ap_on\n" +
                 "IF co2ppm<=800 THEN purifier_0.turn_ap_off\n" +
                 "IF humidity>=50 THEN humidifier_0.turn_hum_off\n" +
-                "IF humidity<50 THEN humidifier_0.turn_hum_on\n" +
+                "IF humidity<30 THEN humidifier_0.turn_hum_on\n" +
                 "IF ac_0.cool THEN window_0.close_window\n" +
                 "IF ac_0.heat THEN window_0.close_window\n" +
                 "IF emma.out THEN vacuum_0.turn_vacuum_off\n" +
@@ -44,8 +44,8 @@ public class SystemModelGenerationService {
                 "IF temperature<28 THEN fan_0.turn_fan_off\n" +
                 "IF temperature>24 THEN ac_0.turn_ac_off\n" +
                 "IF alarm_0.alarmon THEN window_0.open_window\n" +
-                "IF tv_0.tvon THEN audio_0.turn_audio_on\n" +
-                "IF brightness>20000 THEN bulb_0.turn_bulb_off\n";
+                "IF humidity<50 THEN window_0.open_window\n" +
+                "IF window_0.wopen THEN humidifier_0.turn_hum_on\n";
         List<String> locations=new ArrayList<>();
 //        locations.add("living_room");
 //        locations.add("kitchen");
@@ -54,13 +54,16 @@ public class SystemModelGenerationService {
 //        locations.add("out");
         ModelLayer modelLayer=ModelLayerService.getModelLayer("D:\\example\\例子\\","ontology.xml","changed-ontology.xml",locations);
         InstanceLayer instanceLayer=InstanceLayerService.getInstanceLayer("D:\\example\\例子\\实验\\","bianhan-information.properties",modelLayer);
-//        List<Rule> rules=RuleService.getRuleList(ruleText);
-//        HashMap<String,Trigger> triggerMap=getTriggerMapFromRules(rules,instanceLayer);
-//        HashMap<String,Action> actionMap=getActionMapFromRules(rules);
-//        InstanceLayer interactiveEnvironment=getInteractiveEnvironment(instanceLayer,modelLayer,triggerMap,actionMap);
-//        HashMap<String, Instance> interactiveInstanceMap=InstanceLayerService.getInstanceMap(interactiveEnvironment);
-//        ///生成IFD
-//        StaticAnalysisService.generateIFD(triggerMap,actionMap,rules,interactiveEnvironment,interactiveInstanceMap,"ifd.dot","D:\\example\\例子\\");
+        List<Rule> rules=RuleService.getRuleList(ruleText);
+        HashMap<String,Trigger> triggerMap=getTriggerMapFromRules(rules,instanceLayer);
+        HashMap<String,Action> actionMap=getActionMapFromRules(rules);
+        InstanceLayer interactiveEnvironment=getInteractiveEnvironment(instanceLayer,modelLayer,triggerMap,actionMap);
+        HashMap<String, Instance> interactiveInstanceMap=InstanceLayerService.getInstanceMap(interactiveEnvironment);
+        ///生成IFD
+        StaticAnalysisService.generateIFD(triggerMap,actionMap,rules,interactiveEnvironment,interactiveInstanceMap,"ifd.dot","D:\\example\\例子\\");
+
+        StaticAnalysisResult staticAnalysisResult=StaticAnalysisService.getStaticAnalysisResult(rules,"D:\\example\\例子\\","ifd.dot",interactiveEnvironment);
+        System.out.println(staticAnalysisResult);
 //        String[] intoLocationTime=getIntoLocationTime("300",instanceLayer.getHumanInstance());
 //        generateCommonModelFile("300",intoLocationTime,"D:\\example\\例子\\","changed-ontology.xml","D:\\example\\例子\\","changed-ontology.xml",instanceLayer,rules,triggerMap,actionMap,interactiveEnvironment,interactiveInstanceMap);
 //        List<String[]> attributeValues=new ArrayList<>();
@@ -1462,6 +1465,232 @@ public class SystemModelGenerationService {
         }
         return action;
     }
+
+    /**
+     * 根据ifd图获得能触发最多规则的场景，也就是设计各属性取值
+     * 计算获得每条规则能触发多少规则
+     *由于规则与规则间存在一定的依赖关系，某条规则的发生可能同时引发其他一连串的规则的发生，也可能使得某些规则无法发生
+     * 首先我们希望能获得每条规则能触发的规则数
+     * 根据规则触发的规则数量规划初步规则发生顺序
+     */
+
+
+    /**
+     * 判断某条规则能否触发另一条规则，需要判断该规则的所有trigger都满足且action起作用的情况下，另一条规则的所有trigger是否都能满足。
+     * 分解为：在某条规则rule Ri发生的条件下，判断某个trigger tj能否满足，其中Ri的所有trigger为Ti，所有action为Ai
+     * */
+    public static List<String[]> setAttributeValues(String ifdFilePath,String ifdFileName){
+        List<IFDGraph.GraphNode> graphNodes=StaticAnalysisService.parseIFDAndGetIFDNode(ifdFilePath,ifdFileName);
+        HashMap<String, RuleAndTriggeredRule> ruleAndTriggeredRuleHashMap=getAllRulesTriggeredRules(graphNodes);
+        HashMap<String,List<RuleAndTriggeredRule>> attributeRulesHashMap=new HashMap<>();
+        HashMap<String, IFDGraph.GraphNode> graphNodeHashMap=new HashMap<>();
+        List<String[]> attributeValues=new ArrayList<>();
+        for (IFDGraph.GraphNode graphNode:graphNodes){
+            if (graphNode.getShape().equals("oval")){
+                ////是trigger
+                String trigger=graphNode.getLabel();
+                String[] triggerForm=RuleService.getTriggerForm(trigger);
+                if (!triggerForm[1].equals(".")){
+                    ////表明是attribute
+                    List<RuleAndTriggeredRule> attributeRules=attributeRulesHashMap.get(triggerForm[0]);
+                    if (attributeRules==null){
+                        attributeRules=new ArrayList<RuleAndTriggeredRule>();
+
+                    }
+                    for (IFDGraph.GraphNodeArrow ruleNodeArrow:graphNode.getcNodeArrowList()){
+                        IFDGraph.GraphNode ruleNode= ruleNodeArrow.getGraphNode();
+                        if (ruleNode.getShape().equals("hexagon")){
+                            ////找到该规则能触发的规则数
+                            graphNodeHashMap.put(ruleNode.getName(),ruleNode);
+                            RuleAndTriggeredRule ruleAndTriggeredRule=ruleAndTriggeredRuleHashMap.get(ruleNode.getName());
+                            attributeRules.add(ruleAndTriggeredRule);
+                        }
+                    }
+                    attributeRulesHashMap.putIfAbsent(triggerForm[0],attributeRules);
+                }
+            }
+        }
+        for (Map.Entry<String, List<RuleAndTriggeredRule>> attributeRulesEntry: attributeRulesHashMap.entrySet()){
+            String[] attributeValue=new String[2];
+            attributeValue[0]=attributeRulesEntry.getKey();
+            List<RuleAndTriggeredRule> attributeRules=attributeRulesEntry.getValue();
+            RuleAndTriggeredRule ruleWithMaxTriggeredRules=attributeRules.get(0);
+            int max=attributeRules.get(0).getTriggeredRules().size();
+            for (RuleAndTriggeredRule ruleAndTriggeredRule:attributeRules){
+                if (ruleAndTriggeredRule.getTriggeredRules().size()>max){
+                    max=ruleAndTriggeredRule.getTriggeredRules().size();
+                    ruleWithMaxTriggeredRules=ruleAndTriggeredRule;
+                }
+            }
+            ////找到要触发的规则后，计算attribute取值
+            ///先找到trigger
+            IFDGraph.GraphNode ruleNode=graphNodeHashMap.get(ruleWithMaxTriggeredRules.getCurrentRule());
+            ///>lowValue, <highValue
+            double lowValue=-Double.MAX_VALUE;
+            double highValue=Double.MAX_VALUE;
+            for (IFDGraph.GraphNodeArrow triggerNodeArrow:ruleNode.getpNodeArrowList()){
+                IFDGraph.GraphNode triggerNode=triggerNodeArrow.getGraphNode();
+                String[] triggerForm=RuleService.getTriggerForm(triggerNode.getLabel());
+                if (triggerForm[0].equals(attributeValue[0])){
+                    double value=Double.parseDouble(triggerForm[2]);
+                    if (triggerForm[1].contains("<")){
+                        if (value>lowValue){
+                            lowValue=value;
+                        }
+                    }else if (triggerForm[1].contains(">")){
+                        if (value<highValue){
+                            highValue=value;
+                        }
+                    }
+                }
+            }
+            if (lowValue<=highValue&&lowValue>-Double.MAX_VALUE&&highValue<Double.MAX_VALUE){
+                attributeValue[1]=(lowValue+highValue)/2+"";
+            }else if ((lowValue+"").equals(-Double.MAX_VALUE+"")&&highValue<Double.MAX_VALUE){
+                attributeValue[1]=(highValue+10)+"";
+            }else if ((highValue+"").equals(Double.MAX_VALUE+"")&&lowValue>-Double.MAX_VALUE){
+                attributeValue[1]=(lowValue-10)+"";
+            }
+            if (attributeValue[1]!=null){
+                attributeValues.add(attributeValue);
+            }
+
+        }
+        return attributeValues;
+    }
+
+    public static HashMap<String, RuleAndTriggeredRule> getAllRulesTriggeredRules(List<IFDGraph.GraphNode> graphNodes){
+        ////返回每条规则能触发的所有规则
+        List<RuleAndTriggeredRule> ruleAndTriggeredRules=new ArrayList<>();
+        HashMap<String, RuleAndTriggeredRule> ruleAndTriggeredRuleHashMap=new HashMap<>();
+        HashMap<String, IFDGraph.GraphNode> graphNodeHashMap=new HashMap<>();
+        for (IFDGraph.GraphNode ruleNode:graphNodes){
+            if (ruleNode.getShape().equals("hexagon")){
+                RuleAndTriggeredRule ruleAndTriggeredRule=getRuleTriggeredRules(ruleNode);
+                ruleAndTriggeredRuleHashMap.put(ruleNode.getName(), ruleAndTriggeredRule);
+                ruleAndTriggeredRules.add(ruleAndTriggeredRule);
+                graphNodeHashMap.put(ruleNode.getName(), ruleNode);
+            }
+        }
+        getAllTriggeredRules(ruleAndTriggeredRuleHashMap,graphNodeHashMap);
+        return ruleAndTriggeredRuleHashMap;
+    }
+
+    public static RuleAndTriggeredRule getRuleTriggeredRules(IFDGraph.GraphNode ruleNode){
+//        Rule Ri的所有trigger Ti，所有action Ai
+        RuleAndTriggeredRule ruleAndTriggeredRule=new RuleAndTriggeredRule();
+        ruleAndTriggeredRule.setCurrentRule(ruleNode.getName());   ////当前规则名
+        ////看该规则能触发多少条规则，遍历过去
+        ////先获得该规则的所有trigger和action
+        for(IFDGraph.GraphNodeArrow triggerArrow:ruleNode.getpNodeArrowList()){
+            IFDGraph.GraphNode triggerNode=triggerArrow.getGraphNode();
+            //遍历Ti
+            for (IFDGraph.GraphNodeArrow nextNodeArrow: triggerNode.getcNodeArrowList()){
+                IFDGraph.GraphNode nextNode= nextNodeArrow.getGraphNode();
+                if (nextNode.getShape().equals("hexagon")&&!nextNode.getName().equals(ruleNode.getName())){
+                    if (ruleAndTriggeredRule.getTriggeredRules().contains(nextNode.getName())){
+                        continue;
+                    }
+                    //如ti∈Ti存在黑色实线后继节点，即为rule Rj，获得Rj的所有trigger节点Tj，判断Tj在Ri的情况下能否满足
+                    List<IFDGraph.GraphNode> pathRuleNodes=StaticAnalysisService.canBeTriggeredByRuleNode(ruleNode,nextNode,"bestScenario");
+                    ////能被触发
+                    for (IFDGraph.GraphNode pathRuleNode:pathRuleNodes){
+                        if (!ruleAndTriggeredRule.getTriggeredRules().contains(pathRuleNode.getName())&&!pathRuleNode.getName().equals(ruleAndTriggeredRule.getCurrentRule())){
+                            ruleAndTriggeredRule.getTriggeredRules().add(pathRuleNode.getName());
+                        }
+                    }
+                }else if (nextNode.getShape().equals("oval")){
+                    //如ti∈Ti存在红色实线后继节点，即为trigger tj，获得tj的黑色实线后继节点rule Rj，获得Rj的所有trigger节点Tj，判断Tj在Ri的情况下能否满足
+                    for (IFDGraph.GraphNodeArrow nextNextNodeArrow:nextNode.getcNodeArrowList()){
+                        IFDGraph.GraphNode nextNextNode=nextNextNodeArrow.getGraphNode();
+                        if (nextNextNode.getShape().equals("hexagon")){
+                            if (ruleAndTriggeredRule.getTriggeredRules().contains(nextNextNode.getName())){
+                                continue;
+                            }
+                            List<IFDGraph.GraphNode> pathRuleNodes=StaticAnalysisService.canBeTriggeredByRuleNode(ruleNode,nextNextNode,"bestScenario");
+                            ////能被触发
+                            for (IFDGraph.GraphNode pathRuleNode:pathRuleNodes){
+                                if (!ruleAndTriggeredRule.getTriggeredRules().contains(pathRuleNode.getName())&&!pathRuleNode.getName().equals(ruleAndTriggeredRule.getCurrentRule())){
+                                    ruleAndTriggeredRule.getTriggeredRules().add(pathRuleNode.getName());
+                                }
+                            }
+
+                        }
+                    }
+                }
+
+
+            }
+
+        }
+        for(IFDGraph.GraphNodeArrow actionArrow:ruleNode.getcNodeArrowList()){
+            IFDGraph.GraphNode actionNode= actionArrow.getGraphNode();
+            ///遍历Ai
+            for (IFDGraph.GraphNodeArrow nextNodeArrow: actionNode.getcNodeArrowList()){
+                IFDGraph.GraphNode nextNode=nextNodeArrow.getGraphNode();
+                if (nextNode.getShape().equals("oval")){
+                    //如ai∈Ai存在红色实线后继节点，即为trigger tj，获得tj的黑色实线后继节点rule Rj，获得Rj的所有trigger节点Tj，判断Tj在Ri的情况下能否满足
+                    //如ai∈Ai存在红色虚线后继节点，即为trigger tj，判断tj在Ri情况下能否满足，如能满足，获得tj的黑色实线后继节点rule Rj，获得Rj的所有trigger节点Tj，判断Tj在Ri的情况下能否满足
+                    for (IFDGraph.GraphNodeArrow nextNextNodeArrow:nextNode.getcNodeArrowList()){
+                        IFDGraph.GraphNode nextNextNode=nextNextNodeArrow.getGraphNode();
+                        if (nextNextNode.getShape().equals("hexagon")){
+                            if (ruleAndTriggeredRule.getTriggeredRules().contains(nextNextNode.getName())){
+                                continue;
+                            }
+                            List<IFDGraph.GraphNode> pathRuleNodes=StaticAnalysisService.canBeTriggeredByRuleNode(ruleNode,nextNextNode,"bestScenario");
+                            ////能被触发
+                            for (IFDGraph.GraphNode pathRuleNode:pathRuleNodes){
+                                if (!ruleAndTriggeredRule.getTriggeredRules().contains(pathRuleNode.getName())&&!pathRuleNode.getName().equals(ruleAndTriggeredRule.getCurrentRule())){
+                                    ruleAndTriggeredRule.getTriggeredRules().add(pathRuleNode.getName());
+                                }
+                            }
+
+                        }
+                    }
+                }
+            }
+
+
+        }
+        return ruleAndTriggeredRule;
+
+    }
+
+    /////获得每条规则能触发的所有规则
+    public static void getAllTriggeredRules(HashMap<String,RuleAndTriggeredRule> ruleAndTriggeredRuleHashMap, HashMap<String, IFDGraph.GraphNode> graphNodeHashMap){
+        for (Map.Entry<String,RuleAndTriggeredRule> ruleAndTriggeredRuleEntry:ruleAndTriggeredRuleHashMap.entrySet()){
+            String ruleName= ruleAndTriggeredRuleEntry.getKey();
+            RuleAndTriggeredRule ruleAndTriggeredRule=ruleAndTriggeredRuleEntry.getValue();
+            IFDGraph.GraphNode ruleNode=graphNodeHashMap.get(ruleName);
+            getRuleAllTriggeredRules(ruleAndTriggeredRule,ruleNode,ruleAndTriggeredRuleHashMap,graphNodeHashMap);
+        }
+    }
+
+    public static void getRuleAllTriggeredRules(RuleAndTriggeredRule ruleAndTriggeredRule, IFDGraph.GraphNode ruleNode,
+                                                HashMap<String,RuleAndTriggeredRule> ruleAndTriggeredRuleHashMap, HashMap<String, IFDGraph.GraphNode> graphNodeHashMap){
+        if (!ruleNode.isTraversed()){
+            ruleNode.setTraversed(true);
+            for (int i=ruleAndTriggeredRule.getTriggeredRules().size()-1;i>=0;i--){
+                String triggeredRuleName=ruleAndTriggeredRule.getTriggeredRules().get(i);
+                IFDGraph.GraphNode triggeredRuleNode=graphNodeHashMap.get(triggeredRuleName);
+                RuleAndTriggeredRule triggeredRuleAndTriggeredRule=ruleAndTriggeredRuleHashMap.get(triggeredRuleName);
+                if (!triggeredRuleNode.isTraversed()){
+                    getRuleAllTriggeredRules(triggeredRuleAndTriggeredRule,triggeredRuleNode,ruleAndTriggeredRuleHashMap,graphNodeHashMap);
+                }
+                for (String otherTriggeredRuleName:triggeredRuleAndTriggeredRule.getTriggeredRules()){
+                    if (!ruleAndTriggeredRule.getTriggeredRules().contains(otherTriggeredRuleName)){
+                        ruleAndTriggeredRule.getTriggeredRules().add(otherTriggeredRuleName);
+                    }
+                }
+            }
+        }
+
+
+    }
+
+//    public static boolean canOtherRuleBeTriggeredByRule(IFDGraph.GraphNode ruleNode, IFDGraph.GraphNode otherRuleNode){
+//
+//    }
 
 
 
