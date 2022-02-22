@@ -143,6 +143,7 @@ public class OutputConstruct {
 	public static class OtherAnalysisOutput{
 		private List<String> deviceCannotBeTurnedOffList=new ArrayList<>();
 		private List<String> notTriggeredRulesInAll=new ArrayList<>();
+		private List<List<String>[]> homeBoundedOutBoundedResults=new ArrayList<>();  ///隐私性验证结果
 
 		public List<String> getDeviceCannotBeTurnedOffList() {
 			return deviceCannotBeTurnedOffList;
@@ -158,6 +159,14 @@ public class OutputConstruct {
 
 		public void setNotTriggeredRulesInAll(List<String> notTriggeredRulesInAll) {
 			this.notTriggeredRulesInAll = notTriggeredRulesInAll;
+		}
+
+		public List<List<String>[]> getHomeBoundedOutBoundedResults() {
+			return homeBoundedOutBoundedResults;
+		}
+
+		public void setHomeBoundedOutBoundedResults(List<List<String>[]> homeBoundedOutBoundedResults) {
+			this.homeBoundedOutBoundedResults = homeBoundedOutBoundedResults;
 		}
 	}
 

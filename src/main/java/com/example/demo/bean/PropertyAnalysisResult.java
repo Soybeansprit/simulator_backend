@@ -4,10 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PropertyAnalysisResult {
-    private String property="";
-    private boolean reachable=false;
-    private List<Rule> relatedRules=new ArrayList<>();
-    private List<String> addRuleContents=new ArrayList<>();
+    private String property="";   //性质内容
+    private boolean reachable=false;   //是否可达
+    private List<Rule> relatedRules=new ArrayList<>();  //相关规则
+    private List<String> addRuleContents=new ArrayList<>();  //建议添加的规则
 
     public String getProperty() {
         return property;

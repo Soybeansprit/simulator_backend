@@ -484,6 +484,27 @@ public class InputConstruct {
 		}
 	}
 
+	public static class OtherAnalysisInput{
+		private List<Scenario> scenarios=new ArrayList<>();
+		private InstanceLayer instanceLayer=new InstanceLayer();
+
+		public List<Scenario> getScenarios() {
+			return scenarios;
+		}
+
+		public void setScenarios(List<Scenario> scenarios) {
+			this.scenarios = scenarios;
+		}
+
+		public InstanceLayer getInstanceLayer() {
+			return instanceLayer;
+		}
+
+		public void setInstanceLayer(InstanceLayer instanceLayer) {
+			this.instanceLayer = instanceLayer;
+		}
+	}
+
 	public static class PropertyAnalysisInput{
 		private List<Scenario> scenarios=new ArrayList<>();
 		private List<Rule> rules=new ArrayList<>();

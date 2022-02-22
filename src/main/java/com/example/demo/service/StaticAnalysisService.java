@@ -133,6 +133,9 @@ public class StaticAnalysisService {
 		
 	}
 
+	/**
+	 * 静态分析
+	 * */
 	public static StaticAnalysisResult getStaticAnalysisResult(List<Rule> rules,String ifdFilePath,String ifdFileName,InstanceLayer instanceLayer) throws IOException {
 
 		HashMap<String,Instance> instanceHashMap=InstanceLayerService.getInstanceMap(instanceLayer);
@@ -1165,7 +1168,9 @@ public class StaticAnalysisService {
 					cNode.setGraphNode(cGraphNode);
 					if(features!=null) {
 						for(String feature:features) {
-							String[] featureValue=feature.split("=");
+							String[] featureValue=new String[2];
+							featureValue[0]=feature.substring(0,feature.indexOf("="));
+							featureValue[1]=feature.substring(feature.indexOf("=")+1);
 							if(featureValue[0].equals("label")) {
 								String label=featureValue[1].replaceAll("\"", "");
 								pNode.setLabel(label);
@@ -1263,7 +1268,9 @@ public class StaticAnalysisService {
 						String label="";
 						String fillColor="";
 						for(String feature:features) {
-							String[] featureName=feature.split("=");
+							String[] featureName=new String[2];
+							featureName[0]=feature.substring(0,feature.indexOf("="));
+							featureName[1]=feature.substring(feature.indexOf("=")+1);
 							if(featureName[0].equals("shape")) {
 								shape=featureName[1].trim();
 							} else if(featureName[0].equals("label")) {
@@ -1327,7 +1334,9 @@ public class StaticAnalysisService {
 					cNodeArrow.setGraphNode(cGraphNode);    ///后边指向的节点
 					if(features!=null) {
 						for(String feature:features) {
-							String[] featureValue=feature.split("=");
+							String[] featureValue=new String[2];
+							featureValue[0]=feature.substring(0,feature.indexOf("="));
+							featureValue[1]=feature.substring(feature.indexOf("=")+1);
 							if(featureValue[0].equals("label")) {
 								pNodeArrow.setLabel(featureValue[1].trim());
 								cNodeArrow.setLabel(featureValue[1].trim());

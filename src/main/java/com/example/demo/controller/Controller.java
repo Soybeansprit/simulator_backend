@@ -596,8 +596,9 @@ public class Controller {
 
 	@RequestMapping("/getOtherAnalysis")
 	@ResponseBody
-	public OutputConstruct.OtherAnalysisOutput getOtherAnalysis(@RequestBody List<Scenario> scenarios) {
-
+	public OutputConstruct.OtherAnalysisOutput getOtherAnalysis(@RequestBody InputConstruct.OtherAnalysisInput otherAnalysisInput) {
+		List<Scenario> scenarios=otherAnalysisInput.getScenarios();
+		InstanceLayer instanceLayer= otherAnalysisInput.getInstanceLayer();
 		List<List<String[]>> deviceCannotBeTurnedOffOrOnListOfDifferentScenarios=new ArrayList<>();
 		List<List<String>> notTriggeredRulesOfDifferentScenarios=new ArrayList<>();
 		for (Scenario scenario:scenarios){
@@ -606,11 +607,17 @@ public class Controller {
 			List<String> notTriggeredRules=AnalysisService.getNotTriggeredRulesInAScenario(scenario.getDataTimeValues());
 			notTriggeredRulesOfDifferentScenarios.add(notTriggeredRules);
 		}
+		///规则不完整
 		List<String> deviceCannotBeTurnedOffList=AnalysisService.getDeviceCannotBeTurnedOffListInAll(deviceCannotBeTurnedOffOrOnListOfDifferentScenarios);
+		///不可触发规则
 		List<String> notTriggeredRulesInAll=AnalysisService.getNotTriggeredRulesInAll(notTriggeredRulesOfDifferentScenarios);
+		///隐私性验证
+		List<List<String>[]> homeBoundedOutBoundedResults=AnalysisService.privacyVerification(instanceLayer.getDeviceInstances(),instanceLayer.getHumanInstance(),scenarios,instanceLayer);
+
 		OutputConstruct.OtherAnalysisOutput otherAnalysisOutput=new OutputConstruct.OtherAnalysisOutput();
 		otherAnalysisOutput.setDeviceCannotBeTurnedOffList(deviceCannotBeTurnedOffList);
 		otherAnalysisOutput.setNotTriggeredRulesInAll(notTriggeredRulesInAll);
+		otherAnalysisOutput.setHomeBoundedOutBoundedResults(homeBoundedOutBoundedResults);
 		return otherAnalysisOutput;
 	}
 	@RequestMapping("/getPropertiesAnalysis")

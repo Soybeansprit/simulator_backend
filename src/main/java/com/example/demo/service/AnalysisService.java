@@ -1031,11 +1031,169 @@ public class AnalysisService {
     }
 
     /**
+     * 隐私性验证
+     * 先生成每个可观察设备的隐私性性质组合
+     * 然后分别进行验证，前提人有out状态
+     *
+     * */
+
+    public static List<List<String>[]> privacyVerification(List<DeviceInstance> deviceInstances,HumanInstance humanInstance,List<Scenario> scenarios,InstanceLayer instanceLayer){
+        ///先看human是否有out状态
+//        List<String>[] homeBoundedOutBoundedResults=new List[2];
+//        homeBoundedOutBoundedResults[0]=new ArrayList<>();   ///这些状态出现人必定在家
+//        homeBoundedOutBoundedResults[1]=new ArrayList<>();   ///这些状态出现人必定不在家
+        List<List<String>[]> homeBoundedOutBoundedResults=new ArrayList<>();
+
+        String out="";
+        for (String[] stateValue:humanInstance.getHuman().getStateValues()){
+            if (stateValue[0].trim().equalsIgnoreCase("out")){
+                ///有人out状态
+                out=stateValue[0].trim();
+                break;
+            }
+        }
+        if (out.equals("")){
+            ///没有out状态，则不考虑隐私性验证了
+            return homeBoundedOutBoundedResults;
+        }
+        ///获得所有场景的dataTimeValue的map
+        List<HashMap<String,DataTimeValue>> dataTimeValueHashMapList=new ArrayList<>();
+        for (Scenario scenario:scenarios){
+            //获得该场景的仿真轨迹map
+            HashMap<String,DataTimeValue> dataTimeValueHashMap=new HashMap<>();
+            for (DataTimeValue dataTimeValue:scenario.getDataTimeValues()){
+                dataTimeValueHashMap.put(dataTimeValue.getDataName(), dataTimeValue);
+            }
+            dataTimeValueHashMapList.add(dataTimeValueHashMap);
+        }
+        for (DeviceInstance deviceInstance:deviceInstances){
+            ///分别验证可观察设备的隐私性
+            if (deviceInstance.isVisible()){
+                //获得可被观察的设备的待验证隐私性性质
+                List<String[]> privacyProperties=getDeviceInstancePrivacyProperties(deviceInstance,humanInstance,out);
+                ///验证这组隐私性性质
+                List<String>[] homeBoundedOutBoundedProperties=privacyVerificationForSingleDeviceInstance(privacyProperties,dataTimeValueHashMapList,instanceLayer);
+                if (homeBoundedOutBoundedProperties[0].size()>0&&homeBoundedOutBoundedProperties[1].size()>0){
+                    ///存在隐私性问题，因为能从一些状态推断当前人是否在家
+                    homeBoundedOutBoundedResults.add(homeBoundedOutBoundedProperties);
+                }
+//                homeBoundedOutBoundedResults[0].addAll(homeBoundedOutBoundedProperties[0]);
+//                homeBoundedOutBoundedResults[1].addAll(homeBoundedOutBoundedProperties[1]);
+
+            }
+        }
+        return homeBoundedOutBoundedResults;
+    }
+
+    ///生成某个可被观察的设备的待验证隐私性性质
+    public static List<String[]> getDeviceInstancePrivacyProperties(DeviceInstance deviceInstance,HumanInstance humanInstance,String out){
+        List<String[]> privacyProperties=new ArrayList<>();
+//        ///先看human是否有out状态
+//        String out="";
+//        for (String[] stateValue:humanInstance.getHuman().getStateValues()){
+//            if (stateValue[0].trim().equalsIgnoreCase("out")){
+//                ///有人out状态
+//                out=stateValue[0].trim();
+//                break;
+//            }
+//        }
+//        if (out.equals("")){
+//            ///没有out状态，则不考虑隐私性验证了
+//            return privacyProperties;
+//        }
+        DeviceType deviceType=deviceInstance.getDeviceType();
+        for (DeviceType.StateSyncValueEffect stateSyncValueEffect:deviceType.getStateSyncValueEffects()){
+            String[] statePrivacyProperties=new String[2];
+            //Human.home&device.s_i
+            statePrivacyProperties[0]="!"+humanInstance.getInstanceName()+"."+out+"&"+deviceInstance.getInstanceName()+"."+stateSyncValueEffect.getStateName();
+            //Human.out&device.s_i
+            statePrivacyProperties[1]=humanInstance.getInstanceName()+"."+out+"&"+deviceInstance.getInstanceName()+"."+stateSyncValueEffect.getStateName();
+            privacyProperties.add(statePrivacyProperties);
+        }
+
+        return privacyProperties;
+    }
+
+    ///然后验证这组隐私性性质，针对一个可观察设备的隐私性验证
+    public static List<String>[] privacyVerificationForSingleDeviceInstance(List<String[]> privacyProperties,List<HashMap<String,DataTimeValue>> dataTimeValueHashMapList,InstanceLayer instanceLayer){
+        ///看是否有一个设备状态是只跟!out一起出现的，而另一个设备状态只跟out一起出现
+        List<String>[] homeBoundedOutBoundedProperties=new List[2];  //[0]存放设备状态是只跟!out一起出现的性质 [1]存放设备状态只跟out一起出现的性质
+        homeBoundedOutBoundedProperties[0]=new ArrayList<>();
+        homeBoundedOutBoundedProperties[1]=new ArrayList<>();
+//        List<HashMap<String,DataTimeValue>> dataTimeValueHashMapList=new ArrayList<>();
+//        for (Scenario scenario:scenarios){
+//            //获得该场景的仿真轨迹map
+//            HashMap<String,DataTimeValue> dataTimeValueHashMap=new HashMap<>();
+//            for (DataTimeValue dataTimeValue:scenario.getDataTimeValues()){
+//                dataTimeValueHashMap.put(dataTimeValue.getDataName(), dataTimeValue);
+//            }
+//            dataTimeValueHashMapList.add(dataTimeValueHashMap);
+//        }
+        for (String[] statePrivacyProperties:privacyProperties){
+            ///分别进行验证
+            boolean stateHomePropertyIsReachable=false;  ///该状态和!out是否能同时发生
+            boolean stateOutPropertyIsReachable=false;   ///该状态和out是否能同时发生
+            for (HashMap<String,DataTimeValue> dataTimeValueHashMap:dataTimeValueHashMapList){
+                if (!stateHomePropertyIsReachable){ ///获得包括当前场景的对该状态与!out的性质的验证结果
+                    ////获得单个场景每个property组成满足的时间段
+                    List<PropertyElementCheckResult> propertyElementCheckResults=getPropertyConformTimeValues(dataTimeValueHashMap,statePrivacyProperties[0],instanceLayer);
+                    ////获得单个场景下property中同时满足的时间段
+                    List<double[]> durations=getConformTogetherDurations(propertyElementCheckResults);
+                    if (durations.size()>0){
+                        stateHomePropertyIsReachable=true;
+                    }
+                }
+                if (!stateOutPropertyIsReachable){  ///获得包括当前场景的对该状态与out的性质的验证结果
+                    ////获得单个场景每个property组成满足的时间段
+                    List<PropertyElementCheckResult> propertyElementCheckResults=getPropertyConformTimeValues(dataTimeValueHashMap,statePrivacyProperties[1],instanceLayer);
+                    ////获得单个场景下property中同时满足的时间段
+                    List<double[]> durations=getConformTogetherDurations(propertyElementCheckResults);
+                    if (durations.size()>0){
+                        stateOutPropertyIsReachable=true;
+                    }
+                }
+                if (stateOutPropertyIsReachable&&stateHomePropertyIsReachable){
+                    break;
+                }
+
+            }
+            if (stateHomePropertyIsReachable&&!stateOutPropertyIsReachable){
+                ///该状态只与!out一起出现
+                homeBoundedOutBoundedProperties[0].add(statePrivacyProperties[0]);
+            }else if (!stateHomePropertyIsReachable&&stateOutPropertyIsReachable){
+                //该状态只与out一起出现
+                homeBoundedOutBoundedProperties[1].add(statePrivacyProperties[1]);
+            }
+
+//            PropertyAnalysisResult propertyAnalysisResult0=new PropertyAnalysisResult();
+//            PropertyAnalysisResult propertyAnalysisResult1=new PropertyAnalysisResult();
+//            for (HashMap<String,DataTimeValue> dataTimeValueHashMap:dataTimeValueHashMapList){
+//                ///获得包括当前场景的对该状态与!out的性质的验证结果
+//                propertyAnalysisResult0=setPropertyAnalysisResult(propertyAnalysisResult0,dataTimeValueHashMap,statePrivacyProperties[0],instanceLayer,rules);
+//                ///获得包括当前场景的对该状态与out的性质的验证结果
+//                propertyAnalysisResult1=setPropertyAnalysisResult(propertyAnalysisResult1,dataTimeValueHashMap,statePrivacyProperties[0],instanceLayer,rules);
+//
+//            }
+//            ///看该状态与!out和out的性质都是否能满足
+//            if (propertyAnalysisResult0.isReachable()&&!propertyAnalysisResult1.isReachable()){
+//                ///该状态只与!out一起出现
+//                homeBoundedOutBoundedProperties[0].add(propertyAnalysisResult0.getProperty());
+//            }else if (!propertyAnalysisResult0.isReachable()&&propertyAnalysisResult1.isReachable()){
+//                //该状态只与out一起出现
+//                homeBoundedOutBoundedProperties[1].add(propertyAnalysisResult1.getProperty());
+//            }
+
+        }
+        return homeBoundedOutBoundedProperties;
+    }
+
+
+    /**
      * /////特定于某个场景找原因，给建议,对于涉及设备状态的可以改变
     // attribute<(<=,>,>=)value,看有没有能改变attribute的规则
     ////instance.state，如果是设备的话，看有没有相关规则，
     ////attribute<(<=,>,>=)value & instance.state，
-    ////TODO
+    ////
     */
     public static PropertyAnalysisResult getPropertyReachableReasonAndGiveAdvise(List<double[]> satDurations, HashMap<String,DataTimeValue> dataTimeValueHashMap,List<PropertyElementCheckResult> propertyElementCheckResults,InstanceLayer instanceLayer,List<Rule> rules){
         PropertyAnalysisResult propertyAnalysisResult=new PropertyAnalysisResult();
@@ -1203,27 +1361,21 @@ public class AnalysisService {
         return relatedDeviceInstances;
     }
 
-    ////获得最终结果
-    public static List<PropertyAnalysisResult> getPropertiesAnalysisResultAllScenarios(List<Scenario> scenarios,InstanceLayer instanceLayer,List<Rule> rules,List<String> properties){
-        List<PropertyAnalysisResult> propertyAnalysisResults=new ArrayList<>();
-        HashMap<String,PropertyAnalysisResult> propertyAnalysisResultHashMap=new HashMap<>();
-        for (Scenario scenario:scenarios){
-            for (String property:properties){
-                ////获得单个场景每个property组成满足的时间段
-                HashMap<String,DataTimeValue> dataTimeValueHashMap=new HashMap<>();
-                for (DataTimeValue dataTimeValue:scenario.getDataTimeValues()){
-                    dataTimeValueHashMap.put(dataTimeValue.getDataName(), dataTimeValue);
-                }
-                List<PropertyElementCheckResult> propertyElementCheckResults=getPropertyConformTimeValues(dataTimeValueHashMap,property,instanceLayer);
-                ////获得单个场景下property中同时满足的时间段
-                List<double[]> durations=getConformTogetherDurations(propertyElementCheckResults);
-                PropertyAnalysisResult propertyAnalysisResult=propertyAnalysisResultHashMap.get(property);
-                PropertyAnalysisResult newPropertyAnalysisResult=getPropertyReachableReasonAndGiveAdvise(durations,dataTimeValueHashMap,propertyElementCheckResults,instanceLayer,rules);
-                if (propertyAnalysisResult==null||!propertyAnalysisResult.isReachable()){
-                    newPropertyAnalysisResult.setProperty(property);
-                    propertyAnalysisResultHashMap.put(property,newPropertyAnalysisResult);
-                }else if (newPropertyAnalysisResult.getRelatedRules().size()>0||newPropertyAnalysisResult.getAddRuleContents().size()>0){
-                    for (Rule newRule:newPropertyAnalysisResult.getRelatedRules()){
+    public static PropertyAnalysisResult setPropertyAnalysisResult(PropertyAnalysisResult propertyAnalysisResult,HashMap<String,DataTimeValue> dataTimeValueHashMap,String property,InstanceLayer instanceLayer,List<Rule> rules){
+        ////获得单个场景每个property组成满足的时间段
+        List<PropertyElementCheckResult> propertyElementCheckResults=getPropertyConformTimeValues(dataTimeValueHashMap,property,instanceLayer);
+        ////获得单个场景下property中同时满足的时间段
+        List<double[]> durations=getConformTogetherDurations(propertyElementCheckResults);
+
+        ///在当前场景下property是否可达，不可达给出原因和建议
+        PropertyAnalysisResult newPropertyAnalysisResult=getPropertyReachableReasonAndGiveAdvise(durations,dataTimeValueHashMap,propertyElementCheckResults,instanceLayer,rules);
+        if (propertyAnalysisResult==null||!propertyAnalysisResult.isReachable()){
+            //添加验证结果
+            newPropertyAnalysisResult.setProperty(property);
+            return newPropertyAnalysisResult;
+        }else if (newPropertyAnalysisResult.getRelatedRules().size()>0||newPropertyAnalysisResult.getAddRuleContents().size()>0){
+            //添加新的相关规则
+            for (Rule newRule:newPropertyAnalysisResult.getRelatedRules()){
 //                        boolean exist=false;
 //                        for (Rule rule:propertyAnalysisResult.getRelatedRules()){
 //                            if (rule.getRuleName().equals(newRule.getRuleName())){
@@ -1231,16 +1383,72 @@ public class AnalysisService {
 //                                break;
 //                            }
 //                        }
-                        if (!propertyAnalysisResult.getRelatedRules().contains(newRule)){
-                            propertyAnalysisResult.getRelatedRules().add(newRule);
-                        }
-                    }
-                    for (String newRuleContent: newPropertyAnalysisResult.getAddRuleContents()){
-                        if (!propertyAnalysisResult.getAddRuleContents().contains(newRuleContent)){
-                            propertyAnalysisResult.getAddRuleContents().add(newRuleContent);
-                        }
-                    }
+                if (!propertyAnalysisResult.getRelatedRules().contains(newRule)){
+                    //添加建议的规则
+                    propertyAnalysisResult.getRelatedRules().add(newRule);
                 }
+            }
+            for (String newRuleContent: newPropertyAnalysisResult.getAddRuleContents()){
+                //添加新的建议的相关规则
+                if (!propertyAnalysisResult.getAddRuleContents().contains(newRuleContent)){
+                    propertyAnalysisResult.getAddRuleContents().add(newRuleContent);
+                }
+            }
+
+        }
+        return propertyAnalysisResult;
+    }
+
+    ////获得最终结果
+    public static List<PropertyAnalysisResult> getPropertiesAnalysisResultAllScenarios(List<Scenario> scenarios,InstanceLayer instanceLayer,List<Rule> rules,List<String> properties){
+        List<PropertyAnalysisResult> propertyAnalysisResults=new ArrayList<>();
+        HashMap<String,PropertyAnalysisResult> propertyAnalysisResultHashMap=new HashMap<>();
+        for (Scenario scenario:scenarios){
+            //获得该场景的仿真轨迹map
+            HashMap<String,DataTimeValue> dataTimeValueHashMap=new HashMap<>();
+            for (DataTimeValue dataTimeValue:scenario.getDataTimeValues()){
+                dataTimeValueHashMap.put(dataTimeValue.getDataName(), dataTimeValue);
+            }
+            for (String property:properties){
+                ///获得该property在前面几个场景验证过的结果
+                PropertyAnalysisResult propertyAnalysisResult=propertyAnalysisResultHashMap.get(property);
+                ///获得包括当前场景的对property的验证结果
+                PropertyAnalysisResult newProperAnalysisResult=setPropertyAnalysisResult(propertyAnalysisResult,dataTimeValueHashMap,property,instanceLayer,rules);
+                propertyAnalysisResultHashMap.put(property,newProperAnalysisResult);
+//                ////获得单个场景每个property组成满足的时间段
+//                List<PropertyElementCheckResult> propertyElementCheckResults=getPropertyConformTimeValues(dataTimeValueHashMap,property,instanceLayer);
+//                ////获得单个场景下property中同时满足的时间段
+//                List<double[]> durations=getConformTogetherDurations(propertyElementCheckResults);
+//                ///获得该property在前面几个场景验证过的结果
+//                PropertyAnalysisResult propertyAnalysisResult=propertyAnalysisResultHashMap.get(property);
+//                ///在当前场景下property是否可达，不可达给出原因和建议
+//                PropertyAnalysisResult newPropertyAnalysisResult=getPropertyReachableReasonAndGiveAdvise(durations,dataTimeValueHashMap,propertyElementCheckResults,instanceLayer,rules);
+//                if (propertyAnalysisResult==null||!propertyAnalysisResult.isReachable()){
+//                    //添加验证结果
+//                    newPropertyAnalysisResult.setProperty(property);
+//                    propertyAnalysisResultHashMap.put(property,newPropertyAnalysisResult);
+//                }else if (newPropertyAnalysisResult.getRelatedRules().size()>0||newPropertyAnalysisResult.getAddRuleContents().size()>0){
+//                    //添加新的相关规则
+//                    for (Rule newRule:newPropertyAnalysisResult.getRelatedRules()){
+////                        boolean exist=false;
+////                        for (Rule rule:propertyAnalysisResult.getRelatedRules()){
+////                            if (rule.getRuleName().equals(newRule.getRuleName())){
+////                                exist=true;
+////                                break;
+////                            }
+////                        }
+//                        if (!propertyAnalysisResult.getRelatedRules().contains(newRule)){
+//                            //添加建议的规则
+//                            propertyAnalysisResult.getRelatedRules().add(newRule);
+//                        }
+//                    }
+//                    for (String newRuleContent: newPropertyAnalysisResult.getAddRuleContents()){
+//                        //添加新的建议的相关规则
+//                        if (!propertyAnalysisResult.getAddRuleContents().contains(newRuleContent)){
+//                            propertyAnalysisResult.getAddRuleContents().add(newRuleContent);
+//                        }
+//                    }
+//                }
 
 
             }
@@ -1337,6 +1545,12 @@ public class AnalysisService {
         for (int i=1;i<propertyElementCheckResults.size();i++){
             ////返回满足的区间
             satDurations=getIntersection(satDurations,propertyElementCheckResults.get(i).getSatTimeValues());
+        }
+        for (int i=satDurations.size()-1;i>=0;i--){
+            double[] satDuration=satDurations.get(i);
+            if ((satDuration[1]-satDuration[0])<=1){
+                satDurations.remove(i);
+            }
         }
         return satDurations;
     }

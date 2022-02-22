@@ -22,11 +22,11 @@ public class InstanceLayerService {
      * instance1={instanceName:Emma,entityType:Human}
      * instance2={instanceName:SMS,entityType:SMS}
      * instance3={instanceName:Air,entityType:Air}
-     * instance4={instanceName:Bulb_0,entityType:Bulb,location:L1}  设备
-     * instance5={instanceName:AirConditioner_0,entityType :AirConditioner,location:L1}
-     * instance6={instanceName:Window_0,entityType:Window,location:L1}
-     * instance7={instanceName:Window_1,entityType:Window,location:L2}
-     * instance8={instanceName:TV_0,entityType:TV,location:L3}
+     * instance4={instanceName:Bulb_0,entityType:Bulb,location:L1,visible:true}  设备
+     * instance5={instanceName:AirConditioner_0,entityType :AirConditioner,location:L1,visible:false}
+     * instance6={instanceName:Window_0,entityType:Window,location:L1,visible:true}
+     * instance7={instanceName:Window_1,entityType:Window,location:L2,visible:true}
+     * instance8={instanceName:TV_0,entityType:TV,location:L3,visible:false}
      * */
 
     ///以modelLayer和实例信息表作为输入，输出instanceLayer
@@ -76,6 +76,12 @@ public class InstanceLayerService {
                         }
                     }else if (keyValue[0].trim().equals("location")){
                         deviceInstance.setLocation(keyValue[1].trim());   ///设备实例所处空间位置
+                    }else if (keyValue[0].trim().equals("visible")){  ///可控设备是否可被外界观察
+                        if (keyValue[1].trim().equalsIgnoreCase("true")){
+                            deviceInstance.setVisible(true);  //可被外界观察
+                        }else {
+                            deviceInstance.setVisible(false);  //不可被观察
+                        }
                     }
 
                 }
