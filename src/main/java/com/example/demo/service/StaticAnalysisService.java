@@ -150,6 +150,7 @@ public class StaticAnalysisService {
 		List<GraphNode> graphNodes=parseIFDAndGetIFDNode(ifdFilePath,ifdFileName);
 		HashMap<String,GraphNode> graphNodeHashMap=AnalysisService.getGraphNodeHashMap(graphNodes);
 		///找不能触发的规则
+		long t1=System.currentTimeMillis();
 		List<UnusedRuleAndReason> unusedRuleAndReasons=new ArrayList<>();
 		for (int i=newRules.size()-1;i>=0;i--){
 			Rule rule=newRules.get(i);
@@ -164,6 +165,9 @@ public class StaticAnalysisService {
 				newRules.remove(i);
 			}
 		}
+		long t2=System.currentTimeMillis();
+		System.out.println("不可触发规则："+(t2-t1));
+
 		////重新生成IFD
 		triggerHashMap=SystemModelGenerationService.getTriggerMapFromRules(newRules,instanceLayer);
 		actionHashMap=SystemModelGenerationService.getActionMapFromRules(newRules);
@@ -171,6 +175,7 @@ public class StaticAnalysisService {
 		graphNodes=parseIFDAndGetIFDNode(ifdFilePath,ifdFileName);
 		graphNodeHashMap=AnalysisService.getGraphNodeHashMap(graphNodes);
 		////找冗余
+		long t3=System.currentTimeMillis();
 		List<List<Rule>> redundantRules=new ArrayList<>();
 		for (Rule rule:newRules){
 			GraphNode ruleNode=graphNodeHashMap.get(rule.getRuleName());
@@ -183,8 +188,13 @@ public class StaticAnalysisService {
 				redundantRules.add(redundantRule);
 			}
 		}
+		long t4=System.currentTimeMillis();
+		System.out.println("冗余规则："+(t4-t3));
 		////找incompleteness
+		long t5=System.currentTimeMillis();
 		List<DeviceInstance> cannotOffDevices=getIncomplete(graphNodes,instanceLayer.getDeviceInstances());
+		long t6=System.currentTimeMillis();
+		System.out.println("规则不完整："+(t6-t5));
 		StaticAnalysisResult staticAnalysisResult=new StaticAnalysisResult();
 		staticAnalysisResult.setCannotOffDevices(cannotOffDevices);
 		staticAnalysisResult.setUnusedRuleAndReasons(unusedRuleAndReasons);

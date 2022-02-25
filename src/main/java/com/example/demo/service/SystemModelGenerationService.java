@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 public class SystemModelGenerationService {
     public static void main(String[] args) throws DocumentException, IOException {
 
+        ////输入TAP规则------------------------------------
         String ruleText="IF co2ppm>800 THEN purifier_0.turn_ap_on\n" +
                 "IF co2ppm<=800 THEN purifier_0.turn_ap_off\n" +
                 "IF humidity>=50 THEN humidifier_0.turn_hum_off\n" +
@@ -46,40 +47,53 @@ public class SystemModelGenerationService {
                 "IF alarm_0.alarmon THEN window_0.open_window\n" +
                 "IF humidity<50 THEN window_0.open_window\n" +
                 "IF window_0.wopen THEN humidifier_0.turn_hum_on\n";
+
+        ////输入TAP规则------------------------------------
         List<String> locations=new ArrayList<>();
 //        locations.add("living_room");
 //        locations.add("kitchen");
 //        locations.add("bathroom");
 //        locations.add("bedroom");
 //        locations.add("out");
+
+        ////生成仿真文件----------------------------------------
+            ////模型层解析输入，filePath："ontology.xml"文件位置，modelFileName："ontology.xml"，changedModelFileName："changed-ontology.xml"
         ModelLayer modelLayer=ModelLayerService.getModelLayer("D:\\example\\例子\\","ontology.xml","changed-ontology.xml",locations);
+            ////实例层解析输入，filePath：实例信息文件位置，instanceInformationFileName：实例信息文件名
         InstanceLayer instanceLayer=InstanceLayerService.getInstanceLayer("D:\\example\\例子\\实验\\","bianhan-information.properties",modelLayer);
         List<Rule> rules=RuleService.getRuleList(ruleText);
         HashMap<String,Trigger> triggerMap=getTriggerMapFromRules(rules,instanceLayer);
         HashMap<String,Action> actionMap=getActionMapFromRules(rules);
         InstanceLayer interactiveEnvironment=getInteractiveEnvironment(instanceLayer,modelLayer,triggerMap,actionMap);
         HashMap<String, Instance> interactiveInstanceMap=InstanceLayerService.getInstanceMap(interactiveEnvironment);
-        ///生成IFD
-        StaticAnalysisService.generateIFD(triggerMap,actionMap,rules,interactiveEnvironment,interactiveInstanceMap,"ifd.dot","D:\\example\\例子\\");
+            ////simulationTime：仿真时长
+        String[] intoLocationTime=getIntoLocationTime("300",instanceLayer.getHumanInstance());
+            ///生成通用系统模型输入，filePath1：changedModelFileName文件的位置，modelFileName1：changedModelFileName，filePath2：通用模型位置，modelFileName2：通用模型名
+        generateCommonModelFile("300",intoLocationTime,"D:\\example\\例子\\","changed-ontology.xml","D:\\example\\例子\\","changed-ontology.xml",instanceLayer,rules,triggerMap,actionMap,interactiveEnvironment,interactiveInstanceMap);
+        List<String[]> attributeValues=new ArrayList<>();
+            ///设置环境属性初始值--都要小数格式--------------------
+        String[] attributeValue1={"temperature","35.0"};
+        String[] attributeValue2={"co2ppm","500.0"};
+        String[] attributeValue3={"humidity","40.0"};
+        String[] attributeValue4={"brightness","500.0"};
+            ///设置环境属性初始值-----------------------
+        attributeValues.add(attributeValue1);
+        attributeValues.add(attributeValue2);
+        attributeValues.add(attributeValue3);
+        attributeValues.add(attributeValue4);
 
-        StaticAnalysisResult staticAnalysisResult=StaticAnalysisService.getStaticAnalysisResult(rules,"D:\\example\\例子\\","ifd.dot",interactiveEnvironment);
-        System.out.println(staticAnalysisResult);
-//        String[] intoLocationTime=getIntoLocationTime("300",instanceLayer.getHumanInstance());
-//        generateCommonModelFile("300",intoLocationTime,"D:\\example\\例子\\","changed-ontology.xml","D:\\example\\例子\\","changed-ontology.xml",instanceLayer,rules,triggerMap,actionMap,interactiveEnvironment,interactiveInstanceMap);
-//        List<String[]> attributeValues=new ArrayList<>();
-//        String[] attributeValue1={"temperature","35.0"};
-//        String[] attributeValue2={"co2ppm","500.0"};
-//        String[] attributeValue3={"humidity","40.0"};
-//        String[] attributeValue4={"brightness","500.0"};
-//        attributeValues.add(attributeValue1);
-//        attributeValues.add(attributeValue2);
-//        attributeValues.add(attributeValue3);
-//        attributeValues.add(attributeValue4);
-//        generateSingleScenario("D:\\example\\例子\\","changed-ontology.xml","D:\\example\\例子\\实验\\","yx-es.xml",modelLayer,rules,attributeValues);
-//
+            ////生成最终系统模型输入，filePath1：通用模型位置，fileName1：通用模型名，filePath2：最终系统模型位置，fileName2：最终系统模型名
+        generateSingleScenario("D:\\example\\例子\\","changed-ontology.xml","D:\\example\\例子\\实验\\","yx-es.xml",modelLayer,rules,attributeValues);
+        ////生成仿真文件-------------------------------------
+        //
 ////        getInteractiveEnvironment(instanceLayer,modelLayer,rules,"D:\\example\\例子\\","changed-ontology.xml");
-//        String simulationResult=SimulationService.getSimulationResult(AddressService.UPPAAL_PATH,"D:\\example\\例子\\实验\\","yx-es.xml","windows");
-//        List<DataTimeValue> dataTimeValues=SimulationService.parseSimulationResult(simulationResult,instanceLayer,"D:\\example\\例子\\实验\\","yx-es.txt");
+
+        ////仿真输入，AddressService.UPPAAL_PATH：是uppaal可执行文件的位置，filePath：最终系统模型位置，fileName：最终系统模型名---------------------------------------
+        String simulationResult=SimulationService.getSimulationResult(AddressService.UPPAAL_PATH,"D:\\example\\例子\\实验\\","yx-es.xml","windows");
+        ////仿真----------------------------------------
+        ////生成仿真文件输入：resultFilePath：仿真结果文件位置，resultFileName：仿真结果文件名
+        List<DataTimeValue> dataTimeValues=SimulationService.parseSimulationResult(simulationResult,instanceLayer,"D:\\example\\例子\\实验\\","yx-es.txt");
+
 ////
 //        double temperSat=AnalysisService.getSatisfaction("temperature",24,28,dataTimeValues);
 //        double humiSat=AnalysisService.getSatisfaction("humidity",50,Double.MAX_VALUE,dataTimeValues);
@@ -166,21 +180,21 @@ public class SystemModelGenerationService {
 //        System.out.println(currentRule);
 
 
-        List<DataTimeValue> dataTimeValues=getDataTimeValuesFromTxt("D:\\example\\例子\\实验\\","zwh-weekday-bp.txt");
-        for (DataTimeValue dataTimeValue:dataTimeValues){
-            if (dataTimeValue.getDataName().indexOf("deviceName")>=0){
-                for (DeviceInstance deviceInstance:instanceLayer.getDeviceInstances()){
-                    if (deviceInstance.getInstanceName().equals(dataTimeValue.getInstanceName())){
-                        List<String[]> deviceStatesDuration=AnalysisService.getDeviceStatesDuration(dataTimeValue,deviceInstance);
-                        System.out.println("  "+deviceInstance.getInstanceName());
-                        for (String[] deviceStateDuration:deviceStatesDuration){
-                            System.out.println("     "+deviceStateDuration[1]+" : " +deviceStateDuration[2] +"s");
-                        }
-                        break;
-                    }
-                }
-            }
-        }
+//        List<DataTimeValue> dataTimeValues=getDataTimeValuesFromTxt("D:\\example\\例子\\实验\\","zwh-weekday-bp.txt");
+//        for (DataTimeValue dataTimeValue:dataTimeValues){
+//            if (dataTimeValue.getDataName().indexOf("deviceName")>=0){
+//                for (DeviceInstance deviceInstance:instanceLayer.getDeviceInstances()){
+//                    if (deviceInstance.getInstanceName().equals(dataTimeValue.getInstanceName())){
+//                        List<String[]> deviceStatesDuration=AnalysisService.getDeviceStatesDuration(dataTimeValue,deviceInstance);
+//                        System.out.println("  "+deviceInstance.getInstanceName());
+//                        for (String[] deviceStateDuration:deviceStatesDuration){
+//                            System.out.println("     "+deviceStateDuration[1]+" : " +deviceStateDuration[2] +"s");
+//                        }
+//                        break;
+//                    }
+//                }
+//            }
+//        }
 //        double temperSat=AnalysisService.getSatisfaction("temperature",10.0,30,dataTimeValues);
 //        double humiSat=AnalysisService.getSatisfaction("humidity",60.0,Double.MAX_VALUE,dataTimeValues);
 //        double co2Sat=AnalysisService.getSatisfaction("co2ppm",-Double.MIN_VALUE,800,dataTimeValues);

@@ -262,7 +262,10 @@ public class Controller {
 		///解析模型文件，获得模型层
 		ObjectMapper objectMapper=new ObjectMapper();
 		List<String> locations=objectMapper.readValue(locationsStr,List.class);
+		long t1=System.currentTimeMillis();
 		ModelLayer modelLayer= ModelLayerService.getModelLayer(filePath,fileName,fileName,locations);
+		long t2=System.currentTimeMillis();
+		System.out.println("模型层解析："+(t2-t1));
 		System.out.println(fileName + "上传成功");
 		return modelLayer;
 	}
@@ -286,7 +289,10 @@ public class Controller {
 		///解析模型文件，获得模型层
 		ObjectMapper objectMapper=new ObjectMapper();
 		ModelLayer modelLayer=objectMapper.readValue(modelLayerStr,ModelLayer.class);
+		long t1=System.currentTimeMillis();
 		InstanceLayer instanceLayer= InstanceLayerService.getInstanceLayer(filePath,fileName,modelLayer);
+		long t2=System.currentTimeMillis();
+		System.out.println("实例层生成："+(t2-t1));
 		OutputConstruct.InstanceLayerOutput instanceLayerOutput=new OutputConstruct.InstanceLayerOutput();
 		instanceLayerOutput.setInstanceLayer(instanceLayer);
 		instanceLayerOutput.setModelLayer(modelLayer);
@@ -307,10 +313,16 @@ public class Controller {
 		List<Rule> rules=RuleService.getRuleList(ruleTextLines);
 		HashMap<String,Trigger> triggerMap=SystemModelGenerationService.getTriggerMapFromRules(rules,instanceLayer);
 		HashMap<String,Action> actionMap=SystemModelGenerationService.getActionMapFromRules(rules);
+		long t1=System.currentTimeMillis();
 		InstanceLayer interactiveEnvironment=SystemModelGenerationService.getInteractiveEnvironment(instanceLayer,modelLayer,triggerMap,actionMap);
+		long t2=System.currentTimeMillis();
+		System.out.println("交互环境模型生成："+(t2-t1));
 		HashMap<String, Instance> interactiveInstanceMap=InstanceLayerService.getInstanceMap(interactiveEnvironment);
 		String ifdFileName="ifd.dot";
+		long t3=System.currentTimeMillis();
 		StaticAnalysisService.generateIFD(triggerMap,actionMap,rules,interactiveEnvironment,interactiveInstanceMap,ifdFileName,AddressService.IFD_FILE_PATH);
+		long t4=System.currentTimeMillis();
+		System.out.println("信息流图生成："+(t4-t3));
 		OutputConstruct.InteractiveLayerAndRules interactiveLayerAndRules=new OutputConstruct.InteractiveLayerAndRules();
 		interactiveLayerAndRules.setInteractiveInstance(interactiveEnvironment);
 		interactiveLayerAndRules.setRules(rules);
@@ -350,10 +362,16 @@ public class Controller {
 		String modelFileName=singleScenarioGenerateInput.getModelFileName();
 		String tempModelFileName="temp-"+modelFileName;
 		List<String[]> attributeValues=singleScenarioGenerateInput.getAttributeValues();
+		long t1=System.currentTimeMillis();
 		String[] intoLocationTime=SystemModelGenerationService.getIntoLocationTime(simulationTime,instanceLayer.getHumanInstance());
 		SystemModelGenerationService.generateCommonModelFile(simulationTime,intoLocationTime,AddressService.MODEL_FILE_PATH,modelFileName,AddressService.MODEL_FILE_PATH,tempModelFileName,instanceLayer,rules,triggerMap,actionMap,interactiveEnvironment,interactiveInstanceMap);
+		long t2=System.currentTimeMillis();
+		System.out.println("通用系统模型生成："+(t2-t1));
 		String singleModelFileName="single-scenario-"+modelFileName;
+		long t3=System.currentTimeMillis();
 		SystemModelGenerationService.generateSingleScenario(AddressService.MODEL_FILE_PATH,tempModelFileName,AddressService.MODEL_FILE_PATH,singleModelFileName,modelLayer,rules,attributeValues);
+		long t4=System.currentTimeMillis();
+		System.out.println("单场景生成："+(t4-t3));
 		List<String> fileName=new ArrayList<>();
 		fileName.add(singleModelFileName);
 		return fileName;
@@ -374,10 +392,16 @@ public class Controller {
 		String tempModelFileName="temp-"+modelFileName;
 		String ifdFileName= bestScenarioGenerateInput.getIfdFileName();
 		List<String[]> attributeValues=SystemModelGenerationService.setAttributeValues(AddressService.IFD_FILE_PATH,ifdFileName);
+		long t1=System.currentTimeMillis();
 		String[] intoLocationTime=SystemModelGenerationService.getIntoLocationTime(simulationTime,instanceLayer.getHumanInstance());
 		SystemModelGenerationService.generateCommonModelFile(simulationTime,intoLocationTime,AddressService.MODEL_FILE_PATH,modelFileName,AddressService.MODEL_FILE_PATH,tempModelFileName,instanceLayer,rules,triggerMap,actionMap,interactiveEnvironment,interactiveInstanceMap);
+		long t2=System.currentTimeMillis();
+		System.out.println("通用系统模型生成："+(t2-t1));
 		String bestModelFileName="best-scenario-"+modelFileName;
+		long t3=System.currentTimeMillis();
 		SystemModelGenerationService.generateSingleScenario(AddressService.MODEL_FILE_PATH,tempModelFileName,AddressService.MODEL_FILE_PATH,bestModelFileName,modelLayer,rules,attributeValues);
+		long t4=System.currentTimeMillis();
+		System.out.println("单场景生成："+(t4-t3));
 		OutputConstruct.BestScenarioOutput bestScenarioOutput=new OutputConstruct.BestScenarioOutput();
 		bestScenarioOutput.setBestScenarioFileName(bestModelFileName);
 		bestScenarioOutput.setAttributeValues(attributeValues);
@@ -390,10 +414,13 @@ public class Controller {
 	@RequestMapping("/simulateSingleScenario")
 	@ResponseBody
 	public Scenario simulateSingleScenario(@RequestBody InstanceLayer instanceLayer,String modelFileName)  {
+		long t1=System.currentTimeMillis();
 		String simulationResult=SimulationService.getSimulationResult(AddressService.UPPAAL_PATH,AddressService.MODEL_FILE_PATH,modelFileName,AddressService.SYSTEM);
 		String modelFilePrefix=modelFileName.substring(0,modelFileName.indexOf(".xml"));
 		String resultFileName=modelFilePrefix+".txt";
 		List<DataTimeValue> dataTimeValues=SimulationService.parseSimulationResult(simulationResult,instanceLayer,AddressService.SIMULATE_RESULT_FILE_PATH,resultFileName);
+		long t2=System.currentTimeMillis();
+		System.out.println("单场景仿真："+(t2-t1));
 		Scenario scenario=new Scenario();
 		scenario.setScenarioName(modelFilePrefix);
 		scenario.setDataTimeValues(dataTimeValues);

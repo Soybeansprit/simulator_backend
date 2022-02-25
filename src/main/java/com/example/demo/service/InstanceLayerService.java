@@ -1,11 +1,13 @@
 package com.example.demo.service;
 
 import com.example.demo.bean.*;
+import org.dom4j.DocumentException;
 import org.springframework.stereotype.Service;
 
+import java.io.FileWriter;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Properties;
+import java.io.PrintWriter;
+import java.util.*;
 
 /**
  * 实例层，设备位置信息表加载模块，格式为.properties
@@ -28,6 +30,142 @@ public class InstanceLayerService {
      * instance7={instanceName:Window_1,entityType:Window,location:L2,visible:true}
      * instance8={instanceName:TV_0,entityType:TV,location:L3,visible:false}
      * */
+
+    ///根据instanceLayer生成各实例的状态表示（除了带属性的实体）、指令表示（可控实体）、属性表示（各环境属性），即生成相应的trigger和action
+    public static void main(String[] args) throws DocumentException, IOException {
+        List<String> locations=new ArrayList<>();
+        ModelLayer modelLayer=ModelLayerService.getModelLayer("D:\\example\\例子\\论文实验\\","ontology.xml","ontology.xml",locations);
+//        generateInstances("D:\\example\\例子\\论文实验\\自动建模能力\\","instance.properties",modelLayer);
+
+        generateTriggerActions(modelLayer,"D:\\example\\例子\\论文实验\\自动建模能力\\","10.properties");
+    }
+
+    //随机生成实例层
+    public static void generateInstances(String filePath,String fileName,ModelLayer modelLayer){
+        StringBuilder sb=new StringBuilder();
+        String[] locations={"living_room","kitchen","bathroom","bedroom","guest_room","out"};
+//        sb.append("locations={");
+//        for (int i=0;i<locations.length;i++){
+//            sb.append(locations[i]);
+//            if (i< locations.length-1){
+//                sb.append(",");
+//            }
+//        }
+//        sb.append("}");
+        int count=10;
+        for (DeviceType deviceType:modelLayer.getDeviceTypes()){
+            Random r=new Random();
+
+            for (int i=0;i<25;i++){
+                int loc=r.nextInt(locations.length);
+                boolean visible=loc==0?true:false;
+                String ins=String.format("instance%d={instanceName:%s,entityType:%s,location:%s,visible:%b}\n",count,deviceType.getTypeName()+"_"+i,deviceType.getTypeName(),locations[loc],visible);
+                sb.append(ins);
+                count++;
+            }
+        }
+        try(FileWriter fileWriter=new FileWriter(filePath+fileName);PrintWriter printWriter=new PrintWriter(fileWriter)){
+            printWriter.println(sb);
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+    }
+
+    ///根据instanceLayer生成各实例的状态表示（除了带属性的实体）、指令表示（可控实体）、属性表示（各环境属性），即生成相应的trigger和action
+    public static void generateTriggerActions(ModelLayer modelLayer,String instanceInformationFilePath,String instanceInformationFileName) throws DocumentException, IOException {
+        InstanceLayer instanceLayer=getInstanceLayer(instanceInformationFilePath,instanceInformationFileName,modelLayer);
+        generateTriggerActions(instanceLayer,instanceInformationFilePath,instanceInformationFileName.substring(0,instanceInformationFileName.indexOf(".")));
+    }
+
+
+    ///根据instanceLayer生成各实例的状态表示（除了带属性的实体）、指令表示（可控实体）、属性表示（各环境属性），即生成相应的trigger和action
+    public static void generateTriggerActions(InstanceLayer instanceLayer,String filePath,String fileName){
+        StringBuilder sb=new StringBuilder();
+        StringBuilder triggerSb=new StringBuilder();
+        StringBuilder actionSb=new StringBuilder();
+        List<String> triggers=new ArrayList<>();
+        List<String> actions=new ArrayList<>();
+        if (!instanceLayer.getAttributeEntityInstance().getInstanceName().equals("")){
+            AttributeEntityType attributeEntityType=instanceLayer.getAttributeEntityInstance().getAttributeEntityType();
+            for (AttributeEntityType.Attribute attribute:attributeEntityType.getAttributes()){
+                triggerSb.append("IF "+attribute.getAttribute()+" \n");
+                triggers.add("IF "+attribute.getAttribute()+" ");
+            }
+            sb.append("带环境属性的实体："+instanceLayer.getAttributeEntityInstance().getInstanceName()+"\n");
+        }
+        if (!instanceLayer.getHumanInstance().getInstanceName().equals("")){
+            Human human=instanceLayer.getHumanInstance().getHuman();
+            for (String[] stateValue: human.getStateValues()){
+                triggerSb.append("IF "+instanceLayer.getHumanInstance().getInstanceName()+"."+stateValue[0]+" \n");
+                triggers.add("IF "+instanceLayer.getHumanInstance().getInstanceName()+"."+stateValue[0]+" ");
+            }
+            sb.append("人："+instanceLayer.getHumanInstance().getInstanceName()+"\n");
+        }
+        sb.append("不确定实体："+instanceLayer.getUncertainEntityInstances().size()+"\n");
+        for (UncertainEntityInstance uncertainEntityInstance: instanceLayer.getUncertainEntityInstances()){
+            UncertainEntityType uncertainEntityType= uncertainEntityInstance.getUncertainEntityType();
+            for (String[] stateValue: uncertainEntityType.getStateValues()){
+                triggerSb.append("IF "+uncertainEntityInstance.getInstanceName()+"."+stateValue[0]+" \n");
+                triggers.add("IF "+uncertainEntityInstance.getInstanceName()+"."+stateValue[0]+" ");
+            }
+            sb.append("     "+uncertainEntityInstance.getInstanceName()+"\n");
+        }
+        sb.append("传感器："+instanceLayer.getSensorInstances().size()+"\n");
+        for (SensorInstance sensorInstance:instanceLayer.getSensorInstances()){
+            sb.append("     "+sensorInstance.getInstanceName()+"\n");
+        }
+        sb.append("网络服务："+instanceLayer.getCyberServiceInstances().size()+"\n");
+        for (CyberServiceInstance cyberServiceInstance: instanceLayer.getCyberServiceInstances()){
+            CyberServiceType cyberServiceType= cyberServiceInstance.getCyberServiceType();
+            for (String[] stateSync: cyberServiceType.getStateSyncs()){
+                if (stateSync[1].contains("?")){
+                    String sync=stateSync[1].substring(0,stateSync.length-1);
+                    actionSb.append("THEN "+cyberServiceInstance.getInstanceName()+"."+sync+" \n");
+                    actions.add("THEN "+cyberServiceInstance.getInstanceName()+"."+sync);
+                }
+            }
+            sb.append("     "+cyberServiceInstance.getInstanceName()+"\n");
+        }
+        sb.append("可控设备："+instanceLayer.getDeviceInstances().size()+"\n");
+        HashMap<String,Integer> typeNumHashMap=new HashMap<>();
+        for (DeviceInstance deviceInstance: instanceLayer.getDeviceInstances()){
+            DeviceType deviceType= deviceInstance.getDeviceType();
+            Integer num=typeNumHashMap.get(deviceType.getTypeName());
+            if (num==null||num==0){
+                typeNumHashMap.put(deviceType.getTypeName(), 1);
+            }else {
+                typeNumHashMap.put(deviceType.getTypeName(),num+1);
+            }
+            for (DeviceType.StateSyncValueEffect stateSyncValueEffect: deviceType.getStateSyncValueEffects()){
+                triggerSb.append("IF "+deviceInstance.getInstanceName()+"."+stateSyncValueEffect.getStateName()+" \n");
+                triggers.add("IF "+deviceInstance.getInstanceName()+"."+stateSyncValueEffect.getStateName()+" ");
+                actionSb.append("THEN "+deviceInstance.getInstanceName()+"."+stateSyncValueEffect.getSynchronisation()+" \n");
+                actions.add("THEN "+deviceInstance.getInstanceName()+"."+stateSyncValueEffect.getSynchronisation());
+            }
+//            sb.append("     "+deviceInstance.getInstanceName()+"\n");
+        }
+        sb.append("     可控设备类型数："+typeNumHashMap.size()+"\n");
+        for (Map.Entry<String,Integer> typeNum:typeNumHashMap.entrySet()){
+            sb.append("       "+typeNum.getKey()+"："+typeNum.getValue()+"\n");
+        }
+        sb.append("\n\n\n");
+        sb.append("TAP规则：\n\n");
+        for (String trigger:triggers){
+            for (String action:actions){
+                sb.append(trigger+action+"\n");
+            }
+        }
+
+        try(FileWriter fileWriter=new FileWriter(filePath+fileName);PrintWriter printWriter=new PrintWriter(fileWriter)){
+            printWriter.println(sb);
+//            printWriter.println(triggerSb);
+//            printWriter.println(actionSb);
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+
+
+    }
 
     ///以modelLayer和实例信息表作为输入，输出instanceLayer
     public static InstanceLayer getInstanceLayer(String filePath, String instanceInformationFileName, ModelLayer modelLayer) throws IOException {

@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * cyber service类型。类型名，【状态、信号通道】
+ * cyber service类型。类型名，【状态、信号通道】? or !
  * */
 public class CyberServiceType extends EntityType{
     private List<String[]> stateSyncs=new ArrayList<>();  ///stateSync[0]=stateId,stateSync[1]=synchronization

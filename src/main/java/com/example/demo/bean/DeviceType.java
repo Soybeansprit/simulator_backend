@@ -95,6 +95,7 @@ public class DeviceType extends EntityType{
 		private String stateId="";    ///对应xml文件中的节点id
 		private String synchronisation="";   ///对应同步信号通道
 		private String value="";  ///identifier取值
+		private double power=0.0; ///状态的功率，用于计算能耗
 		private List<String[]> effects=new ArrayList<>();  ///effect[0]=attribute, effect[1]=delta（对于会对总变化率产生影响的）, effect[2]=影响值
 
 		public String getStateName() {

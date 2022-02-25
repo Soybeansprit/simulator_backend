@@ -23,11 +23,11 @@ public class ModelLayerService {
     ///解析xml文件，并记录对应模型
     ///模型层包括各种类型的模型，人、不确定实体、具有各种环境属性的实体（air）、cyber service、设备、传感器
     ///其中人需要给了空间位置后才有吧
-    public static ModelLayer getModelLayer(String filePath,String modelFileFileName,String changedModelFileName,List<String> locations) throws DocumentException {
+    public static ModelLayer getModelLayer(String filePath,String modelFileName,String changedModelFileName,List<String> locations) throws DocumentException {
         ModelLayer modelLayer=new ModelLayer();
         GetTemplate getTemplate=new GetTemplate();
         ///解析xml文件，获得模板
-        GetTemplate.deleteFileLine(filePath+modelFileFileName, filePath+changedModelFileName, 2);  ///更改为有效的xml文件
+        GetTemplate.deleteFileLine(filePath+modelFileName, filePath+changedModelFileName, 2);  ///更改为有效的xml文件
         List<GetTemplate.Template> templates=getTemplate.getTemplate(filePath+changedModelFileName);   ///解析
         ///分别获得各种类型的模型
         Human human=getHuman(locations);  //人
