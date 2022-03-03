@@ -8,6 +8,7 @@ public class StaticAnalysisResult {
     private List<List<Rule>> redundantRules=new ArrayList<>();
     private List<DeviceInstance> cannotOffDevices=new ArrayList<>();
     private List<Rule> usableRules=new ArrayList<>();
+    private List<List<Rule>> loopRules=new ArrayList<>();
 
     public List<UnusedRuleAndReason> getUnusedRuleAndReasons() {
         return unusedRuleAndReasons;
@@ -39,5 +40,13 @@ public class StaticAnalysisResult {
 
     public void setUsableRules(List<Rule> usableRules) {
         this.usableRules = usableRules;
+    }
+
+    public List<List<Rule>> getLoopRules() {
+        return loopRules;
+    }
+
+    public void setLoopRules(List<List<Rule>> loopRules) {
+        this.loopRules = loopRules;
     }
 }

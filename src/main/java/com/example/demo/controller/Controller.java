@@ -7,6 +7,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 
 import com.example.demo.bean.*;
@@ -447,10 +451,12 @@ public class Controller {
 		String simulationTime=multiScenarioGenerateInput.getSimulationTime();
 		String modelFileName=multiScenarioGenerateInput.getModelFileName();
 		String tempModelFileName="temp-"+modelFileName;
+		long t1=System.currentTimeMillis();
 		String[] intoLocationTime=SystemModelGenerationService.getIntoLocationTime(simulationTime,instanceLayer.getHumanInstance());
 		SystemModelGenerationService.generateCommonModelFile(simulationTime,intoLocationTime,AddressService.MODEL_FILE_PATH,modelFileName,AddressService.MODEL_FILE_PATH,tempModelFileName,instanceLayer,rules,triggerMap,actionMap,interactiveEnvironment,interactiveInstanceMap);
 		ScenarioTree.ScenesTree scenesTree=SystemModelGenerationService.generateMultiScenariosAccordingToTriggers(modelFileName,AddressService.MODEL_FILE_PATH,tempModelFileName,AddressService.MODEL_FILE_PATH,modelLayer,rules,triggerMap);
-
+		long t2=System.currentTimeMillis();
+		System.out.println("生成多个仿真场景时间："+(t2-t1));
 		return scenesTree;
 	}
 
@@ -463,8 +469,11 @@ public class Controller {
 		ScenarioTree.ScenesTree scenesTree=multiScenarioSimulateInput.getScenesTree();
 		String initModelFileName= multiScenarioSimulateInput.getModelFileName();
 		InstanceLayer instanceLayer= multiScenarioSimulateInput.getInstanceLayer();
-		List<Scenario> scenarios=SimulationService.getScenesTreeScenarioSimulationDataTimeValues(scenesTree,initModelFileName,instanceLayer,AddressService.UPPAAL_PATH,AddressService.MODEL_FILE_PATH,AddressService.SYSTEM,AddressService.SIMULATE_RESULT_FILE_PATH);
-
+		long t1=System.currentTimeMillis();
+		///如果resultFilePath为空则不生成仿真轨迹文件   AddressService.SIMULATE_RESULT_FILE_PATH
+		List<Scenario> scenarios=SimulationService.getScenesTreeScenarioSimulationDataTimeValues(scenesTree,initModelFileName,instanceLayer,AddressService.UPPAAL_PATH,AddressService.MODEL_FILE_PATH,AddressService.SYSTEM,"");
+		long t2=System.currentTimeMillis();
+		System.out.println("多场景仿真时间："+(t2-t1));
 		return scenarios;
 	}
 
@@ -480,10 +489,24 @@ public class Controller {
 	@RequestMapping("/searchAllScenariosConflict")
 	@ResponseBody
 	public List<Scenario> searchAllScenariosConflict(@RequestBody List<Scenario> scenarios) {
+		long t1=System.currentTimeMillis();
+		ExecutorService executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(scenarios.size()));
 		for (Scenario scenario:scenarios){
-			List<DeviceConflict> deviceConflicts=AnalysisService.getDevicesConflict(scenario.getDataTimeValues());
-			scenario.setDeviceConflicts(deviceConflicts);
+			Runnable runnable= () -> {
+				List<DeviceConflict> deviceConflicts=AnalysisService.getDevicesConflict(scenario.getDataTimeValues());
+				scenario.setDeviceConflicts(deviceConflicts);
+			};
+			executorService.submit(runnable);
 		}
+		executorService.shutdown();
+		try {
+			executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		long t2=System.currentTimeMillis();
+		System.out.println("冲突验证时间："+(t2-t1));
 		return scenarios;
 	}
 
@@ -491,10 +514,24 @@ public class Controller {
 	@ResponseBody
 	public List<Scenario> searchAllScenariosJitter(@RequestBody List<Scenario> scenarios,String intervalTime,String simulationTime,String equivalentTime) {
 		double interval=Double.parseDouble(intervalTime)/(Double.parseDouble(equivalentTime)*3600)*Double.parseDouble(simulationTime);
+		long t1=System.currentTimeMillis();
+		ExecutorService executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(scenarios.size()));
 		for (Scenario scenario:scenarios){
-			List<DeviceJitter> deviceJitters=AnalysisService.getDevicesJitter(scenario.getDataTimeValues(),interval);
-			scenario.setDeviceJitters(deviceJitters);
+			Runnable runnable=()->{
+				List<DeviceJitter> deviceJitters=AnalysisService.getDevicesJitter(scenario.getDataTimeValues(),interval);
+				scenario.setDeviceJitters(deviceJitters);
+			};
+			executorService.submit(runnable);
 		}
+		executorService.shutdown();
+		try {
+			executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		long t2=System.currentTimeMillis();
+		System.out.println("抖动验证时间："+(t2-t1));
 		return scenarios;
 	}
 
@@ -505,8 +542,8 @@ public class Controller {
 		List<Rule> rules=locationInput.getRules();
 		List<DeviceInstance> deviceInstances=locationInput.getDeviceInstances();
 		String ifdFileName=locationInput.getIfdFileName();
+		long t1=System.currentTimeMillis();
 		HashMap<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesHashMap=AnalysisService.getDeviceConflictAllStatesRuleAndPreRulesHashMap(rules,ifdFileName,scenarios,deviceInstances);
-
 		List<List<List<DeviceStateAndCausingRules>>> allSynthesizedDeviceAllStatesRuleAndPreRules=new ArrayList<>();
 		for (Map.Entry<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesEntry:deviceAllStatesRuleAndPreRulesHashMap.entrySet()){
 			List<List<DeviceStateAndCausingRules>> deviceAllStatesRuleAndPreRules=deviceAllStatesRuleAndPreRulesEntry.getValue();
@@ -515,7 +552,8 @@ public class Controller {
 				allSynthesizedDeviceAllStatesRuleAndPreRules.add(deviceAllStatesRuleAndPreRules);
 			}
 		}
-
+		long t2=System.currentTimeMillis();
+		System.out.println("冲突定位时间："+(t2-t1));
 		return allSynthesizedDeviceAllStatesRuleAndPreRules;
 	}
 
@@ -526,6 +564,7 @@ public class Controller {
 		List<Rule> rules=locationInput.getRules();
 		List<DeviceInstance> deviceInstances=locationInput.getDeviceInstances();
 		String ifdFileName=locationInput.getIfdFileName();
+		long t1=System.currentTimeMillis();
 		HashMap<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesHashMap=AnalysisService.getDeviceJitterAllStatesRuleAndPreRulesHashMap(rules,ifdFileName,scenarios,deviceInstances);
 
 		List<List<List<DeviceStateAndCausingRules>>> allSynthesizedDeviceAllStatesRuleAndPreRules=new ArrayList<>();
@@ -538,7 +577,8 @@ public class Controller {
 				allSynthesizedDeviceAllStatesRuleAndPreRules.add(deviceAllStatesRuleAndPreRules);
 			}
 		}
-
+		long t2=System.currentTimeMillis();
+		System.out.println("抖动定位时间："+(t2-t1));
 		return allSynthesizedDeviceAllStatesRuleAndPreRules;
 	}
 
@@ -639,8 +679,10 @@ public class Controller {
 		///不可触发规则
 		List<String> notTriggeredRulesInAll=AnalysisService.getNotTriggeredRulesInAll(notTriggeredRulesOfDifferentScenarios);
 		///隐私性验证
+		long t1=System.currentTimeMillis();
 		List<List<String>[]> homeBoundedOutBoundedResults=AnalysisService.privacyVerification(instanceLayer.getDeviceInstances(),instanceLayer.getHumanInstance(),scenarios,instanceLayer);
-
+		long t2=System.currentTimeMillis();
+		System.out.println("隐私性验证时间："+(t2-t1));
 		OutputConstruct.OtherAnalysisOutput otherAnalysisOutput=new OutputConstruct.OtherAnalysisOutput();
 		otherAnalysisOutput.setDeviceCannotBeTurnedOffList(deviceCannotBeTurnedOffList);
 		otherAnalysisOutput.setNotTriggeredRulesInAll(notTriggeredRulesInAll);
@@ -654,7 +696,10 @@ public class Controller {
 		List<Rule> rules=propertyAnalysisInput.getRules();
 		List<String> properties=propertyAnalysisInput.getProperties();
 		InstanceLayer instanceLayer= propertyAnalysisInput.getInstanceLayer();
+		long t1=System.currentTimeMillis();
 		List<PropertyAnalysisResult> propertyAnalysisResults=AnalysisService.getPropertiesAnalysisResultAllScenarios(scenarios,instanceLayer,rules,properties);
+		long t2=System.currentTimeMillis();
+		System.out.println("隐私性验证时间："+(t2-t1));
 		return propertyAnalysisResults;
 
 	}

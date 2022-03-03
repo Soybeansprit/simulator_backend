@@ -1025,6 +1025,12 @@ public class AnalysisService {
 
             }
         }
+        for (int i= jitterTimeValues.size()-1;i>=0;i--){
+            if (jitterTimeValues.get(i).size()<=3){
+                ///只有一次变化
+                jitterTimeValues.remove(jitterTimeValues.get(i));
+            }
+        }
 
         deviceJitter.setJitterTimeValues(jitterTimeValues);
         return deviceJitter;
@@ -1045,12 +1051,16 @@ public class AnalysisService {
         List<List<String>[]> homeBoundedOutBoundedResults=new ArrayList<>();
 
         String out="";
+        String home="";
         for (String[] stateValue:humanInstance.getHuman().getStateValues()){
             if (stateValue[0].trim().equalsIgnoreCase("out")){
                 ///有人out状态
                 out=stateValue[0].trim();
-                break;
+
+            }else if (stateValue[0].trim().equalsIgnoreCase("home")){
+                home=stateValue[0].trim();
             }
+
         }
         if (out.equals("")){
             ///没有out状态，则不考虑隐私性验证了
@@ -1070,7 +1080,7 @@ public class AnalysisService {
             ///分别验证可观察设备的隐私性
             if (deviceInstance.isVisible()){
                 //获得可被观察的设备的待验证隐私性性质
-                List<String[]> privacyProperties=getDeviceInstancePrivacyProperties(deviceInstance,humanInstance,out);
+                List<String[]> privacyProperties=getDeviceInstancePrivacyProperties(deviceInstance,humanInstance,out,home);
                 ///验证这组隐私性性质
                 List<String>[] homeBoundedOutBoundedProperties=privacyVerificationForSingleDeviceInstance(privacyProperties,dataTimeValueHashMapList,instanceLayer);
                 if (homeBoundedOutBoundedProperties[0].size()>0&&homeBoundedOutBoundedProperties[1].size()>0){
@@ -1086,7 +1096,7 @@ public class AnalysisService {
     }
 
     ///生成某个可被观察的设备的待验证隐私性性质
-    public static List<String[]> getDeviceInstancePrivacyProperties(DeviceInstance deviceInstance,HumanInstance humanInstance,String out){
+    public static List<String[]> getDeviceInstancePrivacyProperties(DeviceInstance deviceInstance,HumanInstance humanInstance,String out,String home){
         List<String[]> privacyProperties=new ArrayList<>();
 //        ///先看human是否有out状态
 //        String out="";
@@ -1105,7 +1115,8 @@ public class AnalysisService {
         for (DeviceType.StateSyncValueEffect stateSyncValueEffect:deviceType.getStateSyncValueEffects()){
             String[] statePrivacyProperties=new String[2];
             //Human.home&device.s_i
-            statePrivacyProperties[0]="!"+humanInstance.getInstanceName()+"."+out+"&"+deviceInstance.getInstanceName()+"."+stateSyncValueEffect.getStateName();
+            statePrivacyProperties[0]=home.equals("home")? (humanInstance.getInstanceName()+"."+home)+"&"+deviceInstance.getInstanceName()+"."+stateSyncValueEffect.getStateName():
+                    ("!"+humanInstance.getInstanceName()+"."+out)+"&"+deviceInstance.getInstanceName()+"."+stateSyncValueEffect.getStateName();
             //Human.out&device.s_i
             statePrivacyProperties[1]=humanInstance.getInstanceName()+"."+out+"&"+deviceInstance.getInstanceName()+"."+stateSyncValueEffect.getStateName();
             privacyProperties.add(statePrivacyProperties);
@@ -1227,7 +1238,8 @@ public class AnalysisService {
                         for (DeviceType.StateSyncValueEffect stateSyncValueEffect:deviceType.getStateSyncValueEffects()){
                             for (String[] effect:stateSyncValueEffect.getEffects()){
                                 if (effect[0].equals(elementForm[0])){
-                                    if (elementForm[1].contains(">")&&Double.parseDouble(effect[1])<0||elementForm[1].contains("<")&&Double.parseDouble(effect[1])>0){
+                                    if (!propertyElementCheckResults.get(0).isNeg()?(elementForm[1].contains(">")&&Double.parseDouble(effect[1])<0||elementForm[1].contains("<")&&Double.parseDouble(effect[1])>0):
+                                            (elementForm[1].contains("<")&&Double.parseDouble(effect[1])<0||elementForm[1].contains(">")&&Double.parseDouble(effect[1])>0)){
                                         ////添加规则
                                         String ruleContent="IF "+elementForm[0]+elementForm[1]+elementForm[2]+" THEN "+deviceInstance.getInstanceName()+"."+stateSyncValueEffect.getSynchronisation();
                                         addRuleContent.add(ruleContent);
@@ -1243,13 +1255,14 @@ public class AnalysisService {
                         ////是某个设备状态
                         ////看有什么规则让它转变为这个状态了，如果有指出该规则，顺便告知添加什么规则
                         String stateValue="0";
-                        String sync="";
+//                        String sync="";
+                        List<String> syncs=new ArrayList<>();
                         List<String> otherSyncs=new ArrayList<>();
                         for (DeviceType.StateSyncValueEffect stateSyncValueEffect:relatedDeviceInstances.get(0).getDeviceType().getStateSyncValueEffects()){
-                            if (stateSyncValueEffect.getStateName().equals(elementForm[2])){
+                            if (propertyElementCheckResults.get(0).isNeg() != (stateSyncValueEffect.getStateName().equals(elementForm[2]))){
                                 stateValue=stateSyncValueEffect.getValue();
-                                sync=stateSyncValueEffect.getSynchronisation();
-
+                                String sync=stateSyncValueEffect.getSynchronisation();
+                                syncs.add(sync);
                             }else {
                                 otherSyncs.add(stateSyncValueEffect.getSynchronisation());
                             }
@@ -1261,13 +1274,16 @@ public class AnalysisService {
                         ///看该场景中相关设备状态规则是否会发生
 
                         for (Rule rule:rules){
-                            if (isRuleRelatedToInstanceSynchronisation(rule,relatedDeviceInstances.get(0).getInstanceName(),sync)){
-                                DataTimeValue dataTimeValue=dataTimeValueHashMap.get(rule.getRuleName());
-                                double triggeredTime=canRuleBeTriggeredInDuration(dataTimeValue,0,dataTimeValue.getTimeValues().get(dataTimeValue.getTimeValues().size()-1)[0]);
-                                if (triggeredTime>0){
-                                    relatedRules.add(rule);
+                            for (String sync:syncs){
+                                if (isRuleRelatedToInstanceSynchronisation(rule,relatedDeviceInstances.get(0).getInstanceName(),sync)){
+                                    DataTimeValue dataTimeValue=dataTimeValueHashMap.get(rule.getRuleName());
+                                    double triggeredTime=canRuleBeTriggeredInDuration(dataTimeValue,0,dataTimeValue.getTimeValues().get(dataTimeValue.getTimeValues().size()-1)[0]);
+                                    if (triggeredTime>0){
+                                        relatedRules.add(rule);
+                                    }
                                 }
                             }
+
 
                         }
                         ///添加规则
@@ -1284,21 +1300,25 @@ public class AnalysisService {
                         List<DeviceInstance> relatedDeviceInstances=getRelatedDeviceInstances(propertyElementCheckResult1,instanceLayer.getDeviceInstances());
                         if (relatedDeviceInstances.size()>0){
                             ////是设备状态
-                            String sync="";
+//                            String sync="";
+                            List<String> syncs=new ArrayList<>();
                             List<String> otherSyncs=new ArrayList<>();
                             for (DeviceType.StateSyncValueEffect stateSyncValueEffect:relatedDeviceInstances.get(0).getDeviceType().getStateSyncValueEffects()){
-                                if (stateSyncValueEffect.getStateName().equals(propertyElementCheckResult1.getElementForm()[2])){
-                                    sync= stateSyncValueEffect.getSynchronisation();
+                                if (propertyElementCheckResult1.isNeg()!=stateSyncValueEffect.getStateName().equals(propertyElementCheckResult1.getElementForm()[2])){
+                                    String sync= stateSyncValueEffect.getSynchronisation();
+                                    syncs.add(sync);
                                 }else {
                                     otherSyncs.add(stateSyncValueEffect.getSynchronisation());
                                 }
                             }
                             for (Rule rule:rules){
-                                if (isRuleRelatedToInstanceSynchronisation(rule,relatedDeviceInstances.get(0).getInstanceName(),sync)){
-                                    DataTimeValue dataTimeValue=dataTimeValueHashMap.get(rule.getRuleName());
-                                    double triggeredTime=canRuleBeTriggeredInDuration(dataTimeValue,0,dataTimeValue.getTimeValues().get(dataTimeValue.getTimeValues().size()-1)[0]);
-                                    if (triggeredTime>0){
-                                        relatedRules.add(rule);
+                                for (String sync:syncs){
+                                    if (isRuleRelatedToInstanceSynchronisation(rule,relatedDeviceInstances.get(0).getInstanceName(),sync)){
+                                        DataTimeValue dataTimeValue=dataTimeValueHashMap.get(rule.getRuleName());
+                                        double triggeredTime=canRuleBeTriggeredInDuration(dataTimeValue,0,dataTimeValue.getTimeValues().get(dataTimeValue.getTimeValues().size()-1)[0]);
+                                        if (triggeredTime>0){
+                                            relatedRules.add(rule);
+                                        }
                                     }
                                 }
 

@@ -168,13 +168,52 @@ public class StaticAnalysisService {
 		long t2=System.currentTimeMillis();
 		System.out.println("不可触发规则："+(t2-t1));
 
-		////重新生成IFD
-		triggerHashMap=SystemModelGenerationService.getTriggerMapFromRules(newRules,instanceLayer);
-		actionHashMap=SystemModelGenerationService.getActionMapFromRules(newRules);
-		generateIFD(triggerHashMap,actionHashMap,newRules,instanceLayer,instanceHashMap,ifdFileName,ifdFilePath);
-		graphNodes=parseIFDAndGetIFDNode(ifdFilePath,ifdFileName);
-		graphNodeHashMap=AnalysisService.getGraphNodeHashMap(graphNodes);
-		////找冗余
+		////寻找loop
+		long t7=System.currentTimeMillis();
+		List<List<Rule>> loopRules=new ArrayList<>();
+		for (Rule rule:rules){
+			GraphNode ruleNode=graphNodeHashMap.get(rule.getRuleName());
+			List<List<GraphNode>> loopNodeLists=getLoop(ruleNode);
+			for (List<GraphNode> loopNodes:loopNodeLists){
+				List<Rule> loopRule=new ArrayList<>();
+				for (GraphNode node:loopNodes){
+					loopRule.add(ruleHashMap.get(node.getName()));
+				}
+				boolean exist=false;
+				for (List<Rule> existLoopRule:loopRules){
+					if (sameRuleList(existLoopRule,loopRule)){
+						exist=true;
+						break;
+					}
+				}
+				if (exist){
+					continue;
+				}
+				loopRules.add(loopRule);
+			}
+//			if (loopNodeLists.size()>0){
+//				///存在loop
+//				List<Rule> loopRule=new ArrayList<>();
+//				for (GraphNode node:loopNodes){
+//					loopRule.add(ruleHashMap.get(node.getName()));
+//				}
+//				boolean exist=false;
+//				for (List<Rule> existLoopRule:loopRules){
+//					if (sameRuleList(existLoopRule,loopRule)){
+//						exist=true;
+//						break;
+//					}
+//				}
+//				if (exist){
+//					continue;
+//				}
+//				loopRules.add(loopRule);
+//			}
+		}
+		long t8=System.currentTimeMillis();
+		System.out.println("循环规则："+(t8-t7));
+
+
 		long t3=System.currentTimeMillis();
 		List<List<Rule>> redundantRules=new ArrayList<>();
 		for (Rule rule:newRules){
@@ -190,6 +229,15 @@ public class StaticAnalysisService {
 		}
 		long t4=System.currentTimeMillis();
 		System.out.println("冗余规则："+(t4-t3));
+
+		////重新生成IFD
+		triggerHashMap=SystemModelGenerationService.getTriggerMapFromRules(newRules,instanceLayer);
+		actionHashMap=SystemModelGenerationService.getActionMapFromRules(newRules);
+		generateIFD(triggerHashMap,actionHashMap,newRules,instanceLayer,instanceHashMap,ifdFileName,ifdFilePath);
+		graphNodes=parseIFDAndGetIFDNode(ifdFilePath,ifdFileName);
+		graphNodeHashMap=AnalysisService.getGraphNodeHashMap(graphNodes);
+		////找冗余
+
 		////找incompleteness
 		long t5=System.currentTimeMillis();
 		List<DeviceInstance> cannotOffDevices=getIncomplete(graphNodes,instanceLayer.getDeviceInstances());
@@ -200,7 +248,104 @@ public class StaticAnalysisService {
 		staticAnalysisResult.setUnusedRuleAndReasons(unusedRuleAndReasons);
 		staticAnalysisResult.setRedundantRules(redundantRules);
 		staticAnalysisResult.setUsableRules(newRules);
+		staticAnalysisResult.setLoopRules(loopRules);
 		return staticAnalysisResult;
+	}
+
+	public static boolean sameRuleList(List<Rule> rules1,List<Rule> rules2){
+		if(rules1.size()!= rules2.size()){
+			return false;
+		}
+		for(Rule rule1:rules1){
+			boolean exist=false;
+			for (Rule rule2:rules2){
+				if (rule1.getRuleName().equals(rule2.getRuleName())){
+					exist=true;
+				}
+			}
+			if (!exist){
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public static boolean sameRuleNodeList(List<GraphNode> ruleNodes1, List<GraphNode> ruleNodes2){
+		if(ruleNodes1.size()!= ruleNodes2.size()){
+			return false;
+		}
+		for(GraphNode ruleNode1:ruleNodes1){
+			boolean exist=false;
+			for (GraphNode ruleNode2:ruleNodes2){
+				if (ruleNode1.getName().equals(ruleNode2.getName())){
+					exist=true;
+				}
+			}
+			if (!exist){
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * 判断是否存在loop
+	 * */
+	public static List<List<GraphNode>> getLoop(GraphNode ruleNode){
+		List<List<GraphNode>> loopNodesList=new ArrayList<>();
+//		List<GraphNode> loopNodes=new ArrayList<>();
+//		loopNodes.add(ruleNode);
+		for (GraphNodeArrow cNodeArrow: ruleNode.getcNodeArrowList()){
+			///actionNode
+			GraphNode actionNode= cNodeArrow.getGraphNode();
+			if(actionNode.getShape().equals("record")){
+				///看后续的triggerNode
+				for (GraphNodeArrow actionCNodeArrow: actionNode.getcNodeArrowList()){
+					if (!actionCNodeArrow.getStyle().equals("")){
+						///只看红色实线
+						continue;
+					}
+					///triggerNode
+					GraphNode triggerNode=actionCNodeArrow.getGraphNode();
+					if (triggerNode.getShape().equals("oval")){
+						///找到后继ruleNode
+						for (GraphNodeArrow triggerCNodeArrow: triggerNode.getcNodeArrowList()){
+							if (!(triggerCNodeArrow.getColor().equals("")||triggerCNodeArrow.getColor().equals("black"))){
+								///只看后继ruleNode
+								continue;
+							}
+							GraphNode otherRuleNode=triggerCNodeArrow.getGraphNode();
+							///判断rule能否被otherRule触发，且otherRule能被rule触发
+							///otherRule能被rule触发
+							List<GraphNode> pathRuleNodes=canBeTriggeredByRuleNode(ruleNode,otherRuleNode,"",new ArrayList<>());
+							///rule能被otherRule触发
+							List<GraphNode> versePathRuleNodes=canBeTriggeredByRuleNode(otherRuleNode,ruleNode,"",new ArrayList<>());
+							if (pathRuleNodes.size()>0&&pathRuleNodes.contains(ruleNode)&&versePathRuleNodes.size()>0&&versePathRuleNodes.contains(otherRuleNode)){
+								///rule能被otherRule触发，且otherRule能被rule触发
+								///同时还得要能反向获得loop
+//								List<GraphNode> verseLoopNodes=getLoop(otherRuleNode);
+//								if (sameRuleNodeList(pathRuleNodes,versePathRuleNodes)){
+//									loopNodesList.add(pathRuleNodes);
+//								}
+								List<GraphNode> loopNodes=new ArrayList<>();
+								for (GraphNode graphNode:pathRuleNodes){
+									if (!loopNodes.contains(graphNode)){
+										loopNodes.add(graphNode);
+									}
+								}
+								for (GraphNode graphNode:versePathRuleNodes){
+									if (!loopNodes.contains(graphNode)){
+										loopNodes.add(graphNode);
+									}
+								}
+								loopNodesList.add(loopNodes);
+							}
+						}
+					}
+				}
+			}
+		}
+		return loopNodesList;
 	}
 	
 	////////////////////获得不正确的规则
@@ -434,11 +579,16 @@ public class StaticAnalysisService {
 					if(containActionNode(ruleNode, otherRuleNode)) {
 						/////////////otherRule包含rule的所有action
 						///看other规则是否最终能被该规则触发
-						List<GraphNode> pathRuleLists=canBeTriggeredByRuleNode(ruleNode,otherRuleNode,"");
-						if(pathRuleLists.size()>0) {
+						List<GraphNode> pathRuleList=canBeTriggeredByRuleNode(ruleNode,otherRuleNode,"redundant",new ArrayList<>());
+						if(pathRuleList.size()>0) {
 							////////////且otherRule的triggers都能回溯到ruleNode的triggers
 							/////说明是冗余的
-							redundantNodes.addAll(pathRuleLists);
+							for (GraphNode node:pathRuleList){
+								if (!redundantNodes.contains(node)){
+									redundantNodes.add(node);
+								}
+							}
+//							redundantNodes.addAll(pathRuleLists);
 							break first;
 						}
 					}
@@ -454,8 +604,13 @@ public class StaticAnalysisService {
 			////如果其action都能被其他一组rule执行，但是没有一条与它冗余
 			/////则看这一组规则各自的triggers能否回溯到该rule的triggers
 			for(GraphNode otherRuleNode:otherCauseRuleNodes) {
-				List<GraphNode> pathRuleList=canBeTriggeredByRuleNode(ruleNode,otherRuleNode,"");
-				redundantNodes.addAll(pathRuleList);
+				List<GraphNode> pathRuleList=canBeTriggeredByRuleNode(ruleNode,otherRuleNode,"redundant",new ArrayList<>());
+//				redundantNodes.addAll(pathRuleList);
+				for (GraphNode node:pathRuleList){
+					if (!redundantNodes.contains(node)){
+						redundantNodes.add(node);
+					}
+				}
 			}
 		}
 		if(redundantNodes.size()>1) {
@@ -482,7 +637,7 @@ public class StaticAnalysisService {
 		return redundantNodes;
 	}
 	///看otherRuleNode的trigger是否都能在ruleNode触发的前提下触发
-	public static List<GraphNode> canBeTriggeredByRuleNode(GraphNode ruleNode,GraphNode otherRuleNode,String function){
+	public static List<GraphNode> canBeTriggeredByRuleNode(GraphNode ruleNode,GraphNode otherRuleNode,String function,List<GraphNode> cannotBeTriggeredRuleNodes){
 
 		List<GraphNode> pathRuleNodes=new ArrayList<>();
 		List<GraphNode> triggerNodes=new ArrayList<>();
@@ -493,6 +648,9 @@ public class StaticAnalysisService {
 		}
 		for (GraphNodeArrow actionArrow:ruleNode.getcNodeArrowList()){
 			actionNodes.add(actionArrow.getGraphNode());
+		}
+		if (function.equals("redundant")){
+			ruleNode.setTraversed(true);
 		}
 		otherRuleNode.setTraversed(true);
 
@@ -527,9 +685,14 @@ public class StaticAnalysisService {
 						///如果是action，对于静态分析的冗余分析，只考虑实线的action
 						for (GraphNodeArrow preRuleArrow:preNode.getpNodeArrowList()){
 							GraphNode preRuleNode=preRuleArrow.getGraphNode();
-							if (!preRuleNode.isTraversed()&&preRuleNode.getShape().equals("hexagon")){
+							if (!preRuleNode.isTraversed()&&preRuleNode.getShape().equals("hexagon")&&!cannotBeTriggeredRuleNodes.contains(preRuleNode)){
 								////看是否存在前驱规则在该规则触发的情况下触发,非该规则
-								List<GraphNode> otherPathRuleNodes= canBeTriggeredByRuleNode(ruleNode,preRuleNode,"");
+								List<GraphNode> otherPathRuleNodes= canBeTriggeredByRuleNode(ruleNode,preRuleNode,function,cannotBeTriggeredRuleNodes);
+								if (function.equals("redundant")){
+									///因为前面的方法会让ruleNode的isTraversed变为false，所以需要重新置为true
+									ruleNode.setTraversed(true);
+								}
+
 								if (otherPathRuleNodes.size()>0){
 									canBeTriggered=true;
 									for (GraphNode pathRuleNode:otherPathRuleNodes){
@@ -538,6 +701,9 @@ public class StaticAnalysisService {
 										}
 									}
 									continue first;
+								}else {
+									///加入不能被触发的规则，到时候就不考虑了
+									cannotBeTriggeredRuleNodes.add(preRuleNode);
 								}
 
 							}
@@ -606,7 +772,7 @@ public class StaticAnalysisService {
 									if (cTriggerRuleNode.getShape().equals("hexagon")){
 										////rule节点，判断otherActionRelatedRuleNodes能否在该rule前提下触发
 										for (GraphNode ruleNode2:otherActionRelatedRuleNodes){
-											List<GraphNode> otherPathRuleNodes=canBeTriggeredByRuleNode(cTriggerRuleNode,ruleNode2,"");
+											List<GraphNode> otherPathRuleNodes=canBeTriggeredByRuleNode(cTriggerRuleNode,ruleNode2,"",new ArrayList<>());
 											if (otherPathRuleNodes.size()>0){
 												//会被该规则阻止，该trigger无法被触发
 												canAllBeTriggered=false;
@@ -634,6 +800,9 @@ public class StaticAnalysisService {
 			pathRuleNodes.clear();
 		}
 		otherRuleNode.setTraversed(false);
+		if (function.equals("redundant")){
+			ruleNode.setTraversed(false);
+		}
 		return pathRuleNodes;
 	}
 

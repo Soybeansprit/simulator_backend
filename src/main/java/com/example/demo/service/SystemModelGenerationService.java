@@ -1255,17 +1255,20 @@ public class SystemModelGenerationService {
             Element humanElement=DocumentHelper.createElement("template");
             getHumanElement(instanceLayer.getHumanInstance().getHuman(), humanElement);
             templateElements.add(0,humanElement);
-
+            long t1=System.currentTimeMillis();
             ///生成控制器模型,并写入
             for (Rule rule:rules){
                 Element controllerElement=DocumentHelper.createElement("template");
                 getControllerElement(controllerElement,rule,triggerMap,actionMap,interactiveInstanceMap);
                 templateElements.add(0,controllerElement);
             }
-
+            long t2=System.currentTimeMillis();
+            System.out.println("控制器模型生成："+(t2-t1));
             ///系统声明
+            long t3=System.currentTimeMillis();
             String modelDeclaration=getModelDeclaration(interactiveEnvironment,rules,intoLocationTime);
-
+            long t4=System.currentTimeMillis();
+            System.out.println("系统声明生成："+(t4-t3));
             String query=getQuery(instanceLayer,rules,simulationTime);
             setSystemDeclaration(rootElement,modelDeclaration,"",query);
 
@@ -1606,7 +1609,7 @@ public class SystemModelGenerationService {
                         continue;
                     }
                     //如ti∈Ti存在黑色实线后继节点，即为rule Rj，获得Rj的所有trigger节点Tj，判断Tj在Ri的情况下能否满足
-                    List<IFDGraph.GraphNode> pathRuleNodes=StaticAnalysisService.canBeTriggeredByRuleNode(ruleNode,nextNode,"bestScenario");
+                    List<IFDGraph.GraphNode> pathRuleNodes=StaticAnalysisService.canBeTriggeredByRuleNode(ruleNode,nextNode,"bestScenario",new ArrayList<>());
                     ////能被触发
                     for (IFDGraph.GraphNode pathRuleNode:pathRuleNodes){
                         if (!ruleAndTriggeredRule.getTriggeredRules().contains(pathRuleNode.getName())&&!pathRuleNode.getName().equals(ruleAndTriggeredRule.getCurrentRule())){
@@ -1621,7 +1624,7 @@ public class SystemModelGenerationService {
                             if (ruleAndTriggeredRule.getTriggeredRules().contains(nextNextNode.getName())){
                                 continue;
                             }
-                            List<IFDGraph.GraphNode> pathRuleNodes=StaticAnalysisService.canBeTriggeredByRuleNode(ruleNode,nextNextNode,"bestScenario");
+                            List<IFDGraph.GraphNode> pathRuleNodes=StaticAnalysisService.canBeTriggeredByRuleNode(ruleNode,nextNextNode,"bestScenario",new ArrayList<>());
                             ////能被触发
                             for (IFDGraph.GraphNode pathRuleNode:pathRuleNodes){
                                 if (!ruleAndTriggeredRule.getTriggeredRules().contains(pathRuleNode.getName())&&!pathRuleNode.getName().equals(ruleAndTriggeredRule.getCurrentRule())){
@@ -1651,7 +1654,7 @@ public class SystemModelGenerationService {
                             if (ruleAndTriggeredRule.getTriggeredRules().contains(nextNextNode.getName())){
                                 continue;
                             }
-                            List<IFDGraph.GraphNode> pathRuleNodes=StaticAnalysisService.canBeTriggeredByRuleNode(ruleNode,nextNextNode,"bestScenario");
+                            List<IFDGraph.GraphNode> pathRuleNodes=StaticAnalysisService.canBeTriggeredByRuleNode(ruleNode,nextNextNode,"bestScenario",new ArrayList<>());
                             ////能被触发
                             for (IFDGraph.GraphNode pathRuleNode:pathRuleNodes){
                                 if (!ruleAndTriggeredRule.getTriggeredRules().contains(pathRuleNode.getName())&&!pathRuleNode.getName().equals(ruleAndTriggeredRule.getCurrentRule())){

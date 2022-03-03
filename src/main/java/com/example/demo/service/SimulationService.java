@@ -49,7 +49,7 @@ public class SimulationService {
             }
             DataTimeValue dataTimeValue=parseSimulationTrace(trace,instanceLayer);
             dataTimeValues.add(dataTimeValue);
-            System.out.println(dataTimeValue);
+//            System.out.println(dataTimeValue);
         }
 
         if (!(resultFilePath.equals("")||resultFileName.equals(""))){

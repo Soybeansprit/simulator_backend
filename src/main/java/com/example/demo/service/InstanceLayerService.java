@@ -127,6 +127,7 @@ public class InstanceLayerService {
             sb.append("     "+cyberServiceInstance.getInstanceName()+"\n");
         }
         sb.append("可控设备："+instanceLayer.getDeviceInstances().size()+"\n");
+        int visibleNum=0;   ///可观察设备数
         HashMap<String,Integer> typeNumHashMap=new HashMap<>();
         for (DeviceInstance deviceInstance: instanceLayer.getDeviceInstances()){
             DeviceType deviceType= deviceInstance.getDeviceType();
@@ -142,9 +143,13 @@ public class InstanceLayerService {
                 actionSb.append("THEN "+deviceInstance.getInstanceName()+"."+stateSyncValueEffect.getSynchronisation()+" \n");
                 actions.add("THEN "+deviceInstance.getInstanceName()+"."+stateSyncValueEffect.getSynchronisation());
             }
+            if (deviceInstance.isVisible()){
+                visibleNum++;
+            }
 //            sb.append("     "+deviceInstance.getInstanceName()+"\n");
         }
         sb.append("     可控设备类型数："+typeNumHashMap.size()+"\n");
+        sb.append("         可观察设备数："+visibleNum+"\n");
         for (Map.Entry<String,Integer> typeNum:typeNumHashMap.entrySet()){
             sb.append("       "+typeNum.getKey()+"："+typeNum.getValue()+"\n");
         }
