@@ -8,6 +8,7 @@ import java.util.List;
 public class RuleAndPreRule {
     private Rule currentRule=new Rule(); ///当前规则
     private List<RuleAndPreRule> preRules=new ArrayList<>();  ///前驱规则
+    private boolean isCurrentTraversed=false;  ///表示当前rule是否遍历过
 
     public Rule getCurrentRule() {
         return currentRule;
@@ -23,5 +24,13 @@ public class RuleAndPreRule {
 
     public void setPreRules(List<RuleAndPreRule> preRules) {
         this.preRules = preRules;
+    }
+
+    public boolean isCurrentTraversed() {
+        return isCurrentTraversed;
+    }
+
+    public void setCurrentTraversed(boolean currentTraversed) {
+        isCurrentTraversed = currentTraversed;
     }
 }

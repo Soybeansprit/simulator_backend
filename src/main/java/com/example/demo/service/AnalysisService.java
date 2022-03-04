@@ -583,7 +583,7 @@ public class AnalysisService {
                 ruleAndTriggeredPreRule.setCurrentRule(ruleHashMap.get(ruleName));
                 RuleAndPreRule ruleAndPreRule=ruleNameRuleAndPreRuleHashMap.get(ruleName);
                 ////获得触发规则的触发了的前驱规则
-                getRuleTriggeredPreRules(triggeredTime,dataTimeValueHashMap,ruleAndTriggeredPreRule,ruleAndPreRule);
+                getRuleTriggeredPreRules(triggeredTime,dataTimeValueHashMap,ruleAndTriggeredPreRule,ruleAndPreRule,ruleNameRuleAndPreRuleHashMap,new ArrayList<>());
                 ruleTimeRuleAndPreRuleHashMap.put(ruleName+":"+triggeredTime,ruleAndTriggeredPreRule);
             }
 
@@ -682,32 +682,58 @@ public class AnalysisService {
     }
 
     ///找某个时间触发的规则的前驱规则，找到前驱规则中可触发的规则，因此需要输入当前规则及其前驱规则，看前驱规则能否触发
-    public static void getRuleTriggeredPreRules(double time,HashMap<String,DataTimeValue> dataTimeValueHashMap,RuleAndPreRule ruleAndTriggeredPreRule,RuleAndPreRule ruleAndPreRule){
+    public static void getRuleTriggeredPreRules(double time,HashMap<String,DataTimeValue> dataTimeValueHashMap,RuleAndPreRule ruleAndTriggeredPreRule,RuleAndPreRule ruleAndPreRule,HashMap<String,RuleAndPreRule> ruleNameRuleAndPreRuleHashMap,List<RuleAndPreRule> cannotBeTriggeredRules){
         for (RuleAndPreRule preRule:ruleAndPreRule.getPreRules()){
             ////遍历前驱规则，看在time时间之前能否被触发
-            DataTimeValue dataTimeValue=dataTimeValueHashMap.get(preRule.getCurrentRule().getRuleName());
-            double preTriggeredTime=canRuleBeTriggeredInDuration(dataTimeValue,0.0,time);
-            if (preTriggeredTime>0){
-                ////能被触发则添加该规则到ruleAndPreRule的preRule中，同时看该preRule的前驱规则能否被触发
-                RuleAndPreRule triggeredPreRule=new RuleAndPreRule();
-                triggeredPreRule.setCurrentRule(preRule.getCurrentRule());
-                ruleAndTriggeredPreRule.getPreRules().add(triggeredPreRule);
-                getRuleTriggeredPreRules(preTriggeredTime,dataTimeValueHashMap,triggeredPreRule,preRule);
+            ///获得对应preRuleAndPreRule
+            RuleAndPreRule preRuleAndPreRule=ruleNameRuleAndPreRuleHashMap.get(preRule.getCurrentRule().getRuleName());
+            if (!preRuleAndPreRule.isCurrentTraversed()&&!cannotBeTriggeredRules.contains(preRuleAndPreRule)){
+                ///还没有遍历过，且并非不能被触发
+                preRuleAndPreRule.setCurrentTraversed(true);
+                DataTimeValue dataTimeValue=dataTimeValueHashMap.get(preRuleAndPreRule.getCurrentRule().getRuleName());
+                double preTriggeredTime=canRuleBeTriggeredInDuration(dataTimeValue,0.0,time);
+                if (preTriggeredTime>0&&preTriggeredTime<time){
+                    ////能被触发则添加该规则到ruleAndPreRule的preRule中，同时看该preRule的前驱规则能否被触发
+                    RuleAndPreRule triggeredPreRule=new RuleAndPreRule();
+                    triggeredPreRule.setCurrentRule(preRuleAndPreRule.getCurrentRule());
+                    ruleAndTriggeredPreRule.getPreRules().add(triggeredPreRule);
+                    getRuleTriggeredPreRules(preTriggeredTime,dataTimeValueHashMap,triggeredPreRule,preRuleAndPreRule,ruleNameRuleAndPreRuleHashMap,cannotBeTriggeredRules);
+                }else{
+                    cannotBeTriggeredRules.add(preRuleAndPreRule);
+                }
+                preRuleAndPreRule.setCurrentTraversed(false);
             }
+
         }
     }
+
+    ///找某个时间触发的规则的前驱规则，找到前驱规则中可触发的规则，因此需要输入当前规则及其前驱规则，看前驱规则能否触发
+//    public static void getRuleTriggeredPreRules(double time,HashMap<String,DataTimeValue> dataTimeValueHashMap,RuleAndPreRule ruleAndTriggeredPreRule,RuleAndPreRule ruleAndPreRule){
+//        for (RuleAndPreRule preRule:ruleAndPreRule.getPreRules()){
+//            ////遍历前驱规则，看在time时间之前能否被触发
+//            DataTimeValue dataTimeValue=dataTimeValueHashMap.get(preRule.getCurrentRule().getRuleName());
+//            double preTriggeredTime=canRuleBeTriggeredInDuration(dataTimeValue,0.0,time);
+//            if (preTriggeredTime>0){
+//                ////能被触发则添加该规则到ruleAndPreRule的preRule中，同时看该preRule的前驱规则能否被触发
+//                RuleAndPreRule triggeredPreRule=new RuleAndPreRule();
+//                triggeredPreRule.setCurrentRule(preRule.getCurrentRule());
+//                ruleAndTriggeredPreRule.getPreRules().add(triggeredPreRule);
+//                getRuleTriggeredPreRules(preTriggeredTime,dataTimeValueHashMap,triggeredPreRule,preRule);
+//            }
+//        }
+//    }
     ///找所有规则在IFD中的前驱规则，为所谓是否触发
-    public static List<RuleAndPreRule> getAllRulePreRules(HashMap<String, IFDGraph.GraphNode> graphNodeHashMap,HashMap<String,Rule> ruleHashMap){
-        List<RuleAndPreRule> allRulePreRules=new ArrayList<>();
-        for (Map.Entry<String,Rule> ruleEntry:ruleHashMap.entrySet()){
-            Rule rule=ruleEntry.getValue();
-            RuleAndPreRule currentRule=new RuleAndPreRule();
-            currentRule.setCurrentRule(rule);
-            getRulePreRules(graphNodeHashMap.get(rule.getRuleName()),currentRule,ruleHashMap);
-            allRulePreRules.add(currentRule);
-        }
-        return allRulePreRules;
-    }
+//    public static List<RuleAndPreRule> getAllRulePreRules(HashMap<String, IFDGraph.GraphNode> graphNodeHashMap,HashMap<String,Rule> ruleHashMap){
+//        List<RuleAndPreRule> allRulePreRules=new ArrayList<>();
+//        for (Map.Entry<String,Rule> ruleEntry:ruleHashMap.entrySet()){
+//            Rule rule=ruleEntry.getValue();
+//            RuleAndPreRule currentRule=new RuleAndPreRule();
+//            currentRule.setCurrentRule(rule);
+//            getRulePreRules(graphNodeHashMap.get(rule.getRuleName()),currentRule,ruleHashMap);
+//            allRulePreRules.add(currentRule);
+//        }
+//        return allRulePreRules;
+//    }
     ///找某条规则在IFD中的前驱规则，无所谓是否触发
     public static void getRulePreRules(IFDGraph.GraphNode ruleNode,RuleAndPreRule currentRule,HashMap<String,Rule> ruleHashMap){
         ruleNode.setTraversed(true);
@@ -751,6 +777,50 @@ public class AnalysisService {
             triggerNode.setTraversed(false);
         }
         ruleNode.setTraversed(false);
+    }
+
+    ///找到所有Rule的RuleAndPreRule
+    public static List<RuleAndPreRule> getAllRulesAndPreRules(HashMap<String, IFDGraph.GraphNode> graphNodeHashMap,HashMap<String,Rule> ruleHashMap){
+        List<RuleAndPreRule> allRulePreRules=new ArrayList<>();
+        for (Map.Entry<String,Rule> ruleEntry:ruleHashMap.entrySet()){
+            Rule rule=ruleEntry.getValue();
+            RuleAndPreRule ruleAndPreRule=getRulePreRule(graphNodeHashMap.get(rule.getRuleName()),ruleHashMap);
+            allRulePreRules.add(ruleAndPreRule);
+        }
+        return allRulePreRules;
+    }
+
+    ///找到某个RulePreRule，直接前驱rule
+    public static RuleAndPreRule getRulePreRule(IFDGraph.GraphNode ruleNode,HashMap<String,Rule> ruleHashMap){
+        RuleAndPreRule ruleAndPreRule=new RuleAndPreRule();
+        ruleAndPreRule.setCurrentRule(ruleHashMap.get(ruleNode.getName()));
+        for (IFDGraph.GraphNodeArrow triggerArrow:ruleNode.getpNodeArrowList()){
+            IFDGraph.GraphNode triggerNode=triggerArrow.getGraphNode();   ///rule节点前面的节点为trigger节点
+            if (triggerNode.getRelatedInstanceAndColor()[1].equals("darkseagreen1")){
+                ///且是设备状态的trigger
+                ///往前找action
+                for (IFDGraph.GraphNodeArrow actionArrow:triggerNode.getpNodeArrowList()){
+                    if (actionArrow.getColor().equals("red")&&actionArrow.getStyle().equals("")){
+                        ///找到红色的实线的边
+                        IFDGraph.GraphNode actionNode=actionArrow.getGraphNode();  ///action节点
+                        if (actionNode.getShape().equals("record")){
+                            ///找到rule
+                            for (IFDGraph.GraphNodeArrow ruleArrow:actionNode.getpNodeArrowList()){
+                                IFDGraph.GraphNode otherRuleNode=ruleArrow.getGraphNode();
+                                if (otherRuleNode.getShape().equals("hexagon")&&!otherRuleNode.equals(ruleNode)){ ///不是同一个rule
+                                    ///是前驱规则
+                                    RuleAndPreRule preRule=new RuleAndPreRule();
+                                    preRule.setCurrentRule(ruleHashMap.get(otherRuleNode.getName()));
+                                    ruleAndPreRule.getPreRules().add(preRule);
+                                }
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+        return ruleAndPreRule;
     }
 
     ////找某个时间设备某个状态发生的原因,定位rule。List<String[]> deviceStateCausingRules第一项存设备状态以及状态值信息，后面存规则和触发时间
@@ -806,7 +876,7 @@ public class AnalysisService {
         HashMap<String,Rule> ruleHashMap=getRuleHashMap(rules);
         List<IFDGraph.GraphNode> graphNodes=StaticAnalysisService.parseIFDAndGetIFDNode(AddressService.IFD_FILE_PATH,ifdFileName);
         HashMap<String, IFDGraph.GraphNode> graphNodeHashMap=getGraphNodeHashMap(graphNodes);
-        List<RuleAndPreRule> allRulePreRules=AnalysisService.getAllRulePreRules(graphNodeHashMap,ruleHashMap);
+        List<RuleAndPreRule> allRulePreRules=AnalysisService.getAllRulesAndPreRules(graphNodeHashMap,ruleHashMap);
         HashMap<String,RuleAndPreRule> ruleNameRuleAndPreRuleMap=getRuleAndPreRuleHashMap(allRulePreRules);
         HashMap<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesHashMap=new HashMap<>();
         for (Scenario scenario:scenarios){
@@ -841,7 +911,7 @@ public class AnalysisService {
         HashMap<String,Rule> ruleHashMap=getRuleHashMap(rules);
         List<IFDGraph.GraphNode> graphNodes=StaticAnalysisService.parseIFDAndGetIFDNode(AddressService.IFD_FILE_PATH,ifdFileName);
         HashMap<String, IFDGraph.GraphNode> graphNodeHashMap=getGraphNodeHashMap(graphNodes);
-        List<RuleAndPreRule> allRulePreRules=AnalysisService.getAllRulePreRules(graphNodeHashMap,ruleHashMap);
+        List<RuleAndPreRule> allRulePreRules=AnalysisService.getAllRulesAndPreRules(graphNodeHashMap,ruleHashMap);
         HashMap<String,RuleAndPreRule> ruleNameRuleAndPreRuleMap=getRuleAndPreRuleHashMap(allRulePreRules);
         HashMap<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesHashMap=new HashMap<>();
         for (Scenario scenario:scenarios){
