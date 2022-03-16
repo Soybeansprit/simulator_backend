@@ -143,9 +143,12 @@ public class StaticAnalysisService {
 		///删除重复的
 		List<Rule>  newRules=deleteRepeat(rules);
 		////重新生成IFD图
+		long t9=System.currentTimeMillis();
 		HashMap<String,Trigger> triggerHashMap=SystemModelGenerationService.getTriggerMapFromRules(rules,instanceLayer);
 		HashMap<String,Action> actionHashMap=SystemModelGenerationService.getActionMapFromRules(rules);
 		generateIFD(triggerHashMap,actionHashMap,newRules,instanceLayer,instanceHashMap,ifdFileName,ifdFilePath);
+		long t10=System.currentTimeMillis();
+		System.out.println("信息流图生成时间："+(t10-t9));
 		////解析ifd
 		List<GraphNode> graphNodes=parseIFDAndGetIFDNode(ifdFilePath,ifdFileName);
 		HashMap<String,GraphNode> graphNodeHashMap=AnalysisService.getGraphNodeHashMap(graphNodes);
@@ -166,7 +169,7 @@ public class StaticAnalysisService {
 			}
 		}
 		long t2=System.currentTimeMillis();
-		System.out.println("不可触发规则："+(t2-t1));
+		System.out.println("不可触发规则检测时间："+(t2-t1));
 
 		////寻找loop
 		long t7=System.currentTimeMillis();
@@ -211,7 +214,7 @@ public class StaticAnalysisService {
 //			}
 		}
 		long t8=System.currentTimeMillis();
-		System.out.println("循环规则："+(t8-t7));
+		System.out.println("循环规则检测时间："+(t8-t7));
 
 
 		long t3=System.currentTimeMillis();
@@ -228,7 +231,7 @@ public class StaticAnalysisService {
 			}
 		}
 		long t4=System.currentTimeMillis();
-		System.out.println("冗余规则："+(t4-t3));
+		System.out.println("冗余规则检测时间："+(t4-t3));
 
 		////重新生成IFD
 		triggerHashMap=SystemModelGenerationService.getTriggerMapFromRules(newRules,instanceLayer);
@@ -242,7 +245,7 @@ public class StaticAnalysisService {
 		long t5=System.currentTimeMillis();
 		List<DeviceInstance> cannotOffDevices=getIncomplete(graphNodes,instanceLayer.getDeviceInstances());
 		long t6=System.currentTimeMillis();
-		System.out.println("规则不完整："+(t6-t5));
+		System.out.println("规则不完整检测时间："+(t6-t5));
 		StaticAnalysisResult staticAnalysisResult=new StaticAnalysisResult();
 		staticAnalysisResult.setCannotOffDevices(cannotOffDevices);
 		staticAnalysisResult.setUnusedRuleAndReasons(unusedRuleAndReasons);
@@ -438,7 +441,7 @@ public class StaticAnalysisService {
 				//////////trigger不合法
 //				correct=false;
 				reason="Trigger: "+triggerNode.getLabel()+" illegal.";
-				System.out.println(reason);
+//				System.out.println(reason);
 //				isUnused=true;
 				ruleNode.setTraversed(false);
 				return reason;
@@ -453,7 +456,7 @@ public class StaticAnalysisService {
 				if(isContra(triggerNode1, triggerNode2)) {
 //					isUnused=true;
 					reason="Trigger: "+triggerNode1.getLabel()+" "+triggerNode2.getLabel()+" has a logical contradiction.";
-					System.out.println(reason);
+//					System.out.println(reason);
 					ruleNode.setTraversed(false);
 					return reason;
 				}
@@ -495,7 +498,7 @@ public class StaticAnalysisService {
 											if (!canRuleBeTriggered){
 												///只要有规则能触发该triggerNode，则该trigger可满足，反之不能
 												reason="No rule can satisfy "+triggerNode.getLabel()+".";
-												System.out.println(reason);
+//												System.out.println(reason);
 												ruleNode.setTraversed(false);
 												return reason;
 											}
@@ -504,7 +507,7 @@ public class StaticAnalysisService {
 									if (!hasPreRule){
 										////如果没有前驱规则，则无法被触发
 										reason="No rule can satisfy "+triggerNode.getLabel()+".";
-										System.out.println(reason);
+//										System.out.println(reason);
 										ruleNode.setTraversed(false);
 										return reason;
 									}

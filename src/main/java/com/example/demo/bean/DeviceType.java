@@ -130,6 +130,14 @@ public class DeviceType extends EntityType{
 			this.value = value;
 		}
 
+		public double getPower() {
+			return power;
+		}
+
+		public void setPower(double power) {
+			this.power = power;
+		}
+
 		public List<String[]> getEffects() {
 			return effects;
 		}

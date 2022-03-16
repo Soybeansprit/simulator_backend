@@ -155,8 +155,21 @@ public class ModelLayerService {
     //设备
     public static void getDeviceTypeFromTemplate(GetTemplate.Template template, DeviceType deviceType){
         ///先获得declaration中的内容
-        String[] declarations=template.getDeclaration().split(";");
+        String[] declarations=template.getDeclaration().split("\n");
         ///设备模型，n各location对应n个状态，都有状态名，有对应的同步信号，是参数化模型，可被多次实例化，不同状态可能对环境产生影响
+        String identifier="";
+        String power="";
+        for(String declaration:declarations){
+            int identIndex=declaration.indexOf("identifier");
+            int powIndex=declaration.indexOf("power");
+            if (declaration.indexOf("identifier")>=0){
+                identifier=declaration.substring(identIndex+"identifier".length()+1);
+            }
+            if (declaration.indexOf("power")>=0){
+                power=declaration.substring(powIndex+"power".length()+1);
+            }
+
+        }
         deviceType.setTypeName(template.getName());  ///类型名
         for (GetTemplate.Location location:template.getLocations()){
             if (!location.getName().equals("")){
@@ -180,13 +193,27 @@ public class ModelLayerService {
                                     String[] assignments=label.getContent().split(",");
                                     for (String assignment:assignments){
                                         String[] variableValue=assignment.trim().split("=");
-                                        int index=-1;
-                                        if ((index=variableValue[0].indexOf("[i]"))>=0){
+
+
+                                        if (variableValue[0].equals(identifier+"[i]")){
                                             ///状态标识符及取值
                                             if (deviceType.getIdentifier().equals("")){
-                                                deviceType.setIdentifier(variableValue[0].substring(0,index));
+                                                deviceType.setIdentifier(identifier);
                                             }
                                             stateSyncValueEffect.setValue(variableValue[1]);
+                                        }else if (variableValue[0].equals(power)){
+                                            ///功率
+                                            for (String declaration:declarations){
+                                                if (declaration.indexOf(variableValue[1])>=0){
+                                                    int index=declaration.indexOf(";");
+                                                    if (index>=0){
+                                                        declaration=declaration.substring(0,index);
+                                                    }
+                                                    String[] varValue=declaration.split("=");  ///double offp=0.0;
+                                                    stateSyncValueEffect.setPower(Double.parseDouble(varValue[1]));
+                                                    break;
+                                                }
+                                            }
                                         }else {
                                             ///对环境属性的影响
                                             ///dpm_2_5=dpm_2_5+(offdpm-ondpm)
@@ -201,6 +228,10 @@ public class ModelLayerService {
                                                 ///接下来获得对应的影响值
                                                 for (String declaration:declarations){
                                                     if (declaration.indexOf(effectVariable)>=0){
+                                                        int index=declaration.indexOf(";");
+                                                        if (index>=0){
+                                                            declaration=declaration.substring(0,index);
+                                                        }
                                                         String[] varValue=declaration.split("=");  ///double offdpm=0.0;
                                                         effect[2]=varValue[1];
                                                         break;

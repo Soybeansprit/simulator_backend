@@ -277,6 +277,27 @@ public class InputConstruct {
 		}
 	}
 
+	public static class EnergyConsumptionInput{
+		private List<DataTimeValue> dataTimeValues=new ArrayList<>();
+		private List<DeviceInstance> deviceInstances=new ArrayList<>();
+
+		public List<DataTimeValue> getDataTimeValues() {
+			return dataTimeValues;
+		}
+
+		public void setDataTimeValues(List<DataTimeValue> dataTimeValues) {
+			this.dataTimeValues = dataTimeValues;
+		}
+
+		public List<DeviceInstance> getDeviceInstances() {
+			return deviceInstances;
+		}
+
+		public void setDeviceInstances(List<DeviceInstance> deviceInstances) {
+			this.deviceInstances = deviceInstances;
+		}
+	}
+
 	public static class MultiScenarioGenerateInput {
 		private String modelFileName="";
 		private ModelLayer modelLayer=new ModelLayer();

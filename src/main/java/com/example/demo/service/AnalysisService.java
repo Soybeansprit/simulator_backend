@@ -878,6 +878,7 @@ public class AnalysisService {
         HashMap<String, IFDGraph.GraphNode> graphNodeHashMap=getGraphNodeHashMap(graphNodes);
         List<RuleAndPreRule> allRulePreRules=AnalysisService.getAllRulesAndPreRules(graphNodeHashMap,ruleHashMap);
         HashMap<String,RuleAndPreRule> ruleNameRuleAndPreRuleMap=getRuleAndPreRuleHashMap(allRulePreRules);
+        int conflictNum=0;
         HashMap<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesHashMap=new HashMap<>();
         for (Scenario scenario:scenarios){
             HashMap<String,DataTimeValue> dataTimeValueHashMap=getDataTimeValueHashMap(scenario.getDataTimeValues());
@@ -885,6 +886,7 @@ public class AnalysisService {
                 if (deviceConflict.getConflictTimeValues().size()<=0){
                     continue;
                 }
+                conflictNum+=deviceConflict.getConflictTimeValues().size();
                 for (DeviceInstance deviceInstance:deviceInstances){
 
                     if (deviceConflict.getInstanceName().equals(deviceInstance.getInstanceName())){
@@ -903,6 +905,7 @@ public class AnalysisService {
 
             }
         }
+        System.out.println("冲突次数："+conflictNum);
         return deviceAllStatesRuleAndPreRulesHashMap;
     }
 
@@ -914,12 +917,14 @@ public class AnalysisService {
         List<RuleAndPreRule> allRulePreRules=AnalysisService.getAllRulesAndPreRules(graphNodeHashMap,ruleHashMap);
         HashMap<String,RuleAndPreRule> ruleNameRuleAndPreRuleMap=getRuleAndPreRuleHashMap(allRulePreRules);
         HashMap<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesHashMap=new HashMap<>();
+        int jitterNum=0;
         for (Scenario scenario:scenarios){
             HashMap<String,DataTimeValue> dataTimeValueHashMap=getDataTimeValueHashMap(scenario.getDataTimeValues());
             for (DeviceJitter deviceJitter: scenario.getDeviceJitters()){
                 if (deviceJitter.getJitterTimeValues().size()<=0){
                     continue;
                 }
+                jitterNum+=deviceJitter.getJitterTimeValues().size();
                 for (DeviceInstance deviceInstance:deviceInstances){
                     if (deviceJitter.getInstanceName().equals(deviceInstance.getInstanceName())){
                         List<List<List<String[]>>> deviceAllJitterStatesDirectRules=AnalysisService.getDeviceJitterStatesDirectRulesInAScenario(deviceJitter,scenario.getDataTimeValues(),deviceInstance,ruleHashMap);
@@ -941,6 +946,7 @@ public class AnalysisService {
             }
 
         }
+        System.out.println("抖动次数："+jitterNum);
         return deviceAllStatesRuleAndPreRulesHashMap;
     }
 
@@ -1132,6 +1138,7 @@ public class AnalysisService {
             }
 
         }
+        System.out.println(humanInstance.getInstanceName());
         if (out.equals("")){
             ///没有out状态，则不考虑隐私性验证了
             return homeBoundedOutBoundedResults;
@@ -2102,17 +2109,19 @@ public class AnalysisService {
         }
         return deviceStatesDurationList;
     }
-    ///计算耗能。即计算各设备各状态的时间  deviceStateDuration[0]设备名  deviceStateDuration[1]状态名  deviceStateDuration[2]该状态保持时间 [4]用来存功率
+    ///计算耗能。即计算各设备各状态的时间  deviceStateDuration[0]设备名  deviceStateDuration[1]状态名  deviceStateDuration[2]该状态保持时间 [3]用来存功率 [4]存能耗（仿真时间下的）
     public static List<String[]> getDeviceStatesDuration(DataTimeValue deviceDataTimeValue,DeviceInstance deviceInstance){
         DeviceType deviceType=deviceInstance.getDeviceType();
         List<String[]> deviceStatesDuration=new ArrayList<>();
         for (DeviceType.StateSyncValueEffect stateSyncValueEffect:deviceType.getStateSyncValueEffects()){
-            String[] deviceStateDuration=new String[4];
+            String[] deviceStateDuration=new String[5];
             deviceStateDuration[0]=deviceInstance.getInstanceName();    ///设备名
             deviceStateDuration[1]=stateSyncValueEffect.getStateName();   ///状态名
             double duration=getCertainStateDuration(deviceDataTimeValue,stateSyncValueEffect.getValue());
             deviceStateDuration[2]=duration+"";
-            deviceStateDuration[3]="0";
+            deviceStateDuration[3]=stateSyncValueEffect.getPower()+"";  ///功率
+            deviceStateDuration[4]=duration*stateSyncValueEffect.getPower()+"";  ///能耗  焦耳=瓦*秒
+
             deviceStatesDuration.add(deviceStateDuration);   ////该状态保持时间
         }
         return deviceStatesDuration;

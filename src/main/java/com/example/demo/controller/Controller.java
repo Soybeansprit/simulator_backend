@@ -454,9 +454,13 @@ public class Controller {
 		long t1=System.currentTimeMillis();
 		String[] intoLocationTime=SystemModelGenerationService.getIntoLocationTime(simulationTime,instanceLayer.getHumanInstance());
 		SystemModelGenerationService.generateCommonModelFile(simulationTime,intoLocationTime,AddressService.MODEL_FILE_PATH,modelFileName,AddressService.MODEL_FILE_PATH,tempModelFileName,instanceLayer,rules,triggerMap,actionMap,interactiveEnvironment,interactiveInstanceMap);
-		ScenarioTree.ScenesTree scenesTree=SystemModelGenerationService.generateMultiScenariosAccordingToTriggers(modelFileName,AddressService.MODEL_FILE_PATH,tempModelFileName,AddressService.MODEL_FILE_PATH,modelLayer,rules,triggerMap);
 		long t2=System.currentTimeMillis();
-		System.out.println("生成多个仿真场景时间："+(t2-t1));
+		System.out.println("通用系统模型生成时间："+(t2-t1));
+		long t3=System.currentTimeMillis();
+		ScenarioTree.ScenesTree scenesTree=SystemModelGenerationService.generateMultiScenariosAccordingToTriggers(modelFileName,AddressService.MODEL_FILE_PATH,tempModelFileName,AddressService.MODEL_FILE_PATH,modelLayer,rules,triggerMap);
+		long t4=System.currentTimeMillis();
+		System.out.println("多场景生成时间："+(t4-t3));
+
 		return scenesTree;
 	}
 
@@ -477,14 +481,7 @@ public class Controller {
 		return scenarios;
 	}
 
-	@RequestMapping("/calculateDeviceStatesDuration")
-	@ResponseBody
-	public List<String[]> calculateDeviceStatesDuration(@RequestBody InputConstruct.ConsumptionInput consumptionInput){
-		DataTimeValue dataTimeValue=consumptionInput.getDataTimeValue();
-		DeviceInstance deviceInstance= consumptionInput.getDeviceInstance();
-		List<String[]> deviceStatesDuration=AnalysisService.getDeviceStatesDuration(dataTimeValue,deviceInstance);
-		return deviceStatesDuration;
-	}
+
 
 	@RequestMapping("/searchAllScenariosConflict")
 	@ResponseBody
@@ -659,6 +656,50 @@ public class Controller {
 		double satisfaction=AnalysisService.getSatisfaction(attribute,lowValue,highValue,dataTimeValues);
 		System.out.println(satisfaction);
 		return satisfaction;
+	}
+	/**
+	 * 计算设备状态持续时间
+	 * */
+	@RequestMapping("/calculateDeviceStatesDuration")
+	@ResponseBody
+	public List<String[]> calculateDeviceStatesDuration(@RequestBody InputConstruct.ConsumptionInput consumptionInput){
+		DataTimeValue dataTimeValue=consumptionInput.getDataTimeValue();
+		DeviceInstance deviceInstance= consumptionInput.getDeviceInstance();
+		List<String[]> deviceStatesDuration=AnalysisService.getDeviceStatesDuration(dataTimeValue,deviceInstance);
+		return deviceStatesDuration;
+	}
+
+	/**
+	 * 计算能耗
+	 * */
+
+	@RequestMapping("/getEnergyConsumption")
+	@ResponseBody
+	public List<String[]> getEnergyConsumption(@RequestBody InputConstruct.EnergyConsumptionInput energyConsumptionInput){
+		List<DataTimeValue> dataTimeValues=energyConsumptionInput.getDataTimeValues();
+		List<DeviceInstance> deviceInstances=energyConsumptionInput.getDeviceInstances();
+		List<String[]> deviceConsumptions=new ArrayList<>();
+		HashMap<String,DataTimeValue> dataTimeValueHashMap=new HashMap<>();
+		for (DataTimeValue dataTimeValue:dataTimeValues){
+			dataTimeValueHashMap.put(dataTimeValue.getInstanceName(),dataTimeValue);
+		}
+		for (DeviceInstance deviceInstance:deviceInstances){
+			double consumption=0;
+			String[] deviceConsumption=new String[2];
+			deviceConsumption[0]=deviceInstance.getInstanceName();
+			DataTimeValue dataTimeValue=dataTimeValueHashMap.get(deviceInstance.getInstanceName());
+			///计算各设备各状态的时间  deviceStateDuration[0]设备名  deviceStateDuration[1]状态名  deviceStateDuration[2]该状态保持时间 [3]用来存功率  [4]存能耗（仿真时间下的）
+			List<String[]> deviceStatesDuration=AnalysisService.getDeviceStatesDuration(dataTimeValue,deviceInstance);
+			for (String[] deviceStateDuration:deviceStatesDuration){
+				consumption+=Double.parseDouble(deviceStateDuration[4]);
+			}
+			if(consumption<=0){
+				continue;
+			}
+			deviceConsumption[1]=consumption+"";
+			deviceConsumptions.add(deviceConsumption);
+		}
+		return deviceConsumptions;
 	}
 
 	@RequestMapping("/getOtherAnalysis")
