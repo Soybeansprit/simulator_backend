@@ -737,10 +737,11 @@ public class Controller {
 		List<Rule> rules=propertyAnalysisInput.getRules();
 		List<String> properties=propertyAnalysisInput.getProperties();
 		InstanceLayer instanceLayer= propertyAnalysisInput.getInstanceLayer();
+//		properties=InstanceLayerService.generateSafetyProperties(instanceLayer);   ///做实验用
 		long t1=System.currentTimeMillis();
 		List<PropertyAnalysisResult> propertyAnalysisResults=AnalysisService.getPropertiesAnalysisResultAllScenarios(scenarios,instanceLayer,rules,properties);
 		long t2=System.currentTimeMillis();
-		System.out.println("隐私性验证时间："+(t2-t1));
+		System.out.println("安全性验证时间："+(t2-t1));
 		return propertyAnalysisResults;
 
 	}

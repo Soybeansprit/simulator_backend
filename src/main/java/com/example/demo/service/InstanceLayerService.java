@@ -35,10 +35,49 @@ public class InstanceLayerService {
     public static void main(String[] args) throws DocumentException, IOException {
         List<String> locations=new ArrayList<>();
         ModelLayer modelLayer=ModelLayerService.getModelLayer("D:\\example\\例子\\论文实验\\","ontology.xml","ontology.xml",locations);
-//        generateInstances("D:\\example\\例子\\论文实验\\自动建模能力\\","instance.properties",modelLayer);
+        generateInstances("D:\\example\\例子\\论文实验\\自动建模能力\\","instance.properties",modelLayer);
 
         generateTriggerActions(modelLayer,"D:\\example\\例子\\论文实验\\自动建模能力\\","10.properties");
     }
+
+    ///随机生成安全性性质
+    public static List<String> generateSafetyProperties(InstanceLayer instanceLayer){
+        List<String> properties=new ArrayList<>();
+        List<String> states=new ArrayList<>();
+        for (DeviceInstance deviceInstance: instanceLayer.getDeviceInstances()){
+            for (DeviceType.StateSyncValueEffect stateSyncValueEffect:deviceInstance.getDeviceType().getStateSyncValueEffects()){
+                String s=deviceInstance.getInstanceName()+"."+stateSyncValueEffect.getStateName();
+                states.add(s);
+            }
+        }
+        for (String[] stateValue:instanceLayer.getHumanInstance().getHuman().getStateValues()){
+            String s=instanceLayer.getHumanInstance().getInstanceName()+"."+stateValue[0];
+            states.add(s);
+        }
+        for (UncertainEntityInstance uncertainEntityInstance: instanceLayer.getUncertainEntityInstances()){
+            for (String[] stateValue:uncertainEntityInstance.getUncertainEntityType().getStateValues()){
+                String s= uncertainEntityInstance.getInstanceName()+"."+stateValue[0];
+                states.add(s);
+            }
+        }
+        int count=1024;
+
+        first:
+        for (String state:states){
+            for (String state2:states){
+                String s=state+" & "+state2;
+                Random r=new Random();
+                int loc=r.nextInt(10);
+                if (loc%2==0) continue ;
+                properties.add(s);
+                if (properties.size()>=count){
+                    break first;
+                }
+            }
+        }
+        return properties;
+    }
+
 
     //随机生成实例层
     public static void generateInstances(String filePath,String fileName,ModelLayer modelLayer){
