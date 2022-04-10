@@ -206,6 +206,9 @@ public class SystemModelGenerationService {
 //        System.out.println();
     }
 
+    /**
+     * 解析生成的仿真轨迹文件，获得仿真轨迹
+     * */
     public static List<DataTimeValue> getDataTimeValuesFromTxt(String filePath,String fileName){
         List<DataTimeValue> dataTimeValues=new ArrayList<>();
         try (FileReader fr=new FileReader(filePath+fileName);
@@ -348,6 +351,9 @@ public class SystemModelGenerationService {
         os.close();
     }
 
+    /**
+     * TAP规则-》控制器SHA
+     * */
     ///生成控制器模型，需要写回xml文件中，同时人模型可在这个时候写入
     ///要添加涉及时间的控制器，前面规则处理也要重新处理
     ///添加一个time全局变量
@@ -617,6 +623,9 @@ public class SystemModelGenerationService {
 
     }
 
+    /**
+     * 生成人的SHA
+     * */
     ///根据人模型信息，生成xml中的元素
     public static void getHumanElement(Human human, Element humanElement){
         Element nameElement=humanElement.addElement("name");
@@ -745,6 +754,9 @@ public class SystemModelGenerationService {
 
 
 
+    /**
+     * 生成系统声明
+     * */
     ///生成系统声明，需写回xml文件中，会有n个系统模型
     // 其中全局变量是不同场景不同的，但是其他所有场景都是一样的，只要交互环境相同。
     ///先将其他部分写入，然后再每个场景重写。
@@ -1052,7 +1064,10 @@ public class SystemModelGenerationService {
         querySb.append("}");
         return querySb.toString();
     }
-    
+
+    /**
+     * 基于系统模型，生成仿真场景
+     * */
     ///不同attribute取值对应不同场景，该方法设置declaration——全局变量，添加到模型中
     public static void generateScenario(String filePath1,String fileName1,String filePath2,String fileName2,AttributeEntityType attributeEntityType,String sameDeclaration,List<String[]> attributeValues) throws IOException, DocumentException {
         ///写文件
@@ -1293,6 +1308,9 @@ public class SystemModelGenerationService {
     }
 
 
+    /**
+     * 生成交互环境，并生成IFD
+     * */
     ///解析rules，生成交互环境,这过程中可以生成IFD？
     public static InstanceLayer getInteractiveEnvironment(InstanceLayer instanceLayer,ModelLayer modelLayer,HashMap<String,Trigger> triggerMap,HashMap<String,Action> actionMap){
         InstanceLayer interactiveEnvironment=new InstanceLayer();
@@ -1341,7 +1359,7 @@ public class SystemModelGenerationService {
         return interactiveEnvironment;
     }
 
-    ///获得triggerMap
+    ///获得triggerMap，获得所有触发条件trigger
     public static HashMap<String,Trigger> getTriggerMapFromRules(List<Rule> rules,InstanceLayer instanceLayer){
         HashMap<String,Trigger> triggerMap=new HashMap<>();
         HashMap<String, Instance> instanceLayerMap=InstanceLayerService.getInstanceMap(instanceLayer);
@@ -1372,7 +1390,7 @@ public class SystemModelGenerationService {
         return triggerMap;
     }
 
-    ///获得actionMap
+    ///获得actionMap，获得所有执行指令action
     public static HashMap<String,Action> getActionMapFromRules(List<Rule> rules){
         HashMap<String,Action> actionMap=new HashMap<>();
         for (Rule rule:rules){
@@ -1576,6 +1594,7 @@ public class SystemModelGenerationService {
         return attributeValues;
     }
 
+    ////每条TAP规则分别能触发的所有规则
     public static HashMap<String, RuleAndTriggeredRule> getAllRulesTriggeredRules(List<IFDGraph.GraphNode> graphNodes){
         ////返回每条规则能触发的所有规则
         List<RuleAndTriggeredRule> ruleAndTriggeredRules=new ArrayList<>();
@@ -1583,16 +1602,19 @@ public class SystemModelGenerationService {
         HashMap<String, IFDGraph.GraphNode> graphNodeHashMap=new HashMap<>();
         for (IFDGraph.GraphNode ruleNode:graphNodes){
             if (ruleNode.getShape().equals("hexagon")){
+                ///返回一条TAP规则能直接触发的所有规则
                 RuleAndTriggeredRule ruleAndTriggeredRule=getRuleTriggeredRules(ruleNode);
                 ruleAndTriggeredRuleHashMap.put(ruleNode.getName(), ruleAndTriggeredRule);
                 ruleAndTriggeredRules.add(ruleAndTriggeredRule);
                 graphNodeHashMap.put(ruleNode.getName(), ruleNode);
             }
         }
+        ///综合获得每条TAP规则能直接或间接触发的其他规则
         getAllTriggeredRules(ruleAndTriggeredRuleHashMap,graphNodeHashMap);
         return ruleAndTriggeredRuleHashMap;
     }
 
+    ////根据IFD，返回一条TAP规则能直接触发的所有规则
     public static RuleAndTriggeredRule getRuleTriggeredRules(IFDGraph.GraphNode ruleNode){
 //        Rule Ri的所有trigger Ti，所有action Ai
         RuleAndTriggeredRule ruleAndTriggeredRule=new RuleAndTriggeredRule();

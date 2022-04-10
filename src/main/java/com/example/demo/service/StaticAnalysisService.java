@@ -18,123 +18,9 @@ import com.example.demo.bean.IFDGraph.GraphNodeArrow;
 @Service
 public class StaticAnalysisService {	
 	
-	/////获得静态分析的结果
-	public static StaticAnalysisResult1 getStaticAnalaysisResult(List<Rule> rules, String ifdFileName, String filePath, EnvironmentModel environmentModel ) throws DocumentException, IOException {
-
-		StaticAnalysisResult1 staticAnalysisResult1 =new StaticAnalysisResult1();
-		staticAnalysisResult1.setTotalRules(rules);
-		////返回可用的rules和各种错误
-		HashMap<String,Rule> mapRules=new HashMap<String,Rule>();
-		for(Rule rule:rules) {
-			mapRules.put(rule.getRuleName(), rule);
-		}
-		//转成可解析xml文件
-
-		List<DeviceDetail> devices=environmentModel.getDevices();
-		List<SensorType> sensors=environmentModel.getSensors();
-		List<BiddableType> biddables=environmentModel.getBiddables();
-		
-		
-		/////移除incorrect rules		
-//		List<ErrorReason> incorrectRules=getIncorrect(rules, devices);
-//		
-//		
-//		Iterator<Rule> iteratorRules=rules.iterator();
-//		while(iteratorRules.hasNext()) {
-//			Rule rule=iteratorRules.next();			
-//			for(ErrorReason er:incorrectRules) {
-//				if(rule.getRuleName().equals(er.rule.getRuleName())) {
-//					iteratorRules.remove();
-//				}
-//			}
-//		}
-		///////////////////删除重复的规则
-		List<Rule> newRules=deleteRepeat(rules);
-		
-		long unusedStartTime=System.currentTimeMillis();
-		generateIFD(newRules, ifdFileName, filePath, devices, sensors, biddables);
-		List<GraphNode> nodes=getIFDNode(ifdFileName, filePath);
-		List<GraphNode> ruleNodes=new ArrayList<GraphNode>();
-		
-		for(GraphNode node:nodes) {
-			if(node.getShape().equals("hexagon")) {
-				ruleNodes.add(node);
-			}
-		}
-		///////////获得unused
-		
-		List<ErrorReason> unusedRules=getUnused(ruleNodes, devices,biddables,mapRules);
-//		System.out.println(unusedRules);
-		Iterator<Rule> iteratorNewRules=newRules.iterator();
-		//////////删掉unused
-		while(iteratorNewRules.hasNext()) {
-			Rule rule=iteratorNewRules.next();
-			for(ErrorReason unusedRule:unusedRules) {
-				if(unusedRule.rule.getRuleName().equals(rule.getRuleName())) {
-					iteratorNewRules.remove();
-					break;
-				}
-			}
-		}
-		System.out.println("unusedTime:"+(System.currentTimeMillis()-unusedStartTime));
-		
-		long redundantStartTime=System.currentTimeMillis();
-		generateIFDForBest(newRules, ifdFileName, filePath, devices, sensors, biddables);
-		ruleNodes.clear();
-		nodes.clear();
-		nodes=getIFDNode(ifdFileName, filePath);
-		for(GraphNode node:nodes) {
-			if(node.getShape().equals("hexagon")) {
-				ruleNodes.add(node);
-			}
-		}
-
-		//////获得redundant rules
-		List<List<GraphNode>> redundantRuleNodes=new ArrayList<List<GraphNode>>();
-		for(GraphNode ruleNode:ruleNodes) {
-			redundantRuleNodes.add(getRedundant(ruleNode,nodes));
-		}
-		
-		List<List<Rule>> redundantRules=new ArrayList<List<Rule>>();
-		for(List<GraphNode> redundant:redundantRuleNodes) {
-			List<Rule> reRules=new ArrayList<Rule>();
-			for(GraphNode node:redundant) {
-				Rule rule=mapRules.get(node.getName());
-				reRules.add(rule);
-			}
-			if(reRules.size()>1) {
-				redundantRules.add(reRules);
-			}
-		}
-		System.out.println("redundantTime:"+(System.currentTimeMillis()-redundantStartTime));
-//		System.out.println(redundantRuleNodes);
-		
-		///////////获得incompleteness
-		long incompleteStartTime=System.currentTimeMillis();
-		List<Action> actions=RuleService.getAllActions(newRules, devices);
-		List<DeviceDetail> cannotOffDevices=getIncompleteness(devices, actions);
-		List<String> incompleteness=new ArrayList<String>();
-		for(DeviceDetail device:cannotOffDevices) {
-			for(String[] stateActionValue:device.getDeviceType().stateActionValues) {
-				if(Integer.parseInt(stateActionValue[2])==0) {
-					String incomplete="Missing rule to turn off "+device.getDeviceName();
-					incompleteness.add(incomplete);
-					break;
-				}
-			}
-		}
-		System.out.println("incomleteTime:"+(System.currentTimeMillis()-incompleteStartTime));
-//		staticAnalysisResult1.setIncorrectRules(incorrectRules);
-		staticAnalysisResult1.setUnusedRules(unusedRules);
-		staticAnalysisResult1.setRedundantRules(redundantRules);
-		staticAnalysisResult1.setIncompleteness(incompleteness);
-		staticAnalysisResult1.setUsableRules(newRules);
-		return staticAnalysisResult1;
-		
-	}
 
 	/**
-	 * 静态分析
+	 * 静态分析，验证 不可触发规则、冗余规则、循环规则、规则不完整
 	 * */
 	public static StaticAnalysisResult getStaticAnalysisResult(List<Rule> rules,String ifdFilePath,String ifdFileName,InstanceLayer instanceLayer) throws IOException {
 
@@ -255,6 +141,9 @@ public class StaticAnalysisService {
 		return staticAnalysisResult;
 	}
 
+	/**
+	 * 判断两条TAP规则是否相同
+	 * */
 	public static boolean sameRuleList(List<Rule> rules1,List<Rule> rules2){
 		if(rules1.size()!= rules2.size()){
 			return false;
@@ -292,6 +181,7 @@ public class StaticAnalysisService {
 	}
 
 	/**
+	 * 循环规则
 	 * 判断是否存在loop
 	 * */
 	public static List<List<GraphNode>> getLoop(GraphNode ruleNode){
@@ -415,7 +305,7 @@ public class StaticAnalysisService {
 		return newRules;
 	}
 /**
- * 静态分析
+ * 不可触发规则判断
  * 判断一条规则是否能发生，即判断其triggers是否都能满足
  * 如果不能触发，则给出不能触发的原因，反之原因为""
  * */
@@ -523,7 +413,7 @@ public class StaticAnalysisService {
 		ruleNode.setTraversed(false);
 		return reason;
 	}
-	///////////trigger之间矛盾
+	///////////判断trigger之间矛盾
 	public static boolean isContra(GraphNode triggerNode1,GraphNode triggerNode2){
 		String[] triggerForm1=RuleService.getTriggerForm(triggerNode1.getLabel());
 		String[] triggerForm2=RuleService.getTriggerForm(triggerNode2.getLabel());
@@ -808,9 +698,6 @@ public class StaticAnalysisService {
 		}
 		return pathRuleNodes;
 	}
-
-
-
 	///////////otherRule的action是否包含rule的action
 	public static boolean containActionNode(GraphNode ruleNode,GraphNode otherRuleNode) {
 		boolean contain=true;
@@ -832,6 +719,7 @@ public class StaticAnalysisService {
 
 
 	/**
+	 * 规则不完整
 	 * 获得incompleteness
 	 * 在删除unused rules之后
 	 * 获取设备节点，然后看其action节点是否有关的action
@@ -920,364 +808,180 @@ public class StaticAnalysisService {
 	}
 
 
-	public static List<ErrorReason> getUnused(List<GraphNode> ruleNodes,List<DeviceDetail> devices,List<BiddableType> biddables,HashMap<String,Rule> mapRules){
-		List<ErrorReason> unusedRules=new ArrayList<ErrorReason>();
-		for(GraphNode ruleNode:ruleNodes) {
-			String reason=isUnused(ruleNode,null,devices,biddables);
-			if(!reason.equals("")) {
-				////isUnused
-				Rule unusedRule=mapRules.get(ruleNode.getName());
-				ErrorReason er=new ErrorReason();
-				er.reason=reason;
-				er.rule=unusedRule;
-				unusedRules.add(er);
-			}
-		}
-		return unusedRules;
-	}
-	
-	//规则是否无法被触发
-	public static String isUnused(GraphNode ruleNode,GraphNode pRuleNode,List<DeviceDetail> devices,List<BiddableType> biddables) {
-		String reason="";
-		List<GraphNode> triggerNodes=new ArrayList<GraphNode>();
-		for(GraphNodeArrow pArrow:ruleNode.getpNodeList()) {
-			GraphNode triggerNode=pArrow.getGraphNode();
-			boolean legal=false;
-			for(GraphNodeArrow ppArrow:triggerNode.getpNodeList()) {
-				if(ppArrow.getColor().indexOf("lightpink")>=0) {
-					legal=true;
-					break;
-				}
-			}
-			if(!legal) {
-				//////////trigger不合法
-//				correct=false;
-				reason="Trigger: "+triggerNode.getLabel()+" illegal.";
-				System.out.println(reason);
-//				isUnused=true;
-				return reason;
-			}
-			triggerNodes.add(triggerNode);
-		}
-		///////////trigger之间矛盾
-		for(int i=0;i<triggerNodes.size();i++) {
-			GraphNode triggerNode1=triggerNodes.get(i);
-			for(int j=i+1;j<triggerNodes.size();j++) {
-				GraphNode triggerNode2=triggerNodes.get(j);
-				if(isContra(triggerNode1, triggerNode2,biddables)) {
-//					isUnused=true;
-					reason="Trigger: "+triggerNode1.getLabel()+" "+triggerNode2.getLabel()+" has a logical contradiction.";
-					System.out.println(reason);
-					return reason;
-				}
-			}
-		}
-		////////////trigger是state，但是非初始状态且没有条件触发
-		for(GraphNode triggerNode:triggerNodes) {
-			String[] attrVal=RuleService.getTriAttrVal(triggerNode.getLabel(), biddables);
-//			String[] attrVal=RuleService.getTriAttrVal(triggerNode.getLabel());
-			/////Bulb_0.bon
-			if(attrVal[1].equals(".")) {
-//				boolean hasDevice=false;
-				for(DeviceDetail device:devices) {
-					if(device.getDeviceName().equals(attrVal[0])) {
-						///Bulb_0
-//						hasDevice=true;
-						for(String[] stateActionValue:device.getDeviceType().stateActionValues) {
-							if(stateActionValue[0].equals(attrVal[2])) {
-								///bon
-								if(!stateActionValue[2].equals("0")) {
-									///非初始状态
-									boolean hasPreAction=false;
-									for(GraphNodeArrow pArrow:triggerNode.getpNodeList()) {
-										if(pArrow.getColor().equals("red")) {
-											String pAction=pArrow.getGraphNode().getLabel();
-											pAction=pAction.substring(pAction.indexOf(".")).substring(1);
-											if(pAction.equals(stateActionValue[1])) {
-												hasPreAction=true;
-												//////////看这个action的rule有没有能触发的
-												GraphNode actionNode=pArrow.getGraphNode();
-												boolean cantriggered=false;
-												for(GraphNodeArrow ppArrow:actionNode.getpNodeList()) {
-													if(ppArrow.getGraphNode().getShape().equals("hexagon")) {
-														GraphNode pruleNode=ppArrow.getGraphNode();
-														///////需要避免循环调用
-														if(pruleNode==pRuleNode) {
-															return null;
-														}
-														String unused=isUnused(pruleNode,ruleNode, devices,biddables);
-														if(unused!=null&&unused.equals("")) {
-															cantriggered=true;
-															break;
-														}
-													}
-												}
-												if(!cantriggered) {
-//													isUnused=true;
-													reason="No rule can satisfy "+triggerNode.getLabel()+".";
-													System.out.println(reason);
-													return reason;
-												}
-												break;
-											}
-										}
-										
-									}
-									if(!hasPreAction) {
-//										isUnused=true;
-										reason="No rule can satisfy "+triggerNode.getLabel()+".";
-										System.out.println(reason);
-										return reason;
-									}
-								}
-								break;
-							}
-						}
-						
-						break;
-					}
-				}
-			}
-		}
-		return reason;
-	}
-	
-	///////看trigger和trigger之间是否矛盾
- 	public static boolean isContra(GraphNode triggerNode1,GraphNode triggerNode2,List<BiddableType> biddables) {
-		String trigger1=triggerNode1.getLabel();
-		String trigger2=triggerNode2.getLabel();
-		String[] attrVal1=RuleService.getTriAttrVal(trigger1, biddables);
-		String[] attrVal2=RuleService.getTriAttrVal(trigger2, biddables);
 
-		if(attrVal1[0].equals(attrVal2[0])) {
-			if(attrVal1[1].equals(".")) {
-				////同一设备不同状态
-				if(!attrVal2[2].equals(attrVal1[2])) {
-					return true;
-				}
-			}else {
-				//同一属性的取值矛盾
-				double val1=Double.parseDouble(attrVal1[2]);
-				double val2=Double.parseDouble(attrVal2[2]);
-				if(attrVal1[1].equals("=")) {
-					if(attrVal2[1].equals("=")) {
-						if(!attrVal2[2].equals(attrVal1[2])) {
-							return true;
-						}
-					}else if(attrVal2[1].contains(">")) {
-						if(val2>=val1) {
-							return true;
-						}
-					}else if(attrVal2[1].contains("<")) {
-						if(val2<=val1) {
-							return true;
-						}
-					}else if(attrVal2[1].equals("!=")) {
-						if((int) val2==(int)val1) {
-							return true;
-						}
-					}
-				}else if(attrVal2[1].equals("=")) {
-					if(attrVal1[1].contains(">")) {
-						if(val1>=val2) {
-							return true;
-						}
-					}else if(attrVal1[1].contains("<")) {
-						if(val1<=val2) {
-							return true;
-						}
-					}else if(attrVal1[1].equals("!=")) {
-						if((int) val2==(int)val1) {
-							return true;
-						}
-					}
-				}else if(attrVal1[1].contains(">")) {
-					if(attrVal2[1].contains("<")) {
-						if(val1>=val2) {
-							return true;
-						}
-					}
-				}else if(attrVal1[1].contains("<")) {
-					if(attrVal2[1].contains(">")) {
-						if(val1<=val2) {
-							return true;
-						}
-					}
-				}
-			}
-		}
-		
-		return false;
-	}
 	
-	////////////////////获得冗余的规则
-	public static List<GraphNode> getRedundant(GraphNode ruleNode,List<GraphNode> graphNodes) {
-		List<GraphNode> redundantNodes=new ArrayList<GraphNode>();
-		List<GraphNode> otherCauseRuleNodes=new ArrayList<GraphNode>();
-		redundantNodes.add(ruleNode);
-		boolean allActionHasOtherRule=true;
-		first:
-		for(GraphNodeArrow cArrow:ruleNode.getcNodeList()) {
-			GraphNode actionNode=cArrow.getGraphNode();
-			boolean existOtherRule=false;
-			for(GraphNodeArrow pArrow:actionNode.getpNodeList()) {
-				/////////还有其他规则能发起该action		
-				if(!pArrow.getGraphNode().getShape().equals("hexagon")) {
-					continue;
-				}
-				if(!pArrow.getGraphNode().getName().equals(ruleNode.getName())) {
-					existOtherRule=true;
-					GraphNode otherRuleNode=pArrow.getGraphNode();
-					otherCauseRuleNodes.add(otherRuleNode);
-					if(containActionNode(ruleNode, otherRuleNode)) {
-						/////////////otherRule包含rule的所有action
-						List<GraphNode> pathRuleLists=canTraceBack(ruleNode, otherRuleNode,null,graphNodes,0);
-						if(pathRuleLists!=null) {
-							////////////且otherRule的triggers都能回溯到ruleNode的triggers
-							/////说明是冗余的
-							redundantNodes.addAll(pathRuleLists);							
-							break first;
-						}
-					}
-				}				
-			}
-			if(!existOtherRule) {
-				//////////////如果没有其他规则能发起该rule的某个action，那这条规则不会冗余
-				allActionHasOtherRule=false;
-				break;
-			}
-		}
-		if(allActionHasOtherRule&&redundantNodes.size()==1) {
-			////如果其action都能被其他一组rule执行，但是没有一条与它冗余
-			/////则看这一组规则各自的triggers能否回溯到该rule的triggers
-			for(GraphNode otherRuleNode:otherCauseRuleNodes) {
-				List<GraphNode> pathRuleList=canTraceBack(ruleNode, otherRuleNode,null,graphNodes,0);
-				if(pathRuleList!=null) {
-					redundantNodes.addAll(pathRuleList);
-				}
-			}
-		}
-		if(redundantNodes.size()>1) {
-			///////在上述基础上看其他一组规则能否执行这条规则的所有actions
-			for(GraphNodeArrow cArrow:ruleNode.getcNodeList()) {
-				boolean existActionNode=false;
-				second:
-				for(int i=1;i<redundantNodes.size();i++) {
-					for(GraphNodeArrow recArrow:redundantNodes.get(i).getcNodeList()) {
-						if(cArrow.getGraphNode().getName().equals(recArrow.getGraphNode().getName())) {
-							existActionNode=true;
-							break second;
-						}
-					}
-				}
-				if(!existActionNode) {
-					redundantNodes.clear();
-					redundantNodes.add(ruleNode);
-					break;
-				}
-			}
-			
-		}
-		return redundantNodes;
-	}
-		
-	public static List<GraphNode> canTraceBack(GraphNode ruleNode,GraphNode otherRuleNode,GraphNode cRuleNode,List<GraphNode> graphNodes,int count){
-		List<GraphNode> ruleList=new ArrayList<GraphNode>();
-		List<GraphNode> triggerNodes=new ArrayList<GraphNode>();
-		////获得ruleNode的所有trigger节点
-		for(GraphNodeArrow pArrow:ruleNode.getpNodeList()) {
-			triggerNodes.add(pArrow.getGraphNode());
-		}
-		for(GraphNode node:graphNodes) {
-			if(node.flag) {
-				node.flag=false;
-			}
-		}
-		////otherRuleNode的trigger是不是都能回溯到ruleNode的trigger
-		////trigger1 -> ruleNode ; trigger2 -> otherRuleNode
-		////看trigger2==trigger1? 或者 trigger2 -> -> ->trigger1?
-		for(GraphNodeArrow pArrow:otherRuleNode.getpNodeList()) {
-			GraphNode triggerNode=pArrow.getGraphNode();
-			Queue<GraphNode> nodeQueue=new LinkedList<GraphNode>();
-			nodeQueue.add(triggerNode);
-			triggerNode.flag=true;
-			boolean canTraceTo=false;
-			while(!nodeQueue.isEmpty()) {
-				GraphNode node=nodeQueue.poll();
-				if(triggerNodes.contains(node)) {
-					///判断是不是在triggers中
-					canTraceTo=true;
-					break;
-				}
-				for(GraphNodeArrow nodepArrow:node.getpNodeList()) {
-					GraphNode pNode=nodepArrow.getGraphNode();
-					if(nodepArrow.getStyle()==""&&pNode.getShape().indexOf("doubleoctagon")<0&&!pNode.flag) {
-						////实线
-						if(pNode.getShape().indexOf("hexagon")>=0 && !pNode.getName().equals(ruleNode.getName())&&pNode!=cRuleNode&&count<=5) {
-							List<GraphNode> pRuleList=new ArrayList<GraphNode>();
-							/////同样需要避免进入死循环，要跳出调度
-							count++;
-							if((pRuleList=canTraceBack(ruleNode, pNode,otherRuleNode, graphNodes,count))!=null) {
-								ruleList.addAll(pRuleList);
-							}							
-						}else {
-							nodeQueue.add(pNode);
-							pNode.flag=true;
-						}
-					}
-				}
-				
-			}
-			if(!canTraceTo&&ruleList.size()==0) {
-				return null;
-			}
-			
-		}		
-		ruleList.add(otherRuleNode);		
-		return ruleList;
-	}
-	
+
+//	////////////////////获得冗余的规则
+//	public static List<GraphNode> getRedundant(GraphNode ruleNode,List<GraphNode> graphNodes) {
+//		List<GraphNode> redundantNodes=new ArrayList<GraphNode>();
+//		List<GraphNode> otherCauseRuleNodes=new ArrayList<GraphNode>();
+//		redundantNodes.add(ruleNode);
+//		boolean allActionHasOtherRule=true;
+//		first:
+//		for(GraphNodeArrow cArrow:ruleNode.getcNodeList()) {
+//			GraphNode actionNode=cArrow.getGraphNode();
+//			boolean existOtherRule=false;
+//			for(GraphNodeArrow pArrow:actionNode.getpNodeList()) {
+//				/////////还有其他规则能发起该action
+//				if(!pArrow.getGraphNode().getShape().equals("hexagon")) {
+//					continue;
+//				}
+//				if(!pArrow.getGraphNode().getName().equals(ruleNode.getName())) {
+//					existOtherRule=true;
+//					GraphNode otherRuleNode=pArrow.getGraphNode();
+//					otherCauseRuleNodes.add(otherRuleNode);
+//					if(containActionNode(ruleNode, otherRuleNode)) {
+//						/////////////otherRule包含rule的所有action
+//						List<GraphNode> pathRuleLists=canTraceBack(ruleNode, otherRuleNode,null,graphNodes,0);
+//						if(pathRuleLists!=null) {
+//							////////////且otherRule的triggers都能回溯到ruleNode的triggers
+//							/////说明是冗余的
+//							redundantNodes.addAll(pathRuleLists);
+//							break first;
+//						}
+//					}
+//				}
+//			}
+//			if(!existOtherRule) {
+//				//////////////如果没有其他规则能发起该rule的某个action，那这条规则不会冗余
+//				allActionHasOtherRule=false;
+//				break;
+//			}
+//		}
+//		if(allActionHasOtherRule&&redundantNodes.size()==1) {
+//			////如果其action都能被其他一组rule执行，但是没有一条与它冗余
+//			/////则看这一组规则各自的triggers能否回溯到该rule的triggers
+//			for(GraphNode otherRuleNode:otherCauseRuleNodes) {
+//				List<GraphNode> pathRuleList=canTraceBack(ruleNode, otherRuleNode,null,graphNodes,0);
+//				if(pathRuleList!=null) {
+//					redundantNodes.addAll(pathRuleList);
+//				}
+//			}
+//		}
+//		if(redundantNodes.size()>1) {
+//			///////在上述基础上看其他一组规则能否执行这条规则的所有actions
+//			for(GraphNodeArrow cArrow:ruleNode.getcNodeList()) {
+//				boolean existActionNode=false;
+//				second:
+//				for(int i=1;i<redundantNodes.size();i++) {
+//					for(GraphNodeArrow recArrow:redundantNodes.get(i).getcNodeList()) {
+//						if(cArrow.getGraphNode().getName().equals(recArrow.getGraphNode().getName())) {
+//							existActionNode=true;
+//							break second;
+//						}
+//					}
+//				}
+//				if(!existActionNode) {
+//					redundantNodes.clear();
+//					redundantNodes.add(ruleNode);
+//					break;
+//				}
+//			}
+//
+//		}
+//		return redundantNodes;
+//	}
+//
+//	public static List<GraphNode> canTraceBack(GraphNode ruleNode,GraphNode otherRuleNode,GraphNode cRuleNode,List<GraphNode> graphNodes,int count){
+//		List<GraphNode> ruleList=new ArrayList<GraphNode>();
+//		List<GraphNode> triggerNodes=new ArrayList<GraphNode>();
+//		////获得ruleNode的所有trigger节点
+//		for(GraphNodeArrow pArrow:ruleNode.getpNodeList()) {
+//			triggerNodes.add(pArrow.getGraphNode());
+//		}
+//		for(GraphNode node:graphNodes) {
+//			if(node.flag) {
+//				node.flag=false;
+//			}
+//		}
+//		////otherRuleNode的trigger是不是都能回溯到ruleNode的trigger
+//		////trigger1 -> ruleNode ; trigger2 -> otherRuleNode
+//		////看trigger2==trigger1? 或者 trigger2 -> -> ->trigger1?
+//		for(GraphNodeArrow pArrow:otherRuleNode.getpNodeList()) {
+//			GraphNode triggerNode=pArrow.getGraphNode();
+//			Queue<GraphNode> nodeQueue=new LinkedList<GraphNode>();
+//			nodeQueue.add(triggerNode);
+//			triggerNode.flag=true;
+//			boolean canTraceTo=false;
+//			while(!nodeQueue.isEmpty()) {
+//				GraphNode node=nodeQueue.poll();
+//				if(triggerNodes.contains(node)) {
+//					///判断是不是在triggers中
+//					canTraceTo=true;
+//					break;
+//				}
+//				for(GraphNodeArrow nodepArrow:node.getpNodeList()) {
+//					GraphNode pNode=nodepArrow.getGraphNode();
+//					if(nodepArrow.getStyle()==""&&pNode.getShape().indexOf("doubleoctagon")<0&&!pNode.flag) {
+//						////实线
+//						if(pNode.getShape().indexOf("hexagon")>=0 && !pNode.getName().equals(ruleNode.getName())&&pNode!=cRuleNode&&count<=5) {
+//							List<GraphNode> pRuleList=new ArrayList<GraphNode>();
+//							/////同样需要避免进入死循环，要跳出调度
+//							count++;
+//							if((pRuleList=canTraceBack(ruleNode, pNode,otherRuleNode, graphNodes,count))!=null) {
+//								ruleList.addAll(pRuleList);
+//							}
+//						}else {
+//							nodeQueue.add(pNode);
+//							pNode.flag=true;
+//						}
+//					}
+//				}
+//
+//			}
+//			if(!canTraceTo&&ruleList.size()==0) {
+//				return null;
+//			}
+//
+//		}
+//		ruleList.add(otherRuleNode);
+//		return ruleList;
+//	}
+//
 	
 
 	
 	//////////////////获得incompleteness
-	public static List<DeviceDetail> getIncompleteness(List<DeviceDetail> devices,List<Action> actions) {
-		List<DeviceDetail> cannotOffDevices=new ArrayList<DeviceDetail>();
-		for(DeviceDetail device:devices) {
-			boolean canOn=false;
-			String offAction="";
-			for(String[] stateActionValue:device.getDeviceType().stateActionValues) {
-				/////////看该设备能否开
-				if(Integer.parseInt(stateActionValue[2])>0) {
-					/////获得该设备非初始状态的action
-					String action=device.getDeviceName()+"."+stateActionValue[1];
-					for(Action act:actions) {
-						if(act.action.equals(action)) {
-							canOn=true;
-						}
-					}
-				}else {
-					/////////获得该设备初始状态的action
-					offAction=device.getDeviceName()+"."+stateActionValue[1];
-				}
-			}
-			if(canOn) {
-				boolean canOff=false;
-				for(Action act:actions) {
-					////看有没有action能关闭该设备
-					if(act.action.equals(offAction)) {
-						canOff=true;
-						break;
-					}
-				}
-				if(!canOff) {
-					cannotOffDevices.add(device);
-				}
-			}
-		}
-		return cannotOffDevices;
-	}
-	
+//	public static List<DeviceDetail> getIncompleteness(List<DeviceDetail> devices,List<Action> actions) {
+//		List<DeviceDetail> cannotOffDevices=new ArrayList<DeviceDetail>();
+//		for(DeviceDetail device:devices) {
+//			boolean canOn=false;
+//			String offAction="";
+//			for(String[] stateActionValue:device.getDeviceType().stateActionValues) {
+//				/////////看该设备能否开
+//				if(Integer.parseInt(stateActionValue[2])>0) {
+//					/////获得该设备非初始状态的action
+//					String action=device.getDeviceName()+"."+stateActionValue[1];
+//					for(Action act:actions) {
+//						if(act.action.equals(action)) {
+//							canOn=true;
+//						}
+//					}
+//				}else {
+//					/////////获得该设备初始状态的action
+//					offAction=device.getDeviceName()+"."+stateActionValue[1];
+//				}
+//			}
+//			if(canOn) {
+//				boolean canOff=false;
+//				for(Action act:actions) {
+//					////看有没有action能关闭该设备
+//					if(act.action.equals(offAction)) {
+//						canOff=true;
+//						break;
+//					}
+//				}
+//				if(!canOff) {
+//					cannotOffDevices.add(device);
+//				}
+//			}
+//		}
+//		return cannotOffDevices;
+//	}
+
+	/**
+	 * 解析IFD的节点和边
+	 * */
 	//////////////////////获得IFD节点，以及节点间的关系
 	public static List<GraphNode> getIFDNode(String ifdFileName,String ifdPath) {
 		String dotPath=ifdPath+ifdFileName;
@@ -1421,6 +1125,9 @@ public class StaticAnalysisService {
 		return graphNodes;
 	}
 
+	/**
+	 * 解析IFD的节点和边，但获得instance节点
+	 * */
 	///解析IFD，获得节点和边，不管实体节点
 	public static List<GraphNode> parseIFDAndGetIFDNode(String ifdPath,String ifdFileName){
 		String dotPath=ifdPath+ifdFileName;
@@ -1547,6 +1254,9 @@ public class StaticAnalysisService {
 	}
 
 	////2021/12/27
+	/**
+	 * 生成IFD
+	 * */
 	////生成IFD
 	public static void generateIFD(HashMap<String,Trigger> triggerMap, HashMap<String,Action> actionMap, List<Rule> rules, InstanceLayer interactiveEnvironment,HashMap<String, Instance> interactiveInstanceMap,String ifdFileName,String filePath) throws IOException {
 		StringBuilder sb = new StringBuilder();
@@ -1762,383 +1472,385 @@ public class StaticAnalysisService {
 	}
 
 	
-	/////////////////生成IFD
-	public static void generateIFD(List<Rule> rules,String ifdFileName,String ifdPath,List<DeviceDetail> devices,List<SensorType> sensors,List<BiddableType> biddables) throws IOException {
-//		GetTemplate parse=new GetTemplate();
+//	/////////////////生成IFD
+//	public static void generateIFD(List<Rule> rules,String ifdFileName,String ifdPath,List<DeviceDetail> devices,List<SensorType> sensors,List<BiddableType> biddables) throws IOException {
+////		GetTemplate parse=new GetTemplate();
+//
+//
+//		//-------------------写dot文件-----------------------------------
+//
+//		String dotPath=ifdPath+ifdFileName;
+//		StringBuilder sb=new StringBuilder();
+//
+//
+//		sb.append("digraph infoflow{\r\n");
+//		sb.append("rankdir=LR;\r\n");
+//		sb.append("\r\n");
+//
+//		///////////////////生成sensor节点//////////////////
+//		sb.append("///////////////sensors////////////////\r\n");
+//		for(SensorType sensor:sensors) {
+//			String sensorDot=sensor.getName()+"[shape=\"doubleoctagon\",style=\"filled\",fillcolor=\"azure3\"]";
+//			sb.append(sensorDot+"\r\n");
+//
+//		}
+//		///////////////////////////////////////////////////
+//		sb.append("\r\n");
+//
+//		//////////////生成controlled device节点////////////////
+//		sb.append("//////////////controlled devices//////////////\r\n");
+//		for(DeviceDetail device:devices) {
+//			String controlledDot=device.getDeviceName()+"[shape=\"doubleoctagon\",style=\"filled\",fillcolor=\"darkseagreen1\"]";
+//			sb.append(controlledDot+"\r\n");
+//		}
+//
+//		//////////////////////////////////////////////////////
+//		sb.append("\r\n");
+//		sb.append("\r\n");
+//
+//		/////////////////////生成rule节点////////////////////
+//		sb.append("////////////////////rulesNum/////////////////////\r\n");
+//		sb.append("\r\n");
+//		for(Rule rule:rules) {
+//			String ruleDot=rule.getRuleName()+"[shape=\"hexagon\",style=\"filled\",fillcolor=\"lightskyblue\"]";
+//			sb.append(ruleDot+"\r\n");
+//		}
+//		//////////////////////////////////////////////////////
+//		sb.append("\r\n");
+//		sb.append("\r\n");
+//
+//		///获得所有trigger和action
+//		//getTriggers,getActions
+//		List<Trigger> triggers=RuleService.getAllTriggers(rules,sensors,biddables);
+//		List<Action> actions=RuleService.getAllActions(rules, devices);
+//
+//
+//		/////////////////////////生成action节点/////////////////////////////
+//		/////////////////////////rule->action  action->device//////////////
+//		sb.append("\r\n");
+//		sb.append("\r\n");
+//		sb.append("////////////////////actions/////////////////////\r\n");
+//		for(Action action:actions) {
+//			//action节点
+//			String actionDot=action.actionNum+"[label=\""+action.action+"\",shape=\"record\",style=\"filled\",fillcolor=\"beige\"]";
+//			sb.append(actionDot+"\r\n");
+//			for(Rule actRule:action.rules) {
+//				//rule->action
+//				String ruleToActionDot=actRule.getRuleName()+"->"+action.actionNum;
+//				sb.append(ruleToActionDot+"\r\n");
+//			}
+//			//action->device
+//			String actionToDevice=action.device+"->"+action.actionNum+"[color=\"lemonchiffon3\"]";
+//			sb.append(actionToDevice+"\r\n");
+//		}
+//
+//
+//		/////////////////////////生成trigger节点//////////////////////////////////////
+//		/////////////////////////trigger->rule  device/sensor->trigger//////////////
+//		sb.append("\r\n");
+//		sb.append("////////////////////triggers/////////////////////\r\n");
+//		for(Trigger trigger:triggers) {
+//			//trigger节点
+//			String triggerDot=trigger.triggerNum+"[label=\""+trigger.trigger+"\",shape=\"oval\",style=\"filled\",fillcolor=\"lightpink\"]";
+//			sb.append(triggerDot+"\r\n");
+//			//trigger->rule
+//			for(Rule triRule:trigger.rules) {
+//				String triggerToRuleDot=trigger.triggerNum+"->"+triRule.getRuleName();
+//				sb.append(triggerToRuleDot+"\r\n");
+//			}
+//			//sensor/device ->trigger
+//			String deviceToTriggerDot=trigger.device+"->"+trigger.triggerNum+"[color=\"lightpink\"]";
+//			sb.append(deviceToTriggerDot+"\r\n");
+//
+//			//trigger受到的影响
+//			if(trigger.attrVal[1].equals(".")) {
+//
+//				//action->trigger
+//				for(Action action:actions) {
+//					if(trigger.device.equals(action.device)
+//							&& trigger.attrVal[2].equals(action.toState)) {
+//						String actionToTriggerDot=action.actionNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
+//						sb.append(actionToTriggerDot+"\r\n");
+//					}
+//				}
+//			}else {
+//				//trigger->trigger   相同属性
+//				if(trigger.attrVal[1].indexOf(">")>=0) {
+//					for(Trigger otherTrigger:triggers) {
+//						if(otherTrigger!=trigger
+//								&& otherTrigger.attrVal[0].equals(trigger.attrVal[0])
+//								&& otherTrigger.attrVal[1].indexOf(">")>=0) {
+//							Double triVal=Double.parseDouble(trigger.attrVal[2]);
+//							Double othTriVal=Double.parseDouble(otherTrigger.attrVal[2]);
+//							if(triVal<othTriVal) {
+//								/////如temperature>30 -> temperature>25
+//								String triggerToTriggerDot=otherTrigger.triggerNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
+//								sb.append(triggerToTriggerDot+"\r\n");
+//							}else if(triVal.toString().equals(othTriVal.toString())) {
+//								if(trigger.attrVal[1].equals(">=")) {
+//									////如temperature>30 -> temperature>=30
+//									String triggerToTriggerDot=otherTrigger.triggerNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
+//									sb.append(triggerToTriggerDot+"\r\n");
+//								}
+//							}
+//						}
+//					}
+//				}else if(trigger.attrVal[1].indexOf("<")>=0) {
+//					//trigger->trigger   相同属性
+//					for(Trigger otherTrigger:triggers) {
+//						if(otherTrigger!=trigger
+//								&& otherTrigger.attrVal[0].equals(trigger.attrVal[0])
+//								&& otherTrigger.attrVal[1].indexOf("<")>=0) {
+//							Double triVal=Double.parseDouble(trigger.attrVal[2]);
+//							Double othTriVal=Double.parseDouble(otherTrigger.attrVal[2]);
+//							if(triVal>othTriVal) {
+//							/////如temperature<25 -> temperature<30
+//								String triggerToTriggerDot=otherTrigger.triggerNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
+//								sb.append(triggerToTriggerDot+"\r\n");
+//							}else if(triVal.toString().equals(othTriVal.toString())
+//									&& trigger.attrVal[1].equals(otherTrigger.attrVal[1])) {
+//								if(trigger.attrVal[1].equals("<=")) {
+//								////如temperature<30 -> temperature<=30
+//									String triggerToTriggerDot=otherTrigger.triggerNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
+//									sb.append(triggerToTriggerDot+"\r\n");
+//								}
+//							}
+//						}
+//					}
+//				}
+//
+//				//biddableToTrigger
+//			}
+//		}
+//
+//
+//		/////////////////////////////////////////////
+//		sb.append("\r\n");
+//		sb.append("}\r\n");
+////		parse.write(graphvizFile, "", true);
+////		parse.write(graphvizFile, "}", true);
+//		BufferedWriter bw=new BufferedWriter(new FileWriter(dotPath));
+//		bw.write(sb.toString());
+//		bw.close();
+//	}
+//
+//	/////////////////生成IFD，用户寻找最佳场景（能触发最多规则的场景），也就是添加action对trigger的隐性影响
+//	public static void generateIFDForBest(List<Rule> rules,String ifdFileName,String ifdPath,List<DeviceDetail> devices,List<SensorType> sensors,List<BiddableType> biddables) throws IOException {
+//		////////创建带影响关系的IFD
+//
+//
+//		//-------------------写dot文件-----------------------------------
+//
+//		String dotPath=ifdPath+ifdFileName;
+//		StringBuilder sb=new StringBuilder();
+//
+//
+//		sb.append("digraph infoflow{\r\n");
+//		sb.append("rankdir=LR;\r\n");
+//		sb.append("\r\n");
+//
+//		///////////////////生成sensor节点//////////////////
+//		sb.append("///////////////sensors////////////////\r\n");
+//		for(SensorType sensor:sensors) {
+//			String sensorDot=sensor.getName()+"[shape=\"doubleoctagon\",style=\"filled\",fillcolor=\"azure3\"]";
+//			sb.append(sensorDot+"\r\n");
+//
+//		}
+//		///////////////////////////////////////////////////
+//		sb.append("\r\n");
+//
+//		//////////////生成controlled device节点////////////////
+//		sb.append("//////////////controlled devices//////////////\r\n");
+//		for(DeviceDetail device:devices) {
+//			String controlledDot=device.getDeviceName()+"[shape=\"doubleoctagon\",style=\"filled\",fillcolor=\"darkseagreen1\"]";
+//			sb.append(controlledDot+"\r\n");
+//		}
+//
+//		//////////////////////////////////////////////////////
+//		sb.append("\r\n");
+//		sb.append("\r\n");
+//
+//		/////////////////////生成rule节点////////////////////
+//		sb.append("////////////////////rulesNum/////////////////////\r\n");
+//		sb.append("\r\n");
+//		for(Rule rule:rules) {
+//			String ruleDot=rule.getRuleName()+"[shape=\"hexagon\",style=\"filled\",fillcolor=\"lightskyblue\"]";
+//			sb.append(ruleDot+"\r\n");
+//		}
+//		//////////////////////////////////////////////////////
+//		sb.append("\r\n");
+//		sb.append("\r\n");
+//
+//		///获得所有trigger和action
+//		//getTriggers,getActions
+//		List<Trigger> triggers=RuleService.getAllTriggers(rules,sensors,biddables);
+//		List<Action> actions=RuleService.getAllActions(rules, devices);
+//
+//
+//		/////////////////////////生成action节点/////////////////////////////
+//		/////////////////////////rule->action  action->device//////////////
+//		sb.append("\r\n");
+//		sb.append("\r\n");
+//		sb.append("////////////////////actions/////////////////////\r\n");
+//		for(Action action:actions) {
+//			//action节点
+//			String actionDot=action.actionNum+"[label=\""+action.action+"\",shape=\"record\",style=\"filled\",fillcolor=\"beige\"]";
+//			sb.append(actionDot+"\r\n");
+//			for(Rule actRule:action.rules) {
+//				//rule->action
+//				String ruleToActionDot=actRule.getRuleName()+"->"+action.actionNum;
+//				sb.append(ruleToActionDot+"\r\n");
+//			}
+//			//action->device
+//			String actionToDevice=action.device+"->"+action.actionNum+"[color=\"lemonchiffon3\"]";
+//			sb.append(actionToDevice+"\r\n");
+//		}
+//
+//
+//		/////////////////////////生成trigger节点/////////////////////////////////////
+//		/////////////////////////trigger->rule  device/sensor->trigger//////////////
+//		///////////////////////添加//action->trigger的隐性影响///////////////////////////
+//		sb.append("\r\n");
+//		sb.append("////////////////////triggers/////////////////////\r\n");
+//		for(Trigger trigger:triggers) {
+//			//trigger节点
+//			String triggerDot=trigger.triggerNum+"[label=\""+trigger.trigger+"\",shape=\"oval\",style=\"filled\",fillcolor=\"lightpink\"]";
+//			sb.append(triggerDot+"\r\n");
+//			//trigger->rule
+//			for(Rule triRule:trigger.rules) {
+//				String triggerToRuleDot=trigger.triggerNum+"->"+triRule.getRuleName();
+//				sb.append(triggerToRuleDot+"\r\n");
+//			}
+//			//sensor/device ->trigger
+//			String deviceToTriggerDot=trigger.device+"->"+trigger.triggerNum+"[color=\"lightpink\"]";
+//			sb.append(deviceToTriggerDot+"\r\n");
+//
+//			//trigger受到的影响
+//			if(trigger.attrVal[1].equals(".")) {
+//
+//				//action->trigger
+//				for(Action action:actions) {
+//					if(trigger.device.equals(action.device)
+//							&& trigger.attrVal[2].equals(action.toState)) {
+//						String actionToTriggerDot=action.actionNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
+//						sb.append(actionToTriggerDot+"\r\n");
+//					}
+//				}
+//			}else {
+//				if(trigger.attrVal[1].indexOf(">")>=0) {
+//					//trigger->trigger   相同属性
+//					for(Trigger otherTrigger:triggers) {
+//						if(otherTrigger!=trigger
+//								&& otherTrigger.attrVal[0].equals(trigger.attrVal[0])
+//								&& otherTrigger.attrVal[1].indexOf(">")>=0) {
+//							Double triVal=Double.parseDouble(trigger.attrVal[2]);
+//							Double othTriVal=Double.parseDouble(otherTrigger.attrVal[2]);
+//							if(triVal<othTriVal) {
+//								/////如temperature>30 -> temperature>25
+//								String triggerToTriggerDot=otherTrigger.triggerNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
+//								sb.append(triggerToTriggerDot+"\r\n");
+//							}else if(triVal.toString().equals(othTriVal.toString())) {
+//								if(trigger.attrVal[1].equals(">=")) {
+//									////如temperature>30 -> temperature>=30
+//									String triggerToTriggerDot=otherTrigger.triggerNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
+//									sb.append(triggerToTriggerDot+"\r\n");
+//								}
+//							}
+//						}
+//					}
+//					///action--->trigger
+//					for(Action action:actions) {
+//						String devi=action.getDevice();
+//						String toState=action.getToState();
+//						for(DeviceDetail device:devices) {
+//							if(devi.equals(device.getDeviceName())){
+//								for(StateEffect stateEffect:device.getDeviceType().getStateEffects()) {
+//									if(stateEffect.getState().equals(toState)) {
+//										for(String[] effect:stateEffect.getEffects()) {
+//											if(effect[0].equals(trigger.attrVal[0])&&effect[1].equals("'==")&&Double.parseDouble(effect[2])>0) {
+//												/////存在隐性正影响
+//												String actionToTriggerDot=action.actionNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\",style=\"dashed\"]";
+//												sb.append(actionToTriggerDot+"\r\n");
+//												break;
+//											}
+//										}
+//										break;
+//									}
+//								}
+//
+//								break;
+//							}
+//						}
+//					}
+//
+//				}else if(trigger.attrVal[1].indexOf("<")>=0) {
+//					for(Trigger otherTrigger:triggers) {
+//						//trigger->trigger   相同属性
+//						if(otherTrigger!=trigger
+//								&& otherTrigger.attrVal[0].equals(trigger.attrVal[0])
+//								&& otherTrigger.attrVal[1].indexOf("<")>=0) {
+//							Double triVal=Double.parseDouble(trigger.attrVal[2]);
+//							Double othTriVal=Double.parseDouble(otherTrigger.attrVal[2]);
+//							if(triVal>othTriVal) {
+//							/////如temperature<25 -> temperature<30
+//								String triggerToTriggerDot=otherTrigger.triggerNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
+//								sb.append(triggerToTriggerDot+"\r\n");
+//							}else if(triVal.toString().equals(othTriVal.toString())
+//									&& trigger.attrVal[1].equals(otherTrigger.attrVal[1])) {
+//								if(trigger.attrVal[1].equals("<=")) {
+//								////如temperature<30 -> temperature<=30
+//									String triggerToTriggerDot=otherTrigger.triggerNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
+//									sb.append(triggerToTriggerDot+"\r\n");
+//								}
+//							}
+//						}
+//					}
+//
+//					///action--->trigger
+//					for(Action action:actions) {
+//						String devi=action.getDevice();
+//						String toState=action.getToState();
+//						for(DeviceDetail device:devices) {
+//							if(devi.equals(device.getDeviceName())){
+//								for(StateEffect stateEffect:device.getDeviceType().getStateEffects()) {
+//									if(stateEffect.getState().equals(toState)) {
+//										for(String[] effect:stateEffect.getEffects()) {
+//											if(effect[0].equals(trigger.attrVal[0])&&effect[1].equals("'==")&&Double.parseDouble(effect[2])<0) {
+//												/////存在隐性正影响
+//												String actionToTriggerDot=action.actionNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\",style=\"dashed\"]";
+//												sb.append(actionToTriggerDot+"\r\n");
+//												break;
+//											}
+//										}
+//										break;
+//									}
+//								}
+//
+//								break;
+//							}
+//						}
+//					}
+//				}
+//
+//				//biddableToTrigger
+//			}
+//		}
+//
+//
+//		/////////////////////////////////////////////
+//		sb.append("\r\n");
+//		sb.append("}\r\n");
+////		parse.write(graphvizFile, "", true);
+////		parse.write(graphvizFile, "}", true);
+//		BufferedWriter bw=new BufferedWriter(new FileWriter(dotPath));
+//		bw.write(sb.toString());
+//		bw.close();
+//	}
+//
 
-		
-		//-------------------写dot文件-----------------------------------
-		
-		String dotPath=ifdPath+ifdFileName;
-		StringBuilder sb=new StringBuilder();
-
-		
-		sb.append("digraph infoflow{\r\n");
-		sb.append("rankdir=LR;\r\n");
-		sb.append("\r\n");
-
-		///////////////////生成sensor节点//////////////////
-		sb.append("///////////////sensors////////////////\r\n");
-		for(SensorType sensor:sensors) {
-			String sensorDot=sensor.getName()+"[shape=\"doubleoctagon\",style=\"filled\",fillcolor=\"azure3\"]";
-			sb.append(sensorDot+"\r\n");
-
-		}
-		///////////////////////////////////////////////////
-		sb.append("\r\n");
-		
-		//////////////生成controlled device节点////////////////
-		sb.append("//////////////controlled devices//////////////\r\n");	
-		for(DeviceDetail device:devices) {
-			String controlledDot=device.getDeviceName()+"[shape=\"doubleoctagon\",style=\"filled\",fillcolor=\"darkseagreen1\"]";
-			sb.append(controlledDot+"\r\n");
-		}
-		
-		//////////////////////////////////////////////////////
-		sb.append("\r\n");
-		sb.append("\r\n");
-		
-		/////////////////////生成rule节点////////////////////
-		sb.append("////////////////////rulesNum/////////////////////\r\n");
-		sb.append("\r\n");
-		for(Rule rule:rules) {
-			String ruleDot=rule.getRuleName()+"[shape=\"hexagon\",style=\"filled\",fillcolor=\"lightskyblue\"]";
-			sb.append(ruleDot+"\r\n");
-		}
-		//////////////////////////////////////////////////////
-		sb.append("\r\n");
-		sb.append("\r\n");
-		
-		///获得所有trigger和action
-		//getTriggers,getActions
-		List<Trigger> triggers=RuleService.getAllTriggers(rules,sensors,biddables);
-		List<Action> actions=RuleService.getAllActions(rules, devices);
-		
-		
-		/////////////////////////生成action节点/////////////////////////////
-		/////////////////////////rule->action  action->device//////////////
-		sb.append("\r\n");
-		sb.append("\r\n");
-		sb.append("////////////////////actions/////////////////////\r\n");
-		for(Action action:actions) {
-			//action节点
-			String actionDot=action.actionNum+"[label=\""+action.action+"\",shape=\"record\",style=\"filled\",fillcolor=\"beige\"]";
-			sb.append(actionDot+"\r\n");
-			for(Rule actRule:action.rules) {
-				//rule->action
-				String ruleToActionDot=actRule.getRuleName()+"->"+action.actionNum;
-				sb.append(ruleToActionDot+"\r\n");
-			}
-			//action->device
-			String actionToDevice=action.device+"->"+action.actionNum+"[color=\"lemonchiffon3\"]";
-			sb.append(actionToDevice+"\r\n");
-		}
-		
-
-		/////////////////////////生成trigger节点//////////////////////////////////////
-		/////////////////////////trigger->rule  device/sensor->trigger//////////////
-		sb.append("\r\n");
-		sb.append("////////////////////triggers/////////////////////\r\n");
-		for(Trigger trigger:triggers) {
-			//trigger节点
-			String triggerDot=trigger.triggerNum+"[label=\""+trigger.trigger+"\",shape=\"oval\",style=\"filled\",fillcolor=\"lightpink\"]";
-			sb.append(triggerDot+"\r\n");
-			//trigger->rule
-			for(Rule triRule:trigger.rules) {
-				String triggerToRuleDot=trigger.triggerNum+"->"+triRule.getRuleName();
-				sb.append(triggerToRuleDot+"\r\n");		
-			}
-			//sensor/device ->trigger
-			String deviceToTriggerDot=trigger.device+"->"+trigger.triggerNum+"[color=\"lightpink\"]";
-			sb.append(deviceToTriggerDot+"\r\n");
-			
-			//trigger受到的影响			
-			if(trigger.attrVal[1].equals(".")) {
-				
-				//action->trigger
-				for(Action action:actions) {
-					if(trigger.device.equals(action.device)
-							&& trigger.attrVal[2].equals(action.toState)) {
-						String actionToTriggerDot=action.actionNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
-						sb.append(actionToTriggerDot+"\r\n");
-					}
-				}
-			}else {
-				//trigger->trigger   相同属性
-				if(trigger.attrVal[1].indexOf(">")>=0) {
-					for(Trigger otherTrigger:triggers) {
-						if(otherTrigger!=trigger 
-								&& otherTrigger.attrVal[0].equals(trigger.attrVal[0])
-								&& otherTrigger.attrVal[1].indexOf(">")>=0) {
-							Double triVal=Double.parseDouble(trigger.attrVal[2]);
-							Double othTriVal=Double.parseDouble(otherTrigger.attrVal[2]);
-							if(triVal<othTriVal) {
-								/////如temperature>30 -> temperature>25 
-								String triggerToTriggerDot=otherTrigger.triggerNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
-								sb.append(triggerToTriggerDot+"\r\n");
-							}else if(triVal.toString().equals(othTriVal.toString())) {
-								if(trigger.attrVal[1].equals(">=")) {
-									////如temperature>30 -> temperature>=30
-									String triggerToTriggerDot=otherTrigger.triggerNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
-									sb.append(triggerToTriggerDot+"\r\n");
-								}
-							}
-						}
-					}
-				}else if(trigger.attrVal[1].indexOf("<")>=0) {
-					//trigger->trigger   相同属性
-					for(Trigger otherTrigger:triggers) {
-						if(otherTrigger!=trigger 
-								&& otherTrigger.attrVal[0].equals(trigger.attrVal[0])
-								&& otherTrigger.attrVal[1].indexOf("<")>=0) {
-							Double triVal=Double.parseDouble(trigger.attrVal[2]);
-							Double othTriVal=Double.parseDouble(otherTrigger.attrVal[2]);
-							if(triVal>othTriVal) {
-							/////如temperature<25 -> temperature<30 
-								String triggerToTriggerDot=otherTrigger.triggerNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
-								sb.append(triggerToTriggerDot+"\r\n");
-							}else if(triVal.toString().equals(othTriVal.toString())
-									&& trigger.attrVal[1].equals(otherTrigger.attrVal[1])) {
-								if(trigger.attrVal[1].equals("<=")) {
-								////如temperature<30 -> temperature<=30
-									String triggerToTriggerDot=otherTrigger.triggerNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
-									sb.append(triggerToTriggerDot+"\r\n");
-								}
-							}
-						}
-					}
-				}
-				
-				//biddableToTrigger
-			}
-		}
-		
-		
-		/////////////////////////////////////////////
-		sb.append("\r\n");
-		sb.append("}\r\n");
-//		parse.write(graphvizFile, "", true);
-//		parse.write(graphvizFile, "}", true);
-		BufferedWriter bw=new BufferedWriter(new FileWriter(dotPath));
-		bw.write(sb.toString());
-		bw.close();
-	}
-	
-	/////////////////生成IFD，用户寻找最佳场景（能触发最多规则的场景），也就是添加action对trigger的隐性影响
-	public static void generateIFDForBest(List<Rule> rules,String ifdFileName,String ifdPath,List<DeviceDetail> devices,List<SensorType> sensors,List<BiddableType> biddables) throws IOException {
-		////////创建带影响关系的IFD
-
-		
-		//-------------------写dot文件-----------------------------------
-		
-		String dotPath=ifdPath+ifdFileName;
-		StringBuilder sb=new StringBuilder();
-
-		
-		sb.append("digraph infoflow{\r\n");
-		sb.append("rankdir=LR;\r\n");
-		sb.append("\r\n");
-
-		///////////////////生成sensor节点//////////////////
-		sb.append("///////////////sensors////////////////\r\n");
-		for(SensorType sensor:sensors) {
-			String sensorDot=sensor.getName()+"[shape=\"doubleoctagon\",style=\"filled\",fillcolor=\"azure3\"]";
-			sb.append(sensorDot+"\r\n");
-
-		}
-		///////////////////////////////////////////////////
-		sb.append("\r\n");
-		
-		//////////////生成controlled device节点////////////////
-		sb.append("//////////////controlled devices//////////////\r\n");	
-		for(DeviceDetail device:devices) {
-			String controlledDot=device.getDeviceName()+"[shape=\"doubleoctagon\",style=\"filled\",fillcolor=\"darkseagreen1\"]";
-			sb.append(controlledDot+"\r\n");
-		}
-		
-		//////////////////////////////////////////////////////
-		sb.append("\r\n");
-		sb.append("\r\n");
-		
-		/////////////////////生成rule节点////////////////////
-		sb.append("////////////////////rulesNum/////////////////////\r\n");
-		sb.append("\r\n");
-		for(Rule rule:rules) {
-			String ruleDot=rule.getRuleName()+"[shape=\"hexagon\",style=\"filled\",fillcolor=\"lightskyblue\"]";
-			sb.append(ruleDot+"\r\n");
-		}
-		//////////////////////////////////////////////////////
-		sb.append("\r\n");
-		sb.append("\r\n");
-		
-		///获得所有trigger和action
-		//getTriggers,getActions
-		List<Trigger> triggers=RuleService.getAllTriggers(rules,sensors,biddables);
-		List<Action> actions=RuleService.getAllActions(rules, devices);
-		
-		
-		/////////////////////////生成action节点/////////////////////////////
-		/////////////////////////rule->action  action->device//////////////
-		sb.append("\r\n");
-		sb.append("\r\n");
-		sb.append("////////////////////actions/////////////////////\r\n");
-		for(Action action:actions) {
-			//action节点
-			String actionDot=action.actionNum+"[label=\""+action.action+"\",shape=\"record\",style=\"filled\",fillcolor=\"beige\"]";
-			sb.append(actionDot+"\r\n");
-			for(Rule actRule:action.rules) {
-				//rule->action
-				String ruleToActionDot=actRule.getRuleName()+"->"+action.actionNum;
-				sb.append(ruleToActionDot+"\r\n");
-			}
-			//action->device
-			String actionToDevice=action.device+"->"+action.actionNum+"[color=\"lemonchiffon3\"]";
-			sb.append(actionToDevice+"\r\n");
-		}
-		
-
-		/////////////////////////生成trigger节点/////////////////////////////////////
-		/////////////////////////trigger->rule  device/sensor->trigger//////////////
-		///////////////////////添加//action->trigger的隐性影响///////////////////////////
-		sb.append("\r\n");
-		sb.append("////////////////////triggers/////////////////////\r\n");
-		for(Trigger trigger:triggers) {
-			//trigger节点
-			String triggerDot=trigger.triggerNum+"[label=\""+trigger.trigger+"\",shape=\"oval\",style=\"filled\",fillcolor=\"lightpink\"]";
-			sb.append(triggerDot+"\r\n");
-			//trigger->rule
-			for(Rule triRule:trigger.rules) {
-				String triggerToRuleDot=trigger.triggerNum+"->"+triRule.getRuleName();
-				sb.append(triggerToRuleDot+"\r\n");		
-			}
-			//sensor/device ->trigger
-			String deviceToTriggerDot=trigger.device+"->"+trigger.triggerNum+"[color=\"lightpink\"]";
-			sb.append(deviceToTriggerDot+"\r\n");
-			
-			//trigger受到的影响			
-			if(trigger.attrVal[1].equals(".")) {
-				
-				//action->trigger
-				for(Action action:actions) {
-					if(trigger.device.equals(action.device)
-							&& trigger.attrVal[2].equals(action.toState)) {
-						String actionToTriggerDot=action.actionNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
-						sb.append(actionToTriggerDot+"\r\n");
-					}
-				}
-			}else {
-				if(trigger.attrVal[1].indexOf(">")>=0) {
-					//trigger->trigger   相同属性
-					for(Trigger otherTrigger:triggers) {
-						if(otherTrigger!=trigger 
-								&& otherTrigger.attrVal[0].equals(trigger.attrVal[0])
-								&& otherTrigger.attrVal[1].indexOf(">")>=0) {
-							Double triVal=Double.parseDouble(trigger.attrVal[2]);
-							Double othTriVal=Double.parseDouble(otherTrigger.attrVal[2]);
-							if(triVal<othTriVal) {
-								/////如temperature>30 -> temperature>25 
-								String triggerToTriggerDot=otherTrigger.triggerNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
-								sb.append(triggerToTriggerDot+"\r\n");
-							}else if(triVal.toString().equals(othTriVal.toString())) {
-								if(trigger.attrVal[1].equals(">=")) {
-									////如temperature>30 -> temperature>=30
-									String triggerToTriggerDot=otherTrigger.triggerNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
-									sb.append(triggerToTriggerDot+"\r\n");
-								}
-							}
-						}
-					}
-					///action--->trigger
-					for(Action action:actions) {
-						String devi=action.getDevice();
-						String toState=action.getToState();
-						for(DeviceDetail device:devices) {
-							if(devi.equals(device.getDeviceName())){
-								for(StateEffect stateEffect:device.getDeviceType().getStateEffects()) {
-									if(stateEffect.getState().equals(toState)) {
-										for(String[] effect:stateEffect.getEffects()) {
-											if(effect[0].equals(trigger.attrVal[0])&&effect[1].equals("'==")&&Double.parseDouble(effect[2])>0) {
-												/////存在隐性正影响
-												String actionToTriggerDot=action.actionNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\",style=\"dashed\"]";
-												sb.append(actionToTriggerDot+"\r\n");
-												break;
-											}
-										}
-										break;
-									}
-								}
-									
-								break;
-							}
-						}
-					}
-					
-				}else if(trigger.attrVal[1].indexOf("<")>=0) {
-					for(Trigger otherTrigger:triggers) {
-						//trigger->trigger   相同属性
-						if(otherTrigger!=trigger 
-								&& otherTrigger.attrVal[0].equals(trigger.attrVal[0])
-								&& otherTrigger.attrVal[1].indexOf("<")>=0) {
-							Double triVal=Double.parseDouble(trigger.attrVal[2]);
-							Double othTriVal=Double.parseDouble(otherTrigger.attrVal[2]);
-							if(triVal>othTriVal) {
-							/////如temperature<25 -> temperature<30 
-								String triggerToTriggerDot=otherTrigger.triggerNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
-								sb.append(triggerToTriggerDot+"\r\n");
-							}else if(triVal.toString().equals(othTriVal.toString())
-									&& trigger.attrVal[1].equals(otherTrigger.attrVal[1])) {
-								if(trigger.attrVal[1].equals("<=")) {
-								////如temperature<30 -> temperature<=30
-									String triggerToTriggerDot=otherTrigger.triggerNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\"]";
-									sb.append(triggerToTriggerDot+"\r\n");
-								}
-							}
-						}
-					}
-					
-					///action--->trigger
-					for(Action action:actions) {
-						String devi=action.getDevice();
-						String toState=action.getToState();
-						for(DeviceDetail device:devices) {
-							if(devi.equals(device.getDeviceName())){
-								for(StateEffect stateEffect:device.getDeviceType().getStateEffects()) {
-									if(stateEffect.getState().equals(toState)) {
-										for(String[] effect:stateEffect.getEffects()) {
-											if(effect[0].equals(trigger.attrVal[0])&&effect[1].equals("'==")&&Double.parseDouble(effect[2])<0) {
-												/////存在隐性正影响
-												String actionToTriggerDot=action.actionNum+"->"+trigger.triggerNum+"[color=\"red\",fontsize=\"18\",style=\"dashed\"]";
-												sb.append(actionToTriggerDot+"\r\n");
-												break;
-											}
-										}
-										break;
-									}
-								}
-									
-								break;
-							}
-						}
-					}
-				}
-				
-				//biddableToTrigger
-			}
-		}
-		
-		
-		/////////////////////////////////////////////
-		sb.append("\r\n");
-		sb.append("}\r\n");
-//		parse.write(graphvizFile, "", true);
-//		parse.write(graphvizFile, "}", true);
-		BufferedWriter bw=new BufferedWriter(new FileWriter(dotPath));
-		bw.write(sb.toString());
-		bw.close();
-	}
-	
-
-	
+	/**
+	 * 获得一条TAP规则能触发的其他TAP规则
+	 * */
 	///获得各规则能触发的所有规则
 	public static List<List<Rule>> getRulesTriggeredRules(HashMap<String,Rule> ruleMap,List<GraphNode> graphNodes){
 		List<List<Rule>> rulesTriggeredRules=new ArrayList<>();

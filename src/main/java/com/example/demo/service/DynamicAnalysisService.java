@@ -21,7 +21,6 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import com.example.demo.bean.BiddableType;
 import com.example.demo.bean.CauseRule;
 import com.example.demo.bean.Conflict;
 import com.example.demo.bean.ConflictReason;

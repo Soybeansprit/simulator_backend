@@ -54,198 +54,11 @@ public class Controller {
 	@Autowired
 	DynamicAnalysisService dynamicAnalysisService;
 	
-	@RequestMapping("/upload")
-	@ResponseBody
-	public void uploadFile(@RequestParam("file") MultipartFile uploadedFile) throws DocumentException, IOException {
-		//////////////上传的环境本体文件，存储在D:\\workspace位置
-		if (uploadedFile == null) {
-            System.out.println("上传失败，无法找到文件！");
-        }
-        //上传xml文件和properties文件		
-        String fileName = uploadedFile.getOriginalFilename();
-        String filePath=AddressService.MODEL_FILE_PATH+fileName;
-        BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(filePath));
 
-        outputStream.write(uploadedFile.getBytes());
-        outputStream.flush();
-        outputStream.close();
-        //逻辑处理
-        System.out.println(fileName + "上传成功");
-	}
-	
-	/////静态分析
-	@RequestMapping(value="/getStaticAnalysisResult",method = RequestMethod.POST)
-	@ResponseBody
-	public EnvironmentStatic getStaticAnalysisResult(@RequestBody List<String> ruleTextLines,String initModelFileName,String propertyFileName) throws DocumentException, IOException {
-		/////生成规则结构
-		List<Rule> rules=RuleService.getRuleList(ruleTextLines);
-//		System.out.println(initModelFileName);
-		////设置更改后的模型文件名
-		AddressService.setChangedModelFileName(initModelFileName);
-		////获得环境模型
-		long environmentStartTime=System.currentTimeMillis();
-		EnvironmentModel environmentModel=TemplGraphService.getEnvironmentModel(initModelFileName, AddressService.changed_model_file_Name, AddressService.MODEL_FILE_PATH, propertyFileName);
-		System.out.println("time getting environmentModel:"+(System.currentTimeMillis()-environmentStartTime));
-		////静态分析
-		StaticAnalysisResult1 staticAnalysisResult1 =StaticAnalysisService.getStaticAnalaysisResult(rules, AddressService.IFD_FILE_NAME,  AddressService.IFD_FILE_PATH, environmentModel);
-		EnvironmentStatic environmentStatic=new EnvironmentStatic(environmentModel, staticAnalysisResult1);
-		return environmentStatic;
-	}
-	
-	/////生成多个场景模型,并返回场景树结构
-	@RequestMapping(value="/generateAllScenarioModels",method = RequestMethod.POST)
-	@ResponseBody
-	public ScenesTree generateAllScenarioModels(@RequestBody EnvironmentRule environmentRule,String initModelFileName,String simulationTime) throws DocumentException, IOException {
-		////更改后的模型文件名
-		AddressService.setChangedModelFileName(initModelFileName);
-		List<Rule> rules=environmentRule.getRules();
-		List<DeviceDetail> devices=environmentRule.getEnvironmentModel().getDevices();
-		List<DeviceType> deviceTypes=environmentRule.getEnvironmentModel().getDeviceTypes();
-		List<BiddableType> biddableTypes=environmentRule.getEnvironmentModel().getBiddables();
-		List<SensorType> sensorTypes=environmentRule.getEnvironmentModel().getSensors();
-		List<Attribute_> attributes=environmentRule.getEnvironmentModel().getAttributes();
-		////先生成控制器模型，，包括一些参数声明，modelDeclaration，query；
-		long generateStartTime=System.currentTimeMillis();
-		SystemModelService.generateContrModel(AddressService.MODEL_FILE_PATH,AddressService.changed_model_file_Name, rules, devices, biddableTypes);
-		System.out.println("controllerGenerationTime:"+(System.currentTimeMillis()-generateStartTime));
-		DeclarationQueryResult declarationQueryResult=SystemModelService.generateModelDeclarationAndQuery(AddressService.MODEL_FILE_PATH,AddressService.changed_model_file_Name, rules, devices, deviceTypes, biddableTypes, sensorTypes, attributes, simulationTime);
-//		List<List<String>> attributesSameTriggers=SystemModelService.generateContrModel(AddressService.MODEL_FILE_PATH,AddressService.changed_model_file_Name, rules, biddableTypes, deviceTypes, biddableTypes, sensorTypes, attributes,simulationTime);
-		/////再分别设置某些参数初始值。
-		System.out.println("modelDeclaration:"+(System.currentTimeMillis()-generateStartTime));
-		ScenesTree scenesTree=SystemModelService.generateAllScenarios(AddressService.changed_model_file_Name, AddressService.MODEL_FILE_PATH,declarationQueryResult);
-		long generateTime=System.currentTimeMillis()-generateStartTime;
-		System.out.println(generateTime);
-		return scenesTree;
-	}
-	
-	/////生成单个场景模型,并仿真获得分析结果
-	@RequestMapping(value="/generateBestScenarioModelAndSimulate",method = RequestMethod.POST)
-	@ResponseBody
-	public static Scene generateBestScenarioModelAndSimulate(@RequestBody EnvironmentRule environmentRule,String initModelFileName,String simulationTime) throws DocumentException, IOException {
-		////更改后的模型文件名
-		AddressService.setChangedModelFileName(initModelFileName);
-		String fileNameWithoutSuffix=initModelFileName.substring(0, initModelFileName.lastIndexOf(".xml"));
-		List<Rule> rules=environmentRule.getRules();
-		List<DeviceDetail> devices=environmentRule.getEnvironmentModel().getDevices();
-		List<DeviceType> deviceTypes=environmentRule.getEnvironmentModel().getDeviceTypes();
-		List<BiddableType> biddableTypes=environmentRule.getEnvironmentModel().getBiddables();
-		List<SensorType> sensorTypes=environmentRule.getEnvironmentModel().getSensors();
-		List<Attribute_> attributes=environmentRule.getEnvironmentModel().getAttributes();
-		////ruleMap
-		HashMap<String,Rule> ruleMap=new HashMap<>();
-		for(Rule rule:rules) {
-			ruleMap.put(rule.getRuleName(), rule);
-		}
-		/////获得ifd上各节点
-		List<GraphNode> graphNodes=StaticAnalysisService.getIFDNode(AddressService.IFD_FILE_NAME, AddressService.IFD_FILE_PATH);
-		SystemModelService.generateContrModel(AddressService.MODEL_FILE_PATH,AddressService.changed_model_file_Name, rules, devices, biddableTypes);
-		SystemModelService.generateBestScenarioModel(rules, devices, deviceTypes, biddableTypes, sensorTypes, attributes, AddressService.changed_model_file_Name, AddressService.MODEL_FILE_PATH, graphNodes, fileNameWithoutSuffix+"-scenario-best.xml", simulationTime);
-		
-		///仿真
-		Scene scene=DynamicAnalysisService.getSingleSimulationResult(devices, AddressService.UPPAAL_PATH, fileNameWithoutSuffix, "best", AddressService.MODEL_FILE_PATH, AddressService.SIMULATE_RESULT_FILE_PATH);
-		///动态分析
-		DynamicAnalysisService.getSingleScenarioDynamicAnalysis(scene, devices, graphNodes, ruleMap,simulationTime,"24","300");
-		return scene;
-	}
-	
-	////仿真进行动态分析
-	@RequestMapping(value="/simulateAllScenarioModels",method = RequestMethod.POST)
-	@ResponseBody
-	public List<Scene> simulateAllScenarioModels(@RequestBody SceneTreeDevice sceneTreeDevice, String initModelFileName) {
-		ScenesTree scenesTree=sceneTreeDevice.getScenesTree();
-		List<DeviceDetail> devices=sceneTreeDevice.getDevices();
-		AddressService.setChangedModelFileName(initModelFileName);
-		List<Scene> scenes=DynamicAnalysisService.getAllSimulationResults(scenesTree, devices, AddressService.changed_model_file_Name, AddressService.MODEL_FILE_PATH, AddressService.UPPAAL_PATH,AddressService.SIMULATE_RESULT_FILE_PATH);
-		return scenes;
-	}
-	
-//	/////所有场景动态分析，返回有哪些错误以及错误原因
-//	@RequestMapping(value="/getAllDynamicAnalysisResult",method = RequestMethod.POST)
-//	@ResponseBody
-//	public ScenePropertyResult getAllDynamicAnalysisResult(@RequestBody SceneEnvironmentProperty sceneEnvironmentProperty,String simulationTime,String equivalentTime,String intervalTime){
-//		long t1=System.currentTimeMillis();
-//		List<Scene> scenes=sceneEnvironmentProperty.getScenes();
-//		EnvironmentModel environmentModel=sceneEnvironmentProperty.getEnvironmentModel();
-//		List<String> properties =sceneEnvironmentProperty.getProperties();
-//		List<Rule> rules=sceneEnvironmentProperty.getRules();
-//		/////rules=>rulesMap
-//		HashMap<String,Rule> rulesMap=new HashMap<>();
-//		for(Rule rule:rules) {
-//			rulesMap.put(rule.getRuleName(), rule);
-//		}
-//		/////获得ifd上各节点
-//		List<GraphNode> graphNodes=StaticAnalysisService.getIFDNode(AddressService.IFD_FILE_NAME, AddressService.IFD_FILE_PATH);
-//		/////解耦各种性质分析。conflict、jitter、property，property每条分析时间
-//		DynamicAnalysisService.getAllScenariosDynamicAnalysis(scenes, environmentModel.getDevices(), rulesMap, simulationTime, equivalentTime, intervalTime, graphNodes);
-//		List<PropertyVerifyResult> propertyVerifyResults=DynamicAnalysisService.analizeAllproperties(properties, scenes, environmentModel.getDevices(), environmentModel.getBiddables(), graphNodes, rulesMap);
-//		ScenePropertyResult scenePropertyResult=new ScenePropertyResult();
-//		scenePropertyResult.setPropertyVerifyResults(propertyVerifyResults);
-//		scenePropertyResult.setScenes(scenes);
-//		System.out.println(System.currentTimeMillis()-t1);
-//		return scenePropertyResult;
-//	}
-	/////所有场景动态分析，返回有哪些错误以及错误原因
-	@RequestMapping(value="/getAllDynamicAnalysisResult",method = RequestMethod.POST)
-	@ResponseBody
-	public List<Scene> getAllDynamicAnalysisResult(@RequestBody SceneEnvironmentProperty sceneEnvironmentProperty,String simulationTime,String equivalentTime,String intervalTime){
-		long t1=System.currentTimeMillis();
-		List<Scene> scenes=sceneEnvironmentProperty.getScenes();
-		EnvironmentModel environmentModel=sceneEnvironmentProperty.getEnvironmentModel();
-		List<Rule> rules=sceneEnvironmentProperty.getRules();
-		/////rules=>rulesMap
-		HashMap<String,Rule> rulesMap=new HashMap<>();
-		for(Rule rule:rules) {
-			rulesMap.put(rule.getRuleName(), rule);
-		}
-		/////获得ifd上各节点
-		List<GraphNode> graphNodes=StaticAnalysisService.getIFDNode(AddressService.IFD_FILE_NAME, AddressService.IFD_FILE_PATH);
-		/////解耦各种性质分析。conflict、jitter、property，property每条分析时间
-		DynamicAnalysisService.getAllScenariosDynamicAnalysis(scenes, environmentModel.getDevices(), rulesMap, simulationTime, equivalentTime, intervalTime, graphNodes);
 
-		System.out.println(System.currentTimeMillis()-t1);
-		return scenes;
-	}
-	/////所有场景动态分析，返回有哪些错误以及错误原因
-	@RequestMapping(value="/getPropertyVerificationResult",method = RequestMethod.POST)
-	@ResponseBody
-	public List<PropertyVerifyResult> getPropertyVerificationResult(@RequestBody SceneEnvironmentProperty sceneEnvironmentProperty){
-		long t1=System.currentTimeMillis();
-		List<Scene> scenes=sceneEnvironmentProperty.getScenes();
-		EnvironmentModel environmentModel=sceneEnvironmentProperty.getEnvironmentModel();
-		List<String> properties =sceneEnvironmentProperty.getProperties();
-		List<Rule> rules=sceneEnvironmentProperty.getRules();
-		/////rules=>rulesMap
-		HashMap<String,Rule> rulesMap=new HashMap<>();
-		for(Rule rule:rules) {
-			rulesMap.put(rule.getRuleName(), rule);
-		}
-		/////获得ifd上各节点
-		List<GraphNode> graphNodes=StaticAnalysisService.getIFDNode(AddressService.IFD_FILE_NAME, AddressService.IFD_FILE_PATH);
-		/////解耦各种性质分析。conflict、jitter、property，property每条分析时间
-		List<PropertyVerifyResult> propertyVerifyResults=DynamicAnalysisService.analizeAllproperties(properties, scenes, environmentModel.getDevices(), environmentModel.getBiddables(), graphNodes, rulesMap);
-		System.out.println(System.currentTimeMillis()-t1);
-		
-		return propertyVerifyResults;
-	}
-	
-	////单个场景的分析
-	@RequestMapping(value="/getSingleDynamicAnalysisResult",method = RequestMethod.POST)
-	@ResponseBody
-	public Scene getSingleDynamicAnalysisResult(@RequestBody SceneEnvironmentRule sceneEnvironmentRule,String simulationTime,String equivalentTime,String intervalTime ) {
-		Scene scene=sceneEnvironmentRule.getScene();
-		EnvironmentModel environmentModel=sceneEnvironmentRule.getEnvironmentModel();
-		List<Rule> rules=sceneEnvironmentRule.getRules();
-		/////rules=>rulesMap
-		HashMap<String,Rule> rulesMap=new HashMap<>();
-		for(Rule rule:rules) {
-			rulesMap.put(rule.getRuleName(), rule);
-		}
-		/////获得ifd上各节点
-		List<GraphNode> graphNodes=StaticAnalysisService.getIFDNode(AddressService.IFD_FILE_NAME, AddressService.IFD_FILE_PATH);
-		/////场景分析
-		DynamicAnalysisService.getSingleScenarioDynamicAnalysis(scene, environmentModel.getDevices(), graphNodes, rulesMap,simulationTime,equivalentTime,intervalTime);
-		return scene;
-	}
+	/**
+	 * 上传模型层文件（.xml），并解析各类实体模型
+	 * */
 
 	@RequestMapping("/uploadModelFile")
 	@ResponseBody
@@ -265,7 +78,8 @@ public class Controller {
 		//逻辑处理
 		///解析模型文件，获得模型层
 		ObjectMapper objectMapper=new ObjectMapper();
-		List<String> locations=objectMapper.readValue(locationsStr,List.class);
+		List<String> locations=objectMapper.readValue(locationsStr,List.class);    ////人的位置信息
+		/////////////模型层解析
 		long t1=System.currentTimeMillis();
 		ModelLayer modelLayer= ModelLayerService.getModelLayer(filePath,fileName,fileName,locations);
 		long t2=System.currentTimeMillis();
@@ -273,7 +87,9 @@ public class Controller {
 		System.out.println(fileName + "上传成功");
 		return modelLayer;
 	}
-
+/**
+ * 上传实例层文件，并解析获得各实例
+ * */
 	@RequestMapping("/uploadInstanceInformationFile")
 	@ResponseBody
 	public OutputConstruct.InstanceLayerOutput uploadInstanceInformationFile(@RequestParam("file") MultipartFile uploadedFile,@RequestParam("modelLayer") String modelLayerStr) throws DocumentException, IOException {
@@ -293,10 +109,12 @@ public class Controller {
 		///解析模型文件，获得模型层
 		ObjectMapper objectMapper=new ObjectMapper();
 		ModelLayer modelLayer=objectMapper.readValue(modelLayerStr,ModelLayer.class);
+		//////////实例层解析
 		long t1=System.currentTimeMillis();
 		InstanceLayer instanceLayer= InstanceLayerService.getInstanceLayer(filePath,fileName,modelLayer);
 		long t2=System.currentTimeMillis();
 		System.out.println("实例层生成："+(t2-t1));
+		///-------------------------输出-----------------------------------
 		OutputConstruct.InstanceLayerOutput instanceLayerOutput=new OutputConstruct.InstanceLayerOutput();
 		instanceLayerOutput.setInstanceLayer(instanceLayer);
 		instanceLayerOutput.setModelLayer(modelLayer);
@@ -310,13 +128,20 @@ public class Controller {
 	@RequestMapping("/genererateInteractiveEnvironment")
 	@ResponseBody
 	public OutputConstruct.InteractiveLayerAndRules genererateInteractiveEnvironment(@RequestBody InputConstruct.ModelInstanceLayerAndRuleStrLists modelInstanceLayerAndRuleStrLists) throws IOException {
-
+		//----------------输入-----------------------------------
 		ModelLayer modelLayer=modelInstanceLayerAndRuleStrLists.getModelLayer();
 		InstanceLayer instanceLayer=modelInstanceLayerAndRuleStrLists.getInstanceLayer();
 		List<String> ruleTextLines=modelInstanceLayerAndRuleStrLists.getRuleTestLines();
+		//---------------------------------------------------------------
+
+		//-----------------解析TAP规则---------------------------
 		List<Rule> rules=RuleService.getRuleList(ruleTextLines);
+		//--------------------------------------------------------------
+		//------------------解析trigger和action的信息-----------------------
 		HashMap<String,Trigger> triggerMap=SystemModelGenerationService.getTriggerMapFromRules(rules,instanceLayer);
 		HashMap<String,Action> actionMap=SystemModelGenerationService.getActionMapFromRules(rules);
+		//--------------------------------------------------------------------
+		/////获得交互环境模型
 		long t1=System.currentTimeMillis();
 		InstanceLayer interactiveEnvironment=SystemModelGenerationService.getInteractiveEnvironment(instanceLayer,modelLayer,triggerMap,actionMap);
 		long t2=System.currentTimeMillis();
@@ -324,9 +149,11 @@ public class Controller {
 		HashMap<String, Instance> interactiveInstanceMap=InstanceLayerService.getInstanceMap(interactiveEnvironment);
 		String ifdFileName="ifd.dot";
 		long t3=System.currentTimeMillis();
+		/////生成信息流图
 		StaticAnalysisService.generateIFD(triggerMap,actionMap,rules,interactiveEnvironment,interactiveInstanceMap,ifdFileName,AddressService.IFD_FILE_PATH);
 		long t4=System.currentTimeMillis();
 		System.out.println("信息流图生成："+(t4-t3));
+		///-------------------------输出-----------------------------------
 		OutputConstruct.InteractiveLayerAndRules interactiveLayerAndRules=new OutputConstruct.InteractiveLayerAndRules();
 		interactiveLayerAndRules.setInteractiveInstance(interactiveEnvironment);
 		interactiveLayerAndRules.setRules(rules);
@@ -340,21 +167,25 @@ public class Controller {
 	@RequestMapping("/getStaticAnalysis")
 	@ResponseBody
 	public StaticAnalysisResult getStaticAnalysis(@RequestBody InputConstruct.StaticAnalysisInput staticAnalysisInput) throws IOException {
+		//----------------输入-----------------------------------
 		List<Rule> rules=staticAnalysisInput.getRules();
 		InstanceLayer interactiveEnvironment= staticAnalysisInput.getInstanceLayer();
+		//---------------------------------------------------------------
+		///////静态分析
 		StaticAnalysisResult staticAnalysisResult=StaticAnalysisService.getStaticAnalysisResult(rules,AddressService.IFD_FILE_PATH,"temp-ifd.dot",interactiveEnvironment);
 		return staticAnalysisResult;
 	}
 
 
 	/**
-	 * 生成单个场景对应的环境模型
+	 * 生成单仿真场景，用户自己设置各属性取值
 	 * */
 	@RequestMapping("/generateSingleScenario")
 	@ResponseBody
 	public List<String> generateSingleScenario(@RequestBody InputConstruct.SingleScenarioGenerateInput singleScenarioGenerateInput)  {
 		////生成多个场景的模型文件，运行时环境模型，还需要返回场景树
 		////先解析规则
+		//----------------输入-----------------------------------
 		ModelLayer modelLayer=singleScenarioGenerateInput.getModelLayer();
 		InstanceLayer instanceLayer=singleScenarioGenerateInput.getInstanceLayer();
 		List<Rule> rules=singleScenarioGenerateInput.getRules();
@@ -362,28 +193,37 @@ public class Controller {
 		HashMap<String,Action> actionMap=SystemModelGenerationService.getActionMapFromRules(rules);
 		InstanceLayer interactiveEnvironment= singleScenarioGenerateInput.getInteractiveInstance();
 		HashMap<String, Instance> interactiveInstanceMap=InstanceLayerService.getInstanceMap(interactiveEnvironment);
-		String simulationTime=singleScenarioGenerateInput.getSimulationTime();
+		String simulationTime=singleScenarioGenerateInput.getSimulationTime();    ///仿真时长
 		String modelFileName=singleScenarioGenerateInput.getModelFileName();
 		String tempModelFileName="temp-"+modelFileName;
 		List<String[]> attributeValues=singleScenarioGenerateInput.getAttributeValues();
+		//---------------------------------------------------------------
+
 		long t1=System.currentTimeMillis();
+		///设置人的行为模型，进入各空间的时间点
 		String[] intoLocationTime=SystemModelGenerationService.getIntoLocationTime(simulationTime,instanceLayer.getHumanInstance());
 		SystemModelGenerationService.generateCommonModelFile(simulationTime,intoLocationTime,AddressService.MODEL_FILE_PATH,modelFileName,AddressService.MODEL_FILE_PATH,tempModelFileName,instanceLayer,rules,triggerMap,actionMap,interactiveEnvironment,interactiveInstanceMap);
 		long t2=System.currentTimeMillis();
 		System.out.println("通用系统模型生成："+(t2-t1));
 		String singleModelFileName="single-scenario-"+modelFileName;
 		long t3=System.currentTimeMillis();
+		///生成一个仿真场景
 		SystemModelGenerationService.generateSingleScenario(AddressService.MODEL_FILE_PATH,tempModelFileName,AddressService.MODEL_FILE_PATH,singleModelFileName,modelLayer,rules,attributeValues);
 		long t4=System.currentTimeMillis();
 		System.out.println("单场景生成："+(t4-t3));
+		///-------------------------输出单仿真场景的文件名-----------------------------------
 		List<String> fileName=new ArrayList<>();
 		fileName.add(singleModelFileName);
 		return fileName;
 	}
 
+	/**
+	 * 生成能触发规则数最多的仿真场景
+	 * */
 	@RequestMapping("/generateBestScenario")
 	@ResponseBody
 	public OutputConstruct.BestScenarioOutput generateBestScenario(@RequestBody InputConstruct.BestScenarioGenerateInput bestScenarioGenerateInput) {
+		//----------------输入-----------------------------------
 		ModelLayer modelLayer=bestScenarioGenerateInput.getModelLayer();
 		InstanceLayer instanceLayer=bestScenarioGenerateInput.getInstanceLayer();
 		List<Rule> rules=bestScenarioGenerateInput.getRules();
@@ -395,8 +235,13 @@ public class Controller {
 		String modelFileName=bestScenarioGenerateInput.getModelFileName();
 		String tempModelFileName="temp-"+modelFileName;
 		String ifdFileName= bestScenarioGenerateInput.getIfdFileName();
+		//---------------------------------------------------------------
+
+
+		////计算能触发最多规则数的场景的各属性取值
 		List<String[]> attributeValues=SystemModelGenerationService.setAttributeValues(AddressService.IFD_FILE_PATH,ifdFileName);
 		long t1=System.currentTimeMillis();
+		///设置人的行为模型，进入各空间的时间点
 		String[] intoLocationTime=SystemModelGenerationService.getIntoLocationTime(simulationTime,instanceLayer.getHumanInstance());
 		SystemModelGenerationService.generateCommonModelFile(simulationTime,intoLocationTime,AddressService.MODEL_FILE_PATH,modelFileName,AddressService.MODEL_FILE_PATH,tempModelFileName,instanceLayer,rules,triggerMap,actionMap,interactiveEnvironment,interactiveInstanceMap);
 		long t2=System.currentTimeMillis();
@@ -406,6 +251,7 @@ public class Controller {
 		SystemModelGenerationService.generateSingleScenario(AddressService.MODEL_FILE_PATH,tempModelFileName,AddressService.MODEL_FILE_PATH,bestModelFileName,modelLayer,rules,attributeValues);
 		long t4=System.currentTimeMillis();
 		System.out.println("单场景生成："+(t4-t3));
+		///-------------------------输出单仿真场景的文件名-----------------------------------
 		OutputConstruct.BestScenarioOutput bestScenarioOutput=new OutputConstruct.BestScenarioOutput();
 		bestScenarioOutput.setBestScenarioFileName(bestModelFileName);
 		bestScenarioOutput.setAttributeValues(attributeValues);
@@ -413,7 +259,7 @@ public class Controller {
 	}
 
 	/**
-	 * 仿真单个场景
+	 * 仿真单个场景，并获得仿真轨迹
 	 * */
 	@RequestMapping("/simulateSingleScenario")
 	@ResponseBody
@@ -422,9 +268,11 @@ public class Controller {
 		String simulationResult=SimulationService.getSimulationResult(AddressService.UPPAAL_PATH,AddressService.MODEL_FILE_PATH,modelFileName,AddressService.SYSTEM);
 		String modelFilePrefix=modelFileName.substring(0,modelFileName.indexOf(".xml"));
 		String resultFileName=modelFilePrefix+".txt";
+		///////仿真单个场景并获得轨迹
 		List<DataTimeValue> dataTimeValues=SimulationService.parseSimulationResult(simulationResult,instanceLayer,AddressService.SIMULATE_RESULT_FILE_PATH,resultFileName);
 		long t2=System.currentTimeMillis();
 		System.out.println("单场景仿真："+(t2-t1));
+		///-------------------------输出一个场景的信息----------------------------------
 		Scenario scenario=new Scenario();
 		scenario.setScenarioName(modelFilePrefix);
 		scenario.setDataTimeValues(dataTimeValues);
@@ -434,13 +282,14 @@ public class Controller {
 
 
 	/**
-	 * 生成单个场景对应的环境模型
+	 * 生成多仿真场景
 	 * */
 	@RequestMapping("/genereteMultipleScenarios")
 	@ResponseBody
 	public ScenarioTree.ScenesTree genereteMultipleScenarios(@RequestBody InputConstruct.MultiScenarioGenerateInput multiScenarioGenerateInput)  {
 		////生成多个场景的模型文件，运行时环境模型，还需要返回场景树
 		////先解析规则
+		//----------------输入-----------------------------------
 		ModelLayer modelLayer=multiScenarioGenerateInput.getModelLayer();
 		InstanceLayer instanceLayer=multiScenarioGenerateInput.getInstanceLayer();
 		List<Rule> rules=multiScenarioGenerateInput.getRules();
@@ -450,6 +299,8 @@ public class Controller {
 		HashMap<String, Instance> interactiveInstanceMap=InstanceLayerService.getInstanceMap(interactiveEnvironment);
 		String simulationTime=multiScenarioGenerateInput.getSimulationTime();
 		String modelFileName=multiScenarioGenerateInput.getModelFileName();
+		//---------------------------------------------------------------
+
 		String tempModelFileName="temp-"+modelFileName;
 		long t1=System.currentTimeMillis();
 		String[] intoLocationTime=SystemModelGenerationService.getIntoLocationTime(simulationTime,instanceLayer.getHumanInstance());
@@ -457,6 +308,7 @@ public class Controller {
 		long t2=System.currentTimeMillis();
 		System.out.println("通用系统模型生成时间："+(t2-t1));
 		long t3=System.currentTimeMillis();
+		////生成多个仿真场景，每个场景属性取值不同，最终获得场景树
 		ScenarioTree.ScenesTree scenesTree=SystemModelGenerationService.generateMultiScenariosAccordingToTriggers(modelFileName,AddressService.MODEL_FILE_PATH,tempModelFileName,AddressService.MODEL_FILE_PATH,modelLayer,rules,triggerMap);
 		long t4=System.currentTimeMillis();
 		System.out.println("多场景生成时间："+(t4-t3));
@@ -470,11 +322,15 @@ public class Controller {
 	@RequestMapping("/simulateMultipleScenario")
 	@ResponseBody
 	public List<Scenario> simulateMultipleScenario(@RequestBody InputConstruct.MultiScenarioSimulateInput multiScenarioSimulateInput)  {
+		//----------------输入-----------------------------------
 		ScenarioTree.ScenesTree scenesTree=multiScenarioSimulateInput.getScenesTree();
 		String initModelFileName= multiScenarioSimulateInput.getModelFileName();
 		InstanceLayer instanceLayer= multiScenarioSimulateInput.getInstanceLayer();
+		//---------------------------------------------------------------
+
 		long t1=System.currentTimeMillis();
 		///如果resultFilePath为空则不生成仿真轨迹文件   AddressService.SIMULATE_RESULT_FILE_PATH
+		///////对所有仿真场景进行仿真，并获得各场景的仿真轨迹
 		List<Scenario> scenarios=SimulationService.getScenesTreeScenarioSimulationDataTimeValues(scenesTree,initModelFileName,instanceLayer,AddressService.UPPAAL_PATH,AddressService.MODEL_FILE_PATH,AddressService.SYSTEM,"");
 		long t2=System.currentTimeMillis();
 		System.out.println("多场景仿真时间："+(t2-t1));
@@ -482,6 +338,9 @@ public class Controller {
 	}
 
 
+	/**
+	 * 冲突验证
+	 * */
 
 	@RequestMapping("/searchAllScenariosConflict")
 	@ResponseBody
@@ -490,6 +349,7 @@ public class Controller {
 		ExecutorService executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(scenarios.size()));
 		for (Scenario scenario:scenarios){
 			Runnable runnable= () -> {
+				////分析仿真轨迹记录各设备每次冲突的信息
 				List<DeviceConflict> deviceConflicts=AnalysisService.getDevicesConflict(scenario.getDataTimeValues());
 				scenario.setDeviceConflicts(deviceConflicts);
 			};
@@ -507,14 +367,19 @@ public class Controller {
 		return scenarios;
 	}
 
+	/**
+	 * 抖动验证
+	 * */
 	@RequestMapping("/searchAllScenariosJitter")
 	@ResponseBody
 	public List<Scenario> searchAllScenariosJitter(@RequestBody List<Scenario> scenarios,String intervalTime,String simulationTime,String equivalentTime) {
+		/////抖动的时间间隔
 		double interval=Double.parseDouble(intervalTime)/(Double.parseDouble(equivalentTime)*3600)*Double.parseDouble(simulationTime);
 		long t1=System.currentTimeMillis();
 		ExecutorService executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(scenarios.size()));
 		for (Scenario scenario:scenarios){
 			Runnable runnable=()->{
+				////分析仿真场景，记录各设备的每次抖动信息
 				List<DeviceJitter> deviceJitters=AnalysisService.getDevicesJitter(scenario.getDataTimeValues(),interval);
 				scenario.setDeviceJitters(deviceJitters);
 			};
@@ -532,15 +397,23 @@ public class Controller {
 		return scenarios;
 	}
 
+	/**
+	 * 冲突定位，获得导致冲突的TAP规则
+	 * */
 	@RequestMapping("/locateAllScenariosConflict")
 	@ResponseBody
 	public List<List<List<DeviceStateAndCausingRules>>> locateAllScenariosConflict(@RequestBody InputConstruct.LocationInput locationInput) {
+		//-------------------输入----------------------------
 		List<Scenario> scenarios=locationInput.getScenarios();
 		List<Rule> rules=locationInput.getRules();
 		List<DeviceInstance> deviceInstances=locationInput.getDeviceInstances();
 		String ifdFileName=locationInput.getIfdFileName();
+		//----------------------------------------------------
 		long t1=System.currentTimeMillis();
+		///获得每次冲突的直接原因TAP规则和前驱TAP
 		HashMap<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesHashMap=AnalysisService.getDeviceConflictAllStatesRuleAndPreRulesHashMap(rules,ifdFileName,scenarios,deviceInstances);
+
+		///综合冲突的直接原因TAP规则和前驱TAP
 		List<List<List<DeviceStateAndCausingRules>>> allSynthesizedDeviceAllStatesRuleAndPreRules=new ArrayList<>();
 		for (Map.Entry<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesEntry:deviceAllStatesRuleAndPreRulesHashMap.entrySet()){
 			List<List<DeviceStateAndCausingRules>> deviceAllStatesRuleAndPreRules=deviceAllStatesRuleAndPreRulesEntry.getValue();
@@ -554,16 +427,23 @@ public class Controller {
 		return allSynthesizedDeviceAllStatesRuleAndPreRules;
 	}
 
+	/**
+	 * 抖动定位，获得导致抖动的TAP规则
+	 * */
 	@RequestMapping("/locateAllScenariosJitter")
 	@ResponseBody
 	public List<List<List<DeviceStateAndCausingRules>>> locateAllScenariosJitter(@RequestBody InputConstruct.LocationInput locationInput) {
+		//-------------------输入----------------------------
 		List<Scenario> scenarios=locationInput.getScenarios();
 		List<Rule> rules=locationInput.getRules();
 		List<DeviceInstance> deviceInstances=locationInput.getDeviceInstances();
 		String ifdFileName=locationInput.getIfdFileName();
+		//----------------------------------------------------
 		long t1=System.currentTimeMillis();
+		///获得每次抖动的直接原因TAP规则和前驱TAP
 		HashMap<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesHashMap=AnalysisService.getDeviceJitterAllStatesRuleAndPreRulesHashMap(rules,ifdFileName,scenarios,deviceInstances);
 
+		///综合抖动的直接原因TAP规则和前驱TAP
 		List<List<List<DeviceStateAndCausingRules>>> allSynthesizedDeviceAllStatesRuleAndPreRules=new ArrayList<>();
 		for (Map.Entry<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesEntry:deviceAllStatesRuleAndPreRulesHashMap.entrySet()){
 			List<List<DeviceStateAndCausingRules>> deviceAllStatesRuleAndPreRules=deviceAllStatesRuleAndPreRulesEntry.getValue();
@@ -579,6 +459,9 @@ public class Controller {
 		return allSynthesizedDeviceAllStatesRuleAndPreRules;
 	}
 
+	/**
+	 * 单场景的每次冲突
+	 * */
 	@RequestMapping("/searchSingleScenarioConflict")
 	@ResponseBody
 	public Scenario searchSingleScenarioConflict(@RequestBody Scenario scenario) {
@@ -587,6 +470,9 @@ public class Controller {
 		return scenario;
 	}
 
+	/**
+	 * 单场景的每次抖动
+	 * */
 	@RequestMapping("/searchSingleScenarioJitter")
 	@ResponseBody
 	public Scenario searchSingleScenarioJitter(@RequestBody Scenario scenario,String intervalTime,String simulationTime,String equivalentTime) {
@@ -596,14 +482,21 @@ public class Controller {
 		return scenario;
 	}
 
+	/**
+	 * 单场景的冲突定位
+	 * */
 	@RequestMapping("/locateSingleScenariosAllConflict")
 	@ResponseBody
 	public List<List<List<DeviceStateAndCausingRules>>> locateSingleScenariosAllConflict(@RequestBody InputConstruct.LocationInput locationInput) {
+		//-------------------输入----------------------------
 		List<Scenario> scenarios=locationInput.getScenarios();
 		List<Rule> rules=locationInput.getRules();
 		List<DeviceInstance> deviceInstances=locationInput.getDeviceInstances();
 		String ifdFileName=locationInput.getIfdFileName();
+		//-------------------------------------------------
+		///获得每次冲突的直接原因TAP规则和前驱TAP
 		HashMap<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesHashMap=AnalysisService.getDeviceConflictAllStatesRuleAndPreRulesHashMap(rules,ifdFileName,scenarios,deviceInstances);
+		///综合冲突的直接原因TAP规则和前驱TAP
 		List<List<List<DeviceStateAndCausingRules>>> devicesAllStatesRuleAndPreRules=new ArrayList<>();
 		for (Map.Entry<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesEntry:deviceAllStatesRuleAndPreRulesHashMap.entrySet()){
 			List<List<DeviceStateAndCausingRules>> deviceAllStatesRuleAndPreRules=deviceAllStatesRuleAndPreRulesEntry.getValue();
@@ -614,14 +507,21 @@ public class Controller {
 
 
 
+	/**
+	 * 单场景的抖动定位
+	 * */
 	@RequestMapping("/locateSingleScenariosAllJitter")
 	@ResponseBody
 	public List<List<List<DeviceStateAndCausingRules>>> locateSingleScenariosAllJitter(@RequestBody InputConstruct.LocationInput locationInput) {
+		//-------------------输入----------------------------
 		List<Scenario> scenarios=locationInput.getScenarios();
 		List<Rule> rules=locationInput.getRules();
 		List<DeviceInstance> deviceInstances=locationInput.getDeviceInstances();
 		String ifdFileName=locationInput.getIfdFileName();
+		//-------------------------------------------------
+		///获得每次抖动的直接原因TAP规则和前驱TAP
 		HashMap<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesHashMap=AnalysisService.getDeviceJitterAllStatesRuleAndPreRulesHashMap(rules,ifdFileName,scenarios,deviceInstances);
+		///综合抖动的直接原因TAP规则和前驱TAP
 		List<List<List<DeviceStateAndCausingRules>>> devicesAllStatesRuleAndPreRules=new ArrayList<>();
 		for (Map.Entry<String,List<List<DeviceStateAndCausingRules>>> deviceAllStatesRuleAndPreRulesEntry:deviceAllStatesRuleAndPreRulesHashMap.entrySet()){
 			List<List<DeviceStateAndCausingRules>> deviceAllStatesRuleAndPreRules=deviceAllStatesRuleAndPreRulesEntry.getValue();
@@ -640,12 +540,15 @@ public class Controller {
 		return devicesAllStatesRuleAndPreRules;
 	}
 
+	/**
+	 * 计算某个属性的舒适度
+	 * */
 	@RequestMapping("/getAttributeSatisfaction")
 	@ResponseBody
 	public double AttributeSatisfaction(@RequestBody InputConstruct.SatisfactionInput satisfactionInput) {
 		String attribute= satisfactionInput.getAttribute();
-		double lowValue=-Double.MAX_VALUE;
-		double highValue=Double.MAX_VALUE;
+		double lowValue=-Double.MAX_VALUE;   ///最低值
+		double highValue=Double.MAX_VALUE;   ///最高值
 		if (!satisfactionInput.getLowValue().equals("")){
 			lowValue=Double.parseDouble(satisfactionInput.getLowValue());
 		}
@@ -669,15 +572,17 @@ public class Controller {
 		return deviceStatesDuration;
 	}
 
+
 	/**
 	 * 计算能耗
 	 * */
-
 	@RequestMapping("/getEnergyConsumption")
 	@ResponseBody
 	public List<String[]> getEnergyConsumption(@RequestBody InputConstruct.EnergyConsumptionInput energyConsumptionInput){
+		//-------------------输入----------------------------
 		List<DataTimeValue> dataTimeValues=energyConsumptionInput.getDataTimeValues();
 		List<DeviceInstance> deviceInstances=energyConsumptionInput.getDeviceInstances();
+		//--------------------------------------------------
 		List<String[]> deviceConsumptions=new ArrayList<>();
 		HashMap<String,DataTimeValue> dataTimeValueHashMap=new HashMap<>();
 		for (DataTimeValue dataTimeValue:dataTimeValues){
@@ -688,8 +593,9 @@ public class Controller {
 			String[] deviceConsumption=new String[2];
 			deviceConsumption[0]=deviceInstance.getInstanceName();
 			DataTimeValue dataTimeValue=dataTimeValueHashMap.get(deviceInstance.getInstanceName());
-			///计算各设备各状态的时间  deviceStateDuration[0]设备名  deviceStateDuration[1]状态名  deviceStateDuration[2]该状态保持时间 [3]用来存功率  [4]存能耗（仿真时间下的）
+			///计算各设备各状态的时间及能耗  deviceStateDuration[0]设备名  deviceStateDuration[1]状态名  deviceStateDuration[2]该状态保持时间 [3]用来存功率  [4]存能耗（仿真时间下的）
 			List<String[]> deviceStatesDuration=AnalysisService.getDeviceStatesDuration(dataTimeValue,deviceInstance);
+			////计算能耗综合
 			for (String[] deviceStateDuration:deviceStatesDuration){
 				consumption+=Double.parseDouble(deviceStateDuration[4]);
 			}
@@ -702,11 +608,18 @@ public class Controller {
 		return deviceConsumptions;
 	}
 
+
+	/**
+	 * 分析隐私性、还能分析不完整性、不可触发规则
+	 *
+	 * */
 	@RequestMapping("/getOtherAnalysis")
 	@ResponseBody
 	public OutputConstruct.OtherAnalysisOutput getOtherAnalysis(@RequestBody InputConstruct.OtherAnalysisInput otherAnalysisInput) {
+		//-------------------输入----------------------------
 		List<Scenario> scenarios=otherAnalysisInput.getScenarios();
 		InstanceLayer instanceLayer= otherAnalysisInput.getInstanceLayer();
+		//--------------------------------------------------------
 		List<List<String[]>> deviceCannotBeTurnedOffOrOnListOfDifferentScenarios=new ArrayList<>();
 		List<List<String>> notTriggeredRulesOfDifferentScenarios=new ArrayList<>();
 		for (Scenario scenario:scenarios){
@@ -724,20 +637,28 @@ public class Controller {
 		List<List<String>[]> homeBoundedOutBoundedResults=AnalysisService.privacyVerification(instanceLayer.getDeviceInstances(),instanceLayer.getHumanInstance(),scenarios,instanceLayer);
 		long t2=System.currentTimeMillis();
 		System.out.println("隐私性验证时间："+(t2-t1));
+		//-------------------输出----------------------------
 		OutputConstruct.OtherAnalysisOutput otherAnalysisOutput=new OutputConstruct.OtherAnalysisOutput();
 		otherAnalysisOutput.setDeviceCannotBeTurnedOffList(deviceCannotBeTurnedOffList);
 		otherAnalysisOutput.setNotTriggeredRulesInAll(notTriggeredRulesInAll);
 		otherAnalysisOutput.setHomeBoundedOutBoundedResults(homeBoundedOutBoundedResults);
 		return otherAnalysisOutput;
 	}
+
+	/**
+	 * 安全性验证
+	 * */
 	@RequestMapping("/getPropertiesAnalysis")
 	@ResponseBody
 	public List<PropertyAnalysisResult> getPropertiesAnalysis(@RequestBody InputConstruct.PropertyAnalysisInput propertyAnalysisInput) {
+		//-------------------输入----------------------------
 		List<Scenario> scenarios=propertyAnalysisInput.getScenarios();
 		List<Rule> rules=propertyAnalysisInput.getRules();
 		List<String> properties=propertyAnalysisInput.getProperties();
 		InstanceLayer instanceLayer= propertyAnalysisInput.getInstanceLayer();
+		//----------------------------------------------------
 //		properties=InstanceLayerService.generateSafetyProperties(instanceLayer);   ///做实验用
+		////////安全性验证，验证每一条性质
 		long t1=System.currentTimeMillis();
 		List<PropertyAnalysisResult> propertyAnalysisResults=AnalysisService.getPropertiesAnalysisResultAllScenarios(scenarios,instanceLayer,rules,properties);
 		long t2=System.currentTimeMillis();

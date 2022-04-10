@@ -24,7 +24,6 @@ import org.dom4j.io.XMLWriter;
 
 import com.example.demo.bean.Action;
 import com.example.demo.bean.Attribute_;
-import com.example.demo.bean.BiddableType;
 import com.example.demo.bean.DeviceDetail;
 import com.example.demo.bean.DeviceType;
 import com.example.demo.bean.IFDGraph.GraphNode;
