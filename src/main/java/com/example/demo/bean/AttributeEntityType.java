@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * 环境属性实体
  * 带各种环境属性的实体（air），只有一个实例
  * 实体类型名,【内容、属性名、属性总变化率变量名】
  * */

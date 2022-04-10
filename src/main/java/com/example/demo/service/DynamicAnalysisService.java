@@ -15,12 +15,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.Stack;
 
-import com.example.demo.bean.Conflict;
-import com.example.demo.bean.ConflictReason;
 import com.example.demo.bean.DataTimeValue;
 import com.example.demo.bean.IFDGraph.GraphNode;
 import com.example.demo.bean.IFDGraph.GraphNodeArrow;
-import com.example.demo.bean.JitterReason;
 import com.example.demo.bean.Rule;
 import com.example.demo.bean.RuleNode;
 
@@ -159,13 +156,13 @@ public class DynamicAnalysisService {
 			
 		}
 		
-		for(Entry<String,List<double[]>> dataTimeValue:dataTimeValuesHashMap.entrySet()) {
-			List<ConflictReason> conflictReasons=conflictAnalysis(dataTimeValue.getValue());
-			System.out.println(conflictReasons);
-			List<double[]> startTimeValueEndTimeValues=dataStartTimeValueEndTimeValuesMap.get(dataTimeValue.getKey());
-			jitterAnalysis(startTimeValueEndTimeValues, "300", "24", "300");
-			
-		}
+//		for(Entry<String,List<double[]>> dataTimeValue:dataTimeValuesHashMap.entrySet()) {
+//			List<ConflictReason> conflictReasons=conflictAnalysis(dataTimeValue.getValue());
+//			System.out.println(conflictReasons);
+//			List<double[]> startTimeValueEndTimeValues=dataStartTimeValueEndTimeValuesMap.get(dataTimeValue.getKey());
+//			jitterAnalysis(startTimeValueEndTimeValues, "300", "24", "300");
+//
+//		}
 		
 		
 	}
@@ -804,87 +801,87 @@ public class DynamicAnalysisService {
 	}
 	
 
-	////////抖动分析，看当前场景下，该设备是否会发生抖动
-	public static List<JitterReason> jitterAnalysis(List<double[]> startTimeValueEndTimeValues, String simulationTime, String equivalentTime, String intervalTime) {
-		
-		List<List<double[]>> jitters=new ArrayList<>();    
-		
-		
-		///equivalentTime单位是h，simulationTime单位是clock，intervalTime单位是s
-		double multiple=Double.parseDouble(equivalentTime)*3600/Double.parseDouble(simulationTime);
-		///deltaTime单位是clock
-		double deltaTime=Double.parseDouble(intervalTime)/multiple;
-		
-		///// [(0,0)(120.0000000000171,0)]，[(120.0000000000171,0) (120.0700000000245,1)]，[(120.0700000000245,1)(149.9999999999993,1)]， 
-		////  [(149.9999999999993,1) (150.0700000000085,0)]， [(150.0700000000085,0) (300.0099999998721,0)]
-
-		for(int i=1;i<startTimeValueEndTimeValues.size()-1;i++) {
-			/////开头不考虑，最后一个也不考虑
-			double[] startTimeValueEndTimeValue=startTimeValueEndTimeValues.get(i);
-			double startTime=startTimeValueEndTimeValue[0];
-			double endTime=startTimeValueEndTimeValue[2];
-			double startValue=startTimeValueEndTimeValue[1];
-			double endValue=startTimeValueEndTimeValue[3];
-			if((endValue+"").equals(startValue+"")) {
-				////如果首位值相等则为持续时间，否则不考虑
-				if((endTime-startTime)<deltaTime) {
-					/////某个状态持续时间很短，则算一次抖动？如何找原因呢这样，抖动必然是有其他规则使得该状态无法维持下去了
-					//////记录startTime v1和nextEndTime v2
-					/////如[(120.0700000000245,1)(149.9999999999993,1)]， [(149.9999999999993,1) (150.0700000000085,0)]   
-					////  startTime=120.0700000000245 v1=1； nextEndTime=150.0700000000085  v2=0
-					
-//					double[] jitter=new double[4];
-//					jitter[0]=startTime;     ////(120.0700000000245,1) 该状态开始时间
-//					jitter[1]=startValue;
-//					jitter[2]=startTimeValueEndTimeValues.get(i+1)[2];  ////(150.0700000000085,0)  另一个状态开始时间
-//					jitter[3]=startTimeValueEndTimeValues.get(i+1)[3];
-					
-					
-					
-					List<double[]> jitterList=new ArrayList<>();
-					double[] jitterStart=new double[2];  ////(120.0700000000245,1) 该状态开始时间
-					jitterStart[0]=startTime;
-					jitterStart[1]=startValue;
-					double[] jitterNewStart=new double[2];    ////(150.0700000000085,0)  另一个状态开始时间
-					jitterNewStart[0]=startTimeValueEndTimeValues.get(i+1)[2];
-					jitterNewStart[1]=startTimeValueEndTimeValues.get(i+1)[3];
-					jitterList.add(jitterStart);
-					jitterList.add(jitterNewStart);
-					jitters.add(jitterList);
-				}
-			}
-		}
-		/////实现分段，两个首位相同时间值的可拼接。
-		List<JitterReason> jitterReasons=new ArrayList<>();
-//		List<List<double[]>> newJitters=new ArrayList<>();
-		for(List<double[]> jitter:jitters) {
-			if(jitterReasons.isEmpty()) {  ////为空则说明是第一次抖动
-				JitterReason jitterReason=new JitterReason();
-				jitterReason.setJitter(jitter);
-				jitterReasons.add(jitterReason);
-			}else {
-				////如果当前这次jitter的起始时间和状态和上一个jitter另一个状态的起始时间和状态相同
-				String currentStartTime=jitter.get(0)[0]+"";
-				String currentStartValue=jitter.get(0)[1]+"";
-				List<double[]> lastPartJitter=jitterReasons.get(jitterReasons.size()-1).getJitter();   ////上一段连续抖动
-				String lastStartTime=lastPartJitter.get(lastPartJitter.size()-1)[0]+"";  ////上一段连续抖动的最后一个时间值
-				String lastStartValue=lastPartJitter.get(lastPartJitter.size()-1)[1]+"";
-				if(currentStartTime.equals(lastStartTime)&&currentStartValue.equals(lastStartValue)) {
-					/////如果当前jitter的第一个时间值和上一段连续抖动的最后一个时间值相同，则可拼接
-					lastPartJitter.add(jitter.get(1));
-				}else {
-					/////否则作为新一段加入
-					JitterReason jitterReason=new JitterReason();
-					jitterReason.setJitter(jitter);
-					jitterReasons.add(jitterReason);
-				}
-			}
-		}
-		
-		
-		
-		return jitterReasons;
-	}
+//	////////抖动分析，看当前场景下，该设备是否会发生抖动
+//	public static List<JitterReason> jitterAnalysis(List<double[]> startTimeValueEndTimeValues, String simulationTime, String equivalentTime, String intervalTime) {
+//
+//		List<List<double[]>> jitters=new ArrayList<>();
+//
+//
+//		///equivalentTime单位是h，simulationTime单位是clock，intervalTime单位是s
+//		double multiple=Double.parseDouble(equivalentTime)*3600/Double.parseDouble(simulationTime);
+//		///deltaTime单位是clock
+//		double deltaTime=Double.parseDouble(intervalTime)/multiple;
+//
+//		///// [(0,0)(120.0000000000171,0)]，[(120.0000000000171,0) (120.0700000000245,1)]，[(120.0700000000245,1)(149.9999999999993,1)]，
+//		////  [(149.9999999999993,1) (150.0700000000085,0)]， [(150.0700000000085,0) (300.0099999998721,0)]
+//
+//		for(int i=1;i<startTimeValueEndTimeValues.size()-1;i++) {
+//			/////开头不考虑，最后一个也不考虑
+//			double[] startTimeValueEndTimeValue=startTimeValueEndTimeValues.get(i);
+//			double startTime=startTimeValueEndTimeValue[0];
+//			double endTime=startTimeValueEndTimeValue[2];
+//			double startValue=startTimeValueEndTimeValue[1];
+//			double endValue=startTimeValueEndTimeValue[3];
+//			if((endValue+"").equals(startValue+"")) {
+//				////如果首位值相等则为持续时间，否则不考虑
+//				if((endTime-startTime)<deltaTime) {
+//					/////某个状态持续时间很短，则算一次抖动？如何找原因呢这样，抖动必然是有其他规则使得该状态无法维持下去了
+//					//////记录startTime v1和nextEndTime v2
+//					/////如[(120.0700000000245,1)(149.9999999999993,1)]， [(149.9999999999993,1) (150.0700000000085,0)]
+//					////  startTime=120.0700000000245 v1=1； nextEndTime=150.0700000000085  v2=0
+//
+////					double[] jitter=new double[4];
+////					jitter[0]=startTime;     ////(120.0700000000245,1) 该状态开始时间
+////					jitter[1]=startValue;
+////					jitter[2]=startTimeValueEndTimeValues.get(i+1)[2];  ////(150.0700000000085,0)  另一个状态开始时间
+////					jitter[3]=startTimeValueEndTimeValues.get(i+1)[3];
+//
+//
+//
+//					List<double[]> jitterList=new ArrayList<>();
+//					double[] jitterStart=new double[2];  ////(120.0700000000245,1) 该状态开始时间
+//					jitterStart[0]=startTime;
+//					jitterStart[1]=startValue;
+//					double[] jitterNewStart=new double[2];    ////(150.0700000000085,0)  另一个状态开始时间
+//					jitterNewStart[0]=startTimeValueEndTimeValues.get(i+1)[2];
+//					jitterNewStart[1]=startTimeValueEndTimeValues.get(i+1)[3];
+//					jitterList.add(jitterStart);
+//					jitterList.add(jitterNewStart);
+//					jitters.add(jitterList);
+//				}
+//			}
+//		}
+//		/////实现分段，两个首位相同时间值的可拼接。
+//		List<JitterReason> jitterReasons=new ArrayList<>();
+////		List<List<double[]>> newJitters=new ArrayList<>();
+//		for(List<double[]> jitter:jitters) {
+//			if(jitterReasons.isEmpty()) {  ////为空则说明是第一次抖动
+//				JitterReason jitterReason=new JitterReason();
+//				jitterReason.setJitter(jitter);
+//				jitterReasons.add(jitterReason);
+//			}else {
+//				////如果当前这次jitter的起始时间和状态和上一个jitter另一个状态的起始时间和状态相同
+//				String currentStartTime=jitter.get(0)[0]+"";
+//				String currentStartValue=jitter.get(0)[1]+"";
+//				List<double[]> lastPartJitter=jitterReasons.get(jitterReasons.size()-1).getJitter();   ////上一段连续抖动
+//				String lastStartTime=lastPartJitter.get(lastPartJitter.size()-1)[0]+"";  ////上一段连续抖动的最后一个时间值
+//				String lastStartValue=lastPartJitter.get(lastPartJitter.size()-1)[1]+"";
+//				if(currentStartTime.equals(lastStartTime)&&currentStartValue.equals(lastStartValue)) {
+//					/////如果当前jitter的第一个时间值和上一段连续抖动的最后一个时间值相同，则可拼接
+//					lastPartJitter.add(jitter.get(1));
+//				}else {
+//					/////否则作为新一段加入
+//					JitterReason jitterReason=new JitterReason();
+//					jitterReason.setJitter(jitter);
+//					jitterReasons.add(jitterReason);
+//				}
+//			}
+//		}
+//
+//
+//
+//		return jitterReasons;
+//	}
 	
 	//////去掉重复的timeValue？ timeValue => double[2]; ===> startTimeValueEndTimeValue => double[4] ，为了便于抖动分析和property分析？。。
 	public static List<double[]> getStartTimeValueEndTimeValuesHashMap(List<double[]> timeValues) {
@@ -948,76 +945,76 @@ public class DynamicAnalysisService {
 		return startTimeValueEndTimeValues;
 	}
 	
-	/////冲突分析，获得当前场景下是否冲突，冲突的时间
-	public static List<ConflictReason> conflictAnalysis(List<double[]> timeValues) {
-		List<ConflictReason> conflictReasons=new ArrayList<>();
-		for(int i=0;i<timeValues.size();) {
-			///看是否存在 t1=t2 而 v1!=v2
-			Conflict conflict=new Conflict();
-			conflict.setTime(timeValues.get(i)[0]);    ////设置冲突时间
-			List<Integer> conflictValues=new ArrayList<>();
-			double time1=timeValues.get(i)[0];
-			double value1=timeValues.get(i)[1];
-			String t1=time1+"";
-			String v1=value1+"";
-			String currentT=t1;
-			String currentV=v1;
-			int j=i+1;
-			for(;j<timeValues.size();j++) {
-				String t2=timeValues.get(j)[0]+"";
-				String v2=timeValues.get(j)[1]+"";
-				if(currentT.equals(t2)&&!currentV.equals(v2)) {
-					////表明冲突，add冲突的值，不重复
-					////看是否已经有了
-					int timeValue=(int) timeValues.get(j)[1];
-					boolean exist=false;
-					for(Integer value:conflictValues) {
-						if(timeValue==value) {
-							exist=true;
-							break;
-						}
-					}
-					if(!exist) {
-						conflictValues.add(timeValue);
-					}
-					currentT=t2;
-					currentV=v2;
-				}else {
-					i=j;
-					break;
-				}
-			}
-			if(j>=timeValues.size()) {
-				break;
-			}
-			
-			
-			if(conflictValues.size()>0) {
-				////有冲突 
-				//////add起始值，不重复
-				int timeValue=(int) value1;
-				boolean exist=false;
-				for(Integer value:conflictValues) {
-					if(timeValue==value) {
-						exist=true;
-						break;
-					}
-				}
-				if(!exist) {
-					conflictValues.add(timeValue);
-				}
-				conflict.setConflictValues(conflictValues);
-				ConflictReason conflictReason=new ConflictReason();
-				conflictReason.setConflict(conflict);
-				conflictReasons.add(conflictReason);
-			}
-		}
-//		if(conflictReasons.size()==0) {
-//			conflictReasons=null;
+//	/////冲突分析，获得当前场景下是否冲突，冲突的时间
+//	public static List<ConflictReason> conflictAnalysis(List<double[]> timeValues) {
+//		List<ConflictReason> conflictReasons=new ArrayList<>();
+//		for(int i=0;i<timeValues.size();) {
+//			///看是否存在 t1=t2 而 v1!=v2
+//			Conflict conflict=new Conflict();
+//			conflict.setTime(timeValues.get(i)[0]);    ////设置冲突时间
+//			List<Integer> conflictValues=new ArrayList<>();
+//			double time1=timeValues.get(i)[0];
+//			double value1=timeValues.get(i)[1];
+//			String t1=time1+"";
+//			String v1=value1+"";
+//			String currentT=t1;
+//			String currentV=v1;
+//			int j=i+1;
+//			for(;j<timeValues.size();j++) {
+//				String t2=timeValues.get(j)[0]+"";
+//				String v2=timeValues.get(j)[1]+"";
+//				if(currentT.equals(t2)&&!currentV.equals(v2)) {
+//					////表明冲突，add冲突的值，不重复
+//					////看是否已经有了
+//					int timeValue=(int) timeValues.get(j)[1];
+//					boolean exist=false;
+//					for(Integer value:conflictValues) {
+//						if(timeValue==value) {
+//							exist=true;
+//							break;
+//						}
+//					}
+//					if(!exist) {
+//						conflictValues.add(timeValue);
+//					}
+//					currentT=t2;
+//					currentV=v2;
+//				}else {
+//					i=j;
+//					break;
+//				}
+//			}
+//			if(j>=timeValues.size()) {
+//				break;
+//			}
+//
+//
+//			if(conflictValues.size()>0) {
+//				////有冲突
+//				//////add起始值，不重复
+//				int timeValue=(int) value1;
+//				boolean exist=false;
+//				for(Integer value:conflictValues) {
+//					if(timeValue==value) {
+//						exist=true;
+//						break;
+//					}
+//				}
+//				if(!exist) {
+//					conflictValues.add(timeValue);
+//				}
+//				conflict.setConflictValues(conflictValues);
+//				ConflictReason conflictReason=new ConflictReason();
+//				conflictReason.setConflict(conflict);
+//				conflictReasons.add(conflictReason);
+//			}
 //		}
-		return conflictReasons;
-	}
-	
+////		if(conflictReasons.size()==0) {
+////			conflictReasons=null;
+////		}
+//		return conflictReasons;
+//	}
+//
 	
 	/////生成各个场景的仿真结果
 //	public static List<Scene> getAllSimulationResults(ScenesTree scenesTree,List<DeviceDetail> devices,String fileName,String modelFilePath,String uppaalPath,String simulateResultFilePath) {
