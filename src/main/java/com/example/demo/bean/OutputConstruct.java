@@ -31,24 +31,24 @@ public class OutputConstruct {
 //
 //	}
 	
-	public static class ScenePropertyResult{
-		private List<Scene> scenes=new ArrayList<Scene>();
-		private List<PropertyVerifyResult> propertyVerifyResults=new ArrayList<>();
-		public List<PropertyVerifyResult> getPropertyVerifyResults() {
-			return propertyVerifyResults;
-		}
-		public void setPropertyVerifyResults(List<PropertyVerifyResult> propertyVerifyResults) {
-			this.propertyVerifyResults = propertyVerifyResults;
-		}
-		public List<Scene> getScenes() {
-			return scenes;
-		}
-		public void setScenes(List<Scene> scenes) {
-			this.scenes = scenes;
-		}
-
-		
-	}
+//	public static class ScenePropertyResult{
+//		private List<Scene> scenes=new ArrayList<Scene>();
+//		private List<PropertyVerifyResult> propertyVerifyResults=new ArrayList<>();
+//		public List<PropertyVerifyResult> getPropertyVerifyResults() {
+//			return propertyVerifyResults;
+//		}
+//		public void setPropertyVerifyResults(List<PropertyVerifyResult> propertyVerifyResults) {
+//			this.propertyVerifyResults = propertyVerifyResults;
+//		}
+//		public List<Scene> getScenes() {
+//			return scenes;
+//		}
+//		public void setScenes(List<Scene> scenes) {
+//			this.scenes = scenes;
+//		}
+//
+//
+//	}
 	
 	public static class DeclarationQueryResult{
 		private List<List<Trigger>> attributesSameTriggers;

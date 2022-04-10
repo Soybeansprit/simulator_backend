@@ -7,8 +7,6 @@ import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
@@ -16,23 +14,16 @@ import java.util.Map.Entry;
 import org.springframework.stereotype.Service;
 
 import java.util.Stack;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
-import com.example.demo.bean.CauseRule;
 import com.example.demo.bean.Conflict;
 import com.example.demo.bean.ConflictReason;
 import com.example.demo.bean.DataTimeValue;
-import com.example.demo.bean.DeviceAnalysisResult;
 import com.example.demo.bean.IFDGraph.GraphNode;
 import com.example.demo.bean.IFDGraph.GraphNodeArrow;
 import com.example.demo.bean.JitterReason;
 import com.example.demo.bean.Rule;
 import com.example.demo.bean.RuleNode;
-import com.example.demo.bean.Scene;
-import com.example.demo.bean.ScenarioTree.ScenesTree;
+
 @Service
 public class DynamicAnalysisService {
 
@@ -1147,14 +1138,14 @@ public class DynamicAnalysisService {
 		return dataTimeValuesHashMap;
 	}
 	
-	//////获得对应的hashmap
-	public static void getSceneDataHashMap(Scene scene){
-		for(DataTimeValue dataTimeValue:scene.getDataTimeValues()) {
-			scene.getDataTimeValuesHashMap().put(dataTimeValue.getName(), dataTimeValue.getTimeValues());
-			scene.getDataStartTimeValueEndTimeValuesHashMap().put(dataTimeValue.getName(), getStartTimeValueEndTimeValuesHashMap(dataTimeValue.getTimeValues()));
-		}
-		
-	}
+//	//////获得对应的hashmap
+//	public static void getSceneDataHashMap(Scene scene){
+//		for(DataTimeValue dataTimeValue:scene.getDataTimeValues()) {
+//			scene.getDataTimeValuesHashMap().put(dataTimeValue.getName(), dataTimeValue.getTimeValues());
+//			scene.getDataStartTimeValueEndTimeValuesHashMap().put(dataTimeValue.getName(), getStartTimeValueEndTimeValuesHashMap(dataTimeValue.getTimeValues()));
+//		}
+//
+//	}
 	/////将仿真结果解析成 （数据名，（时间，取值）） 的格式
 	public static List<DataTimeValue> getAllDataTimeValues(String simulationResult){
 		List<DataTimeValue> dataTimeValues=new ArrayList<DataTimeValue>();
