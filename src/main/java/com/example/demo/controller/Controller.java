@@ -51,9 +51,7 @@ public class Controller {
 	TemplGraphService templGraphService;
 	@Autowired
 	StaticAnalysisService staticAnalysisService;
-	@Autowired
-	DynamicAnalysisService dynamicAnalysisService;
-	
+
 
 
 	/**

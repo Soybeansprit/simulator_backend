@@ -15,7 +15,7 @@ import java.util.List;
  * */
 public class DataTimeValue {
 	/////仿真结果数据格式
-	public String name="";
+//	public String name="";
 
 	private String dataName=""; ////数据名
 	private String instanceName="";  ////所属实例名
@@ -23,12 +23,12 @@ public class DataTimeValue {
 	private List<double[]> timeValues=new ArrayList<double[]>();   ////(time,value)列表，为仿真结果存储格式  timeValue[0]是时间，timeValue[1]是取值
 
 
-	public String getName() {
-		return name;
-	}
-	public void setName(String name) {
-		this.name = name;
-	}
+//	public String getName() {
+//		return name;
+//	}
+//	public void setName(String name) {
+//		this.name = name;
+//	}
 
 	public String getDataName() {
 		return dataName;
@@ -61,13 +61,13 @@ public class DataTimeValue {
 		this.timeValues = timeValues;
 	}
 
-	@Override
-	public String toString() {
-		return "DataTimeValue{" +
-				"name='" + name + '\'' +
-				", dataName='" + dataName + '\'' +
-				", instanceName='" + instanceName + '\'' +
-				", timeValues=" + timeValues +
-				'}';
-	}
+//	@Override
+//	public String toString() {
+//		return "DataTimeValue{" +
+//				"name='" + name + '\'' +
+//				", dataName='" + dataName + '\'' +
+//				", instanceName='" + instanceName + '\'' +
+//				", timeValues=" + timeValues +
+//				'}';
+//	}
 }

@@ -281,24 +281,24 @@ public class TemplGraphService {
 ////		return sensorType;
 ////	}
 
-	////根据模型获得各属性参数,该模型只有一个状态，状态上是不变式
-	public static List<Attribute_> getAttributes(TemplGraph attributeTempl){
-
-		List<Attribute_> attributes=new ArrayList<>();
-		TemplGraphNode node=attributeTempl.getTemplGraphNodes().get(0);
-		String invariantContent=node.getInvariant();
-		String[] invariants=invariantContent.split("&&");
-		for(String invariant : invariants) {
-			invariant=invariant.trim();
-			Attribute_ attribute=new Attribute_();
-			attribute.setContent(invariant);
-			attribute.setAttribute(invariant.substring(0, invariant.indexOf("'==")));
-			attribute.setDelta(invariant.substring(invariant.indexOf("'==")+"'==".length()).trim());
-			attributes.add(attribute);
-		}
-		return attributes;
-		
-	}
+//	////根据模型获得各属性参数,该模型只有一个状态，状态上是不变式
+//	public static List<Attribute_> getAttributes(TemplGraph attributeTempl){
+//
+//		List<Attribute_> attributes=new ArrayList<>();
+//		TemplGraphNode node=attributeTempl.getTemplGraphNodes().get(0);
+//		String invariantContent=node.getInvariant();
+//		String[] invariants=invariantContent.split("&&");
+//		for(String invariant : invariants) {
+//			invariant=invariant.trim();
+//			Attribute_ attribute=new Attribute_();
+//			attribute.setContent(invariant);
+//			attribute.setAttribute(invariant.substring(0, invariant.indexOf("'==")));
+//			attribute.setDelta(invariant.substring(invariant.indexOf("'==")+"'==".length()).trim());
+//			attributes.add(attribute);
+//		}
+//		return attributes;
+//
+//	}
 	
 	/////////获得device在xml中的构造方法 deviceDetail 中的constructionNum
 //	public static void getDeviceConstruction(List<DeviceDetail> devices,List<TemplGraph> templGraphs) {
