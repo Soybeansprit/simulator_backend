@@ -29,12 +29,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.demo.bean.IFDGraph.GraphNode;
 import com.example.demo.bean.OutputConstruct.DeclarationQueryResult;
-import com.example.demo.bean.OutputConstruct.EnvironmentStatic;
-import com.example.demo.bean.ScenarioTree.ScenesTree;
-import com.example.demo.bean.InputConstruct.EnvironmentRule;
-import com.example.demo.bean.InputConstruct.SceneEnvironmentProperty;
-import com.example.demo.bean.InputConstruct.SceneEnvironmentRule;
-import com.example.demo.bean.InputConstruct.SceneTreeDevice;
+//import com.example.demo.bean.OutputConstruct.EnvironmentStatic;
+//import com.example.demo.bean.ScenarioTree.ScenesTree;
+//import com.example.demo.bean.InputConstruct.EnvironmentRule;
+//import com.example.demo.bean.InputConstruct.SceneEnvironmentProperty;
+//import com.example.demo.bean.InputConstruct.SceneEnvironmentRule;
+//import com.example.demo.bean.InputConstruct.SceneTreeDevice;
 
 
 @CrossOrigin

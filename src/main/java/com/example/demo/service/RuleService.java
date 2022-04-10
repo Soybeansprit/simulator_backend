@@ -9,11 +9,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.example.demo.bean.Action;
-import com.example.demo.bean.DeviceDetail;
 import com.example.demo.bean.Rule;
-import com.example.demo.bean.SensorType;
-import com.example.demo.bean.Trigger;
 
 @Service
 public class RuleService {
@@ -162,154 +158,57 @@ public class RuleService {
 		return rules;
 	}
 	
-	public static List<Action> getAllActions(List<Rule> rules,List<DeviceDetail> devices){
-		List<Action> actions=new ArrayList<Action>();  ///存所有actions
-		for(Rule rule:rules) {
-			for(String action:rule.getAction()) {  //////遍历一条规则的所有actions
-				boolean exist=false;
-				for(Action act:actions) {
-					if(act.action.equals(action)) {  ////看是否已经存在于 actions 中
-						exist=true;
-						break;
-					}
-				}
-				if(!exist) {          ////不存在就添加
-					Action act=new Action();
-					act.action=action;       /////action内容  Bulb_0.turn_bulb_on
-					act.actionNum="action"+actions.size();     ///action序号（用于ifd中）action0
-					if(action.indexOf(".")>0) {
-						act.actionPulse=action.substring(action.indexOf(".")).substring(1).trim(); ///actionPulse: turn_bulb)on
-						act.device=action.substring(0, action.indexOf("."));     /////device: Bulb_0
-					}else {
-						act.actionPulse=action;
-					}
-					for(DeviceDetail device:devices) {
-						if(device.getDeviceName().equals(act.device)) {
-							for(String[] stateActionValue:device.getDeviceType().stateActionValues) {
-								if(stateActionValue[1].equals(act.actionPulse)) {
-									act.toState=stateActionValue[0];    //////找到这个action对应的状态
-									act.value=stateActionValue[2];      //////和标识符的取值
-									break;
-								}
-							}
-							break;
-						}
-					}
-					for(Rule otherRule:rules) {
-						for(String oAction:otherRule.getAction()) {
-							////////获得有这个action的所有规则
-							if(oAction.equals(act.action)) {
-								act.rules.add(otherRule);
-								break;
-							}
-						}
-					}
-					actions.add(act);
-				}
-			
-			}
-		}
-		return actions;
-	}
+//	public static List<Action> getAllActions(List<Rule> rules,List<DeviceDetail> devices){
+//		List<Action> actions=new ArrayList<Action>();  ///存所有actions
+//		for(Rule rule:rules) {
+//			for(String action:rule.getAction()) {  //////遍历一条规则的所有actions
+//				boolean exist=false;
+//				for(Action act:actions) {
+//					if(act.action.equals(action)) {  ////看是否已经存在于 actions 中
+//						exist=true;
+//						break;
+//					}
+//				}
+//				if(!exist) {          ////不存在就添加
+//					Action act=new Action();
+//					act.action=action;       /////action内容  Bulb_0.turn_bulb_on
+//					act.actionNum="action"+actions.size();     ///action序号（用于ifd中）action0
+//					if(action.indexOf(".")>0) {
+//						act.actionPulse=action.substring(action.indexOf(".")).substring(1).trim(); ///actionPulse: turn_bulb)on
+//						act.device=action.substring(0, action.indexOf("."));     /////device: Bulb_0
+//					}else {
+//						act.actionPulse=action;
+//					}
+//					for(DeviceDetail device:devices) {
+//						if(device.getDeviceName().equals(act.device)) {
+//							for(String[] stateActionValue:device.getDeviceType().stateActionValues) {
+//								if(stateActionValue[1].equals(act.actionPulse)) {
+//									act.toState=stateActionValue[0];    //////找到这个action对应的状态
+//									act.value=stateActionValue[2];      //////和标识符的取值
+//									break;
+//								}
+//							}
+//							break;
+//						}
+//					}
+//					for(Rule otherRule:rules) {
+//						for(String oAction:otherRule.getAction()) {
+//							////////获得有这个action的所有规则
+//							if(oAction.equals(act.action)) {
+//								act.rules.add(otherRule);
+//								break;
+//							}
+//						}
+//					}
+//					actions.add(act);
+//				}
+//
+//			}
+//		}
+//		return actions;
+//	}
 	
-	//////////获得一组规则的所有triggers
-	public static List<Trigger> getAllTriggers(List<Rule> rules,List<SensorType> sensors,List<BiddableType> biddables){
-		List<Trigger> triggers=new ArrayList<Trigger>();  ///存所有triggers
-		for(Rule rule:rules) {
-			for(String trigger:rule.getTrigger()) {  //////遍历一条规则的所有triggers
-				boolean exist=false;
-				for(Trigger tri:triggers) {
-					if(tri.trigger.equals(trigger)) {  ////看是否已经存在于 triggers 中
-						exist=true;
-						break;
-					}
-				}
-				if(!exist) {            ////不存在就添加
-					Trigger tri=new Trigger();
-					tri.trigger=trigger;     /////trigger内容
-					tri.triggerNum="trigger"+triggers.size();    ///trigger序号（用于ifd中）
-					tri.attrVal=getTriAttrVal(trigger,biddables);      /////分析trigger
-					if(!tri.attrVal[1].equals(".")){
-						for(SensorType sensor:sensors) {
-							if(sensor.getAttribute().equals(tri.attrVal[0])) {
-								tri.device=sensor.getName();
-								break;
-							}
-						}
-					}else {
-						tri.device=tri.attrVal[0];
-					}
-					for(Rule otherRule:rules) {
-						////////获得有这个trigger的所有规则
-						for(String oTrigger:otherRule.getTrigger()) {
-							if(oTrigger.equals(tri.trigger)) {
-								tri.rules.add(otherRule);
-								break;
-							}
-						}
-					}
-					triggers.add(tri);
-				}
-			}
-		}		
-		return triggers;
-	}
-	
-	public static String[] getTriAttrVal(String trigger,List<BiddableType> biddables) {
-		String[] attrVal=new String[3];
-		if(trigger.contains(">=")) {
-			attrVal[1]=">=";
-			attrVal[0]=trigger.substring(0,trigger.indexOf(">=")).trim();
-			attrVal[2]=trigger.substring(trigger.indexOf(">=")).substring(2).trim();
-		}else if(trigger.contains(">")) {
-			attrVal[1]=">";
-			attrVal[0]=trigger.substring(0, trigger.indexOf(">")).trim();
-			attrVal[2]=trigger.substring(trigger.indexOf(">")).substring(1).trim();
-		}else if(trigger.contains("<=")) {
-			attrVal[1]="<=";
-			attrVal[0]=trigger.substring(0,trigger.indexOf("<=")).trim();
-			attrVal[2]=trigger.substring(trigger.indexOf("<=")).substring(2).trim();
-		}else if(trigger.contains("<")) {
-			attrVal[1]="<";
-			attrVal[0]=trigger.substring(0, trigger.indexOf("<")).trim();
-			attrVal[2]=trigger.substring(trigger.indexOf("<")).substring(1).trim();
-		}else if(trigger.contains("=")) {
-			attrVal[1]="=";
-			attrVal[0]=trigger.substring(0,trigger.indexOf("=")).trim();
-			attrVal[2]=trigger.substring(trigger.indexOf("=")).substring(1).trim();
-		}else if(trigger.contains(".")) {
-			//////表示实体状态  Bulb_0.bon   Person.lobby
-			attrVal[1]=".";
-			attrVal[0]=trigger.substring(0, trigger.indexOf(".")).trim();
-			attrVal[2]=trigger.substring(trigger.indexOf(".")).substring(1).trim();	
-			boolean isNot=false;
-			////非
-			if(attrVal[0].toUpperCase().startsWith("NOT_")) {
-				attrVal[0]=attrVal[0].substring("NOT_".length());
-				isNot=true;
-			}
-			for(BiddableType biddable:biddables) {
-				if(biddable.getName().equals(attrVal[0])) {     /////不是设备而是biddable实体的状态，如Person
-					for(String[] stateAttributeValue:biddable.stateAttributeValues) {
-						if(stateAttributeValue[0].equals(attrVal[2])) {
-							/////////找到state对应的属性值
-							attrVal[0]=stateAttributeValue[1];
-							if(isNot) {
-								attrVal[1]="!=";	
-							}else {
-								attrVal[1]="=";
-							}							
-							attrVal[2]=stateAttributeValue[2];
-							break;
-						}
-						
-					}
-				}
-			}
-								
-		}
-		return attrVal;
-	}
+
 
 	////解析trigger的格式 attribute<(<=,>,>=)value or instance.state
 	// / time<30      instance.state for 3  时间值

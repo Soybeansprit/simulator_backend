@@ -11,7 +11,7 @@ import com.example.demo.bean.*;
 import org.dom4j.DocumentException;
 import org.springframework.stereotype.Service;
 
-import com.example.demo.bean.DeviceType.StateEffect;
+//import com.example.demo.bean.DeviceType.StateEffect;
 import com.example.demo.bean.IFDGraph.GraphNode;
 import com.example.demo.bean.IFDGraph.GraphNodeArrow;
 
@@ -242,50 +242,50 @@ public class StaticAnalysisService {
 	}
 	
 	////////////////////获得不正确的规则
-	public static List<ErrorReason> getIncorrect(List<Rule> rules,List<DeviceDetail> devices){
-		List<ErrorReason> incorrectReason=new ArrayList<ErrorReason>();
-		for(Rule rule:rules) {
-			
-			String reason="";
-			boolean incorrect=false;
-			for(String action:rule.getAction()) {
-				////看一条规则的action是不是存在问题   Bulb_0.turn_bulb_on
-				String actionPulse="";
-				String deviceName="";
-				if(action.indexOf(".")>0) {
-					actionPulse=action.substring(action.indexOf(".")).substring(1);		////////turn_bulb_on 
-					deviceName=action.substring(0, action.indexOf("."));       /////////Bulb_0
-				}
-				boolean existAction=false;
-				for(DeviceDetail device:devices) {
-					if(device.getDeviceName().equals(deviceName)) {
-						////找到这个设备
-						for(String[] stateActionValue:device.getDeviceType().stateActionValues) {
-							if(stateActionValue[1].equals(actionPulse)) {
-								////看action是否是对的
-								existAction=true;
-								break;
-							}
-						}
-						break;
-					}
-				}
-				if(!existAction) {
-					incorrect=true;	
-					reason+=action.trim()+" ";   //////给出原因
-				}
-			}
-			if(incorrect) {
-				ErrorReason er=new ErrorReason();
-				er.rule=rule;
-				er.reason=reason+"cannot be executed!";
-				incorrectReason.add(er);	
-				System.out.println(reason);
-			}
-			
-		}
-		return incorrectReason;
-	}
+//	public static List<ErrorReason> getIncorrect(List<Rule> rules,List<DeviceDetail> devices){
+//		List<ErrorReason> incorrectReason=new ArrayList<ErrorReason>();
+//		for(Rule rule:rules) {
+//
+//			String reason="";
+//			boolean incorrect=false;
+//			for(String action:rule.getAction()) {
+//				////看一条规则的action是不是存在问题   Bulb_0.turn_bulb_on
+//				String actionPulse="";
+//				String deviceName="";
+//				if(action.indexOf(".")>0) {
+//					actionPulse=action.substring(action.indexOf(".")).substring(1);		////////turn_bulb_on
+//					deviceName=action.substring(0, action.indexOf("."));       /////////Bulb_0
+//				}
+//				boolean existAction=false;
+//				for(DeviceDetail device:devices) {
+//					if(device.getDeviceName().equals(deviceName)) {
+//						////找到这个设备
+//						for(String[] stateActionValue:device.getDeviceType().stateActionValues) {
+//							if(stateActionValue[1].equals(actionPulse)) {
+//								////看action是否是对的
+//								existAction=true;
+//								break;
+//							}
+//						}
+//						break;
+//					}
+//				}
+//				if(!existAction) {
+//					incorrect=true;
+//					reason+=action.trim()+" ";   //////给出原因
+//				}
+//			}
+//			if(incorrect) {
+//				ErrorReason er=new ErrorReason();
+//				er.rule=rule;
+//				er.reason=reason+"cannot be executed!";
+//				incorrectReason.add(er);
+//				System.out.println(reason);
+//			}
+//
+//		}
+//		return incorrectReason;
+//	}
 
 	//////////删除重复的规则
 	public static List<Rule> deleteRepeat(List<Rule> rules){

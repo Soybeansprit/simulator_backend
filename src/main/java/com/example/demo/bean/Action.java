@@ -3,6 +3,9 @@ package com.example.demo.bean;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 与执行指令相关的信息的类
+ * */
 public class Action {
 	public String action="";        ////////Bulb_0.turn_bulb_on
 	public String actionPulse="";   ////////turn_bulb_on

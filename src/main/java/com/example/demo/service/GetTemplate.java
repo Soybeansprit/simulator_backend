@@ -324,7 +324,9 @@ public class GetTemplate {
 		return templates;
 	}
 	
-	//解析xml文件，获得template
+	/**
+	 * //解析xml文件，获得template
+	 * */
 	public List<Template> getTemplate(String path) throws DocumentException{
 		SAXReader reader= new SAXReader();
 		Document document = reader.read(new File(path));

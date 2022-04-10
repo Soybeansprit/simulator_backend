@@ -26,13 +26,9 @@ import com.example.demo.bean.Conflict;
 import com.example.demo.bean.ConflictReason;
 import com.example.demo.bean.DataTimeValue;
 import com.example.demo.bean.DeviceAnalysisResult;
-import com.example.demo.bean.DeviceDetail;
-import com.example.demo.bean.DeviceType;
 import com.example.demo.bean.IFDGraph.GraphNode;
 import com.example.demo.bean.IFDGraph.GraphNodeArrow;
 import com.example.demo.bean.JitterReason;
-import com.example.demo.bean.PropertyVerifyResult;
-import com.example.demo.bean.ReachableReason;
 import com.example.demo.bean.Rule;
 import com.example.demo.bean.RuleNode;
 import com.example.demo.bean.Scene;
@@ -184,74 +180,123 @@ public class DynamicAnalysisService {
 	}
 	
 	/////动态分析数据,包括设备状态冲突和设备抖动
-	public static void getAllScenariosDynamicAnalysis(List<Scene> scenes,List<DeviceDetail> devices,HashMap<String,Rule> rulesMap,String simulationTime,String equivalentTime,String intervalTime,List<GraphNode> graphNodes) {
-		/////rules=>rulesMap
-//		HashMap<String,Rule> rulesMap=new HashMap<>();
-//		for(Rule rule:rules) {
-//			rulesMap.put(rule.getRuleName(), rule);
+//	public static void getAllScenariosDynamicAnalysis(List<Scene> scenes,List<DeviceDetail> devices,HashMap<String,Rule> rulesMap,String simulationTime,String equivalentTime,String intervalTime,List<GraphNode> graphNodes) {
+//		/////rules=>rulesMap
+////		HashMap<String,Rule> rulesMap=new HashMap<>();
+////		for(Rule rule:rules) {
+////			rulesMap.put(rule.getRuleName(), rule);
+////		}
+//
+//		/////获得ifd上各节点
+////		List<GraphNode> graphNodes=StaticAnalysisService.getIFDNode(ifdFileName, filePath);
+//
+//		/////获得每条规则的前提rules
+////		List<RuleNode> rulePreRulesNodes=DynamicAnalysisService.getRulePreRules(graphNodes, rulesMap);
+//		ExecutorService executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(1000));
+//
+////		for(Scene scene:scenes) {
+////			/////单个场景分析
+////			Runnable analysisWork=new Runnable() {
+////
+////				@Override
+////				public void run() {
+////					// TODO Auto-generated method stub
+////					getSingleScenarioDynamicAnalysis(scene, devices, graphNodes, rulesMap,simulationTime,equivalentTime,intervalTime);
+////				}
+////			};
+////			executorService.execute(analysisWork);
+//////			getSingleScenarioDynamicAnalysis(scene, devices, graphNodes, rulesMap);
+//////			////先获得场景dataTimeValue和startTimeValueEndTimeValue的hashmap
+//////			getSceneDataHashMap(scene);
+//////			List<DeviceAnalysisResult> deviceAnalysisResults=new ArrayList<>();
+//////			for(DeviceDetail device:devices) {
+//////				///找到对应设备节点
+//////				GraphNode deviceNode=new GraphNode();
+//////				for(GraphNode node:graphNodes) {
+//////					if(node.getName().equals(device.getDeviceName())) {
+//////						deviceNode=node;
+//////						break;
+//////					}
+//////				}
+//////				////分析设备
+//////				DeviceAnalysisResult deviceAnalysisResult=new DeviceAnalysisResult();
+//////				deviceAnalysisResult.setDeviceName(device.getDeviceName());
+//////				List<ConflictReason> conflictReasons=DynamicAnalysisService.conflictAnalysis(scene.getDataTimeValuesHashMap().get(device.getDeviceName()));
+//////				List<JitterReason> jitterReasons=DynamicAnalysisService.jitterAnalysis(scene.getDataStartTimeValueEndTimeValuesHashMap().get(device.getDeviceName()), "300", "24", "300");
+//////				////分析问题原因
+//////				if(conflictReasons!=null) {
+//////					System.out.println(device.getDeviceName()+" conflict");
+//////					for(ConflictReason conflictReason:conflictReasons) {
+//////						////每次conflict原因
+//////						getConflictReason(scene, conflictReason, device, deviceNode,graphNodes,rulesMap);
+////////						System.out.println(causingRules);
+//////
+//////					}
+//////				}
+//////				if(jitterReasons.size()>0) {
+//////					System.out.println(device.getDeviceName()+" jitter");
+//////					for(JitterReason jitterReason:jitterReasons) {
+//////						////每次jitter原因
+//////						DynamicAnalysisService.getJitterReason(scene, jitterReason, device, deviceNode,graphNodes,rulesMap);
+////////						System.out.println(causingRules);
+//////					}
+//////				}
+//////
+//////
+//////				deviceAnalysisResult.setConflictReasons(conflictReasons);
+//////				deviceAnalysisResult.setJitterReasons(jitterReasons);
+//////				deviceAnalysisResults.add(deviceAnalysisResult);
+//////			}
+//////			scene.setDeviceAnalysisResults(deviceAnalysisResults);
+////		}
+////		executorService.shutdown();
+////		try {
+////			executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
+////		} catch (InterruptedException e) {
+////			// TODO Auto-generated catch block
+////			e.printStackTrace();
+////		}
+//
+//
+//
+//		HashMap<String,DeviceDetail> deviceHashMap=new HashMap<>();
+//		HashMap<String,GraphNode> deviceNodeHashMap=new HashMap<>();
+//		if(scenes.get(0)!=null) {
+//			for(DeviceDetail device:devices) {
+//				deviceHashMap.put(device.getDeviceName(), device);
+//				for(GraphNode node:graphNodes) {
+//					if(node.getName().equals(device.getDeviceName())) {
+//						deviceNodeHashMap.put(device.getDeviceName(), node);
+//						break;
+//					}
+//				}
+//			}
 //		}
-		
-		/////获得ifd上各节点
-//		List<GraphNode> graphNodes=StaticAnalysisService.getIFDNode(ifdFileName, filePath);
-		
-		/////获得每条规则的前提rules
-//		List<RuleNode> rulePreRulesNodes=DynamicAnalysisService.getRulePreRules(graphNodes, rulesMap);
-		ExecutorService executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(1000));
-		
+//		//////测试时间用
+//		long preProcessingStartTime=System.currentTimeMillis();
+//		for(Scene scene:scenes) {
+//			getSceneDataHashMap(scene);
+//			List<DeviceAnalysisResult> deviceAnalysisResults=new ArrayList<>();
+//			for(DeviceDetail device:devices) {
+//				DeviceAnalysisResult deviceAnalysisResult=new DeviceAnalysisResult();
+//				deviceAnalysisResult.setDeviceName(device.getDeviceName());
+//				deviceAnalysisResults.add(deviceAnalysisResult);
+//			}
+//			scene.setDeviceAnalysisResults(deviceAnalysisResults);
+//		}
+//		System.out.println("preProcessTime:"+(System.currentTimeMillis()-preProcessingStartTime));
+//		long conflcitStartTime=System.currentTimeMillis();
+//		/////conflict
 //		for(Scene scene:scenes) {
 //			/////单个场景分析
 //			Runnable analysisWork=new Runnable() {
-//				
 //				@Override
 //				public void run() {
 //					// TODO Auto-generated method stub
-//					getSingleScenarioDynamicAnalysis(scene, devices, graphNodes, rulesMap,simulationTime,equivalentTime,intervalTime);
+//					getSingleScenarioConflictAnalysis(scene, deviceHashMap, deviceNodeHashMap, graphNodes, rulesMap);
 //				}
 //			};
 //			executorService.execute(analysisWork);
-////			getSingleScenarioDynamicAnalysis(scene, devices, graphNodes, rulesMap);
-////			////先获得场景dataTimeValue和startTimeValueEndTimeValue的hashmap
-////			getSceneDataHashMap(scene);
-////			List<DeviceAnalysisResult> deviceAnalysisResults=new ArrayList<>();
-////			for(DeviceDetail device:devices) {
-////				///找到对应设备节点
-////				GraphNode deviceNode=new GraphNode();
-////				for(GraphNode node:graphNodes) {
-////					if(node.getName().equals(device.getDeviceName())) {
-////						deviceNode=node;
-////						break;
-////					}
-////				}
-////				////分析设备
-////				DeviceAnalysisResult deviceAnalysisResult=new DeviceAnalysisResult();
-////				deviceAnalysisResult.setDeviceName(device.getDeviceName());
-////				List<ConflictReason> conflictReasons=DynamicAnalysisService.conflictAnalysis(scene.getDataTimeValuesHashMap().get(device.getDeviceName()));
-////				List<JitterReason> jitterReasons=DynamicAnalysisService.jitterAnalysis(scene.getDataStartTimeValueEndTimeValuesHashMap().get(device.getDeviceName()), "300", "24", "300");
-////				////分析问题原因
-////				if(conflictReasons!=null) {
-////					System.out.println(device.getDeviceName()+" conflict");
-////					for(ConflictReason conflictReason:conflictReasons) {
-////						////每次conflict原因
-////						getConflictReason(scene, conflictReason, device, deviceNode,graphNodes,rulesMap);
-//////						System.out.println(causingRules);
-////						
-////					}
-////				}
-////				if(jitterReasons.size()>0) {
-////					System.out.println(device.getDeviceName()+" jitter");
-////					for(JitterReason jitterReason:jitterReasons) {
-////						////每次jitter原因
-////						DynamicAnalysisService.getJitterReason(scene, jitterReason, device, deviceNode,graphNodes,rulesMap);
-//////						System.out.println(causingRules);
-////					}
-////				}
-////				
-////				
-////				deviceAnalysisResult.setConflictReasons(conflictReasons);
-////				deviceAnalysisResult.setJitterReasons(jitterReasons);
-////				deviceAnalysisResults.add(deviceAnalysisResult);
-////			}
-////			scene.setDeviceAnalysisResults(deviceAnalysisResults);
 //		}
 //		executorService.shutdown();
 //		try {
@@ -260,256 +305,207 @@ public class DynamicAnalysisService {
 //			// TODO Auto-generated catch block
 //			e.printStackTrace();
 //		}
-		
-		
-		
-		HashMap<String,DeviceDetail> deviceHashMap=new HashMap<>();
-		HashMap<String,GraphNode> deviceNodeHashMap=new HashMap<>();
-		if(scenes.get(0)!=null) {
-			for(DeviceDetail device:devices) {
-				deviceHashMap.put(device.getDeviceName(), device);
-				for(GraphNode node:graphNodes) {
-					if(node.getName().equals(device.getDeviceName())) {
-						deviceNodeHashMap.put(device.getDeviceName(), node);
-						break;
-					}
-				}
-			}
-		}
-		//////测试时间用
-		long preProcessingStartTime=System.currentTimeMillis();
-		for(Scene scene:scenes) {
-			getSceneDataHashMap(scene);
-			List<DeviceAnalysisResult> deviceAnalysisResults=new ArrayList<>();
-			for(DeviceDetail device:devices) {
-				DeviceAnalysisResult deviceAnalysisResult=new DeviceAnalysisResult();
-				deviceAnalysisResult.setDeviceName(device.getDeviceName());
-				deviceAnalysisResults.add(deviceAnalysisResult);
-			}
-			scene.setDeviceAnalysisResults(deviceAnalysisResults);
-		}
-		System.out.println("preProcessTime:"+(System.currentTimeMillis()-preProcessingStartTime));
-		long conflcitStartTime=System.currentTimeMillis();
-		/////conflict
-		for(Scene scene:scenes) {
-			/////单个场景分析
-			Runnable analysisWork=new Runnable() {
-				@Override
-				public void run() {
-					// TODO Auto-generated method stub
-					getSingleScenarioConflictAnalysis(scene, deviceHashMap, deviceNodeHashMap, graphNodes, rulesMap);
-				}
-			};
-			executorService.execute(analysisWork);
-		}
-		executorService.shutdown();
-		try {
-			executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		System.out.println("conflictTime:"+(System.currentTimeMillis()-conflcitStartTime));
-		executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(1000));
-		long jitterStartTime=System.currentTimeMillis();
-		////jitter
-		for(Scene scene:scenes) {
-			/////单个场景分析
-			Runnable analysisWork=new Runnable() {
-				@Override
-				public void run() {
-					// TODO Auto-generated method stub
-					getSingleScenarioJitterAnalysis(scene, deviceHashMap, deviceNodeHashMap, graphNodes, rulesMap, simulationTime, equivalentTime, intervalTime);
-				}
-			};
-			executorService.execute(analysisWork);
-		}
-		executorService.shutdown();
-		try {
-			executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		System.out.println("jitterTime:"+(System.currentTimeMillis()-jitterStartTime));
-		
-	}
+//		System.out.println("conflictTime:"+(System.currentTimeMillis()-conflcitStartTime));
+//		executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(1000));
+//		long jitterStartTime=System.currentTimeMillis();
+//		////jitter
+//		for(Scene scene:scenes) {
+//			/////单个场景分析
+//			Runnable analysisWork=new Runnable() {
+//				@Override
+//				public void run() {
+//					// TODO Auto-generated method stub
+//					getSingleScenarioJitterAnalysis(scene, deviceHashMap, deviceNodeHashMap, graphNodes, rulesMap, simulationTime, equivalentTime, intervalTime);
+//				}
+//			};
+//			executorService.execute(analysisWork);
+//		}
+//		executorService.shutdown();
+//		try {
+//			executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//		System.out.println("jitterTime:"+(System.currentTimeMillis()-jitterStartTime));
+//
+//	}
 	
-	public static void getSingleScenarioConflictAnalysis(Scene scene,HashMap<String,DeviceDetail> deviceHashMap,HashMap<String,GraphNode> deviceNodeHashMap,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap) {
-		for(DeviceAnalysisResult deviceAnalysisResult:scene.getDeviceAnalysisResults()) {
-			String deviceName=deviceAnalysisResult.getDeviceName();
-			DeviceDetail device=deviceHashMap.get(deviceName);
-			GraphNode deviceNode=deviceNodeHashMap.get(deviceName);
-			List<ConflictReason> conflictReasons=DynamicAnalysisService.conflictAnalysis(scene.getDataTimeValuesHashMap().get(device.getDeviceName()));
-			if(conflictReasons.size()>0) {
+//	public static void getSingleScenarioConflictAnalysis(Scene scene,HashMap<String,DeviceDetail> deviceHashMap,HashMap<String,GraphNode> deviceNodeHashMap,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap) {
+//		for(DeviceAnalysisResult deviceAnalysisResult:scene.getDeviceAnalysisResults()) {
+//			String deviceName=deviceAnalysisResult.getDeviceName();
+//			DeviceDetail device=deviceHashMap.get(deviceName);
+//			GraphNode deviceNode=deviceNodeHashMap.get(deviceName);
+//			List<ConflictReason> conflictReasons=DynamicAnalysisService.conflictAnalysis(scene.getDataTimeValuesHashMap().get(device.getDeviceName()));
+//			if(conflictReasons.size()>0) {
+////				System.out.println(device.getDeviceName()+" conflict");
+//				for(ConflictReason conflictReason:conflictReasons) {
+//					////每次conflict原因
+//					getConflictReason(scene, conflictReason, device, deviceNode,graphNodes,rulesMap);
+////					System.out.println(causingRules);
+//
+//				}
+//			}
+//			deviceAnalysisResult.setConflictReasons(conflictReasons);
+//		}
+//
+//	}
+//	public static void getSingleScenarioJitterAnalysis(Scene scene,HashMap<String,DeviceDetail> deviceHashMap,HashMap<String,GraphNode> deviceNodeHashMap,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap,String simulationTime,String equivalentTime,String intervalTime) {
+//		for(DeviceAnalysisResult deviceAnalysisResult:scene.getDeviceAnalysisResults()) {
+//			String deviceName=deviceAnalysisResult.getDeviceName();
+//			DeviceDetail device=deviceHashMap.get(deviceName);
+//			GraphNode deviceNode=deviceNodeHashMap.get(deviceName);
+//			//////分别获得check 冲突时间、jitter的时间；以及分别给出原因的时间
+//			List<JitterReason> jitterReasons=DynamicAnalysisService.jitterAnalysis(scene.getDataStartTimeValueEndTimeValuesHashMap().get(device.getDeviceName()), simulationTime, equivalentTime, intervalTime);
+//			////分析问题原因
+//
+//			if(jitterReasons.size()>0) {
+////				System.out.println(device.getDeviceName()+" jitter");
+//				for(JitterReason jitterReason:jitterReasons) {
+//					////每次jitter原因
+//					DynamicAnalysisService.getJitterReason(scene, jitterReason, device, deviceNode,graphNodes,rulesMap);
+////					System.out.println(causingRules);
+//				}
+//			}
+//			deviceAnalysisResult.setJitterReasons(jitterReasons);
+//		}
+//
+//
+//	}
+//
+//	public static void getSingleScenarioDynamicAnalysis(Scene scene,List<DeviceDetail> devices,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap,String simulationTime,String equivalentTime,String intervalTime) {
+//		////先获得场景dataTimeValue和startTimeValueEndTimeValue的hashmap
+//		getSceneDataHashMap(scene);
+//		List<DeviceAnalysisResult> deviceAnalysisResults=new ArrayList<>();
+//		for(DeviceDetail device:devices) {
+//			///找到对应设备节点
+//			GraphNode deviceNode=new GraphNode();
+//			for(GraphNode node:graphNodes) {
+//				if(node.getName().equals(device.getDeviceName())) {
+//					deviceNode=node;
+//					break;
+//				}
+//			}
+//			////分析设备
+//			DeviceAnalysisResult deviceAnalysisResult=new DeviceAnalysisResult();
+//			deviceAnalysisResult.setDeviceName(device.getDeviceName());
+//			//////分别获得check 冲突时间、jitter的时间；以及分别给出原因的时间
+//			List<ConflictReason> conflictReasons=DynamicAnalysisService.conflictAnalysis(scene.getDataTimeValuesHashMap().get(device.getDeviceName()));
+//			List<JitterReason> jitterReasons=DynamicAnalysisService.jitterAnalysis(scene.getDataStartTimeValueEndTimeValuesHashMap().get(device.getDeviceName()), simulationTime, equivalentTime, intervalTime);
+//			////分析问题原因
+//			if(conflictReasons.size()>0) {
 //				System.out.println(device.getDeviceName()+" conflict");
-				for(ConflictReason conflictReason:conflictReasons) {
-					////每次conflict原因
-					getConflictReason(scene, conflictReason, device, deviceNode,graphNodes,rulesMap);
-//					System.out.println(causingRules);
-					
-				}
-			}
-			deviceAnalysisResult.setConflictReasons(conflictReasons);
-		}
-
-	}
-	public static void getSingleScenarioJitterAnalysis(Scene scene,HashMap<String,DeviceDetail> deviceHashMap,HashMap<String,GraphNode> deviceNodeHashMap,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap,String simulationTime,String equivalentTime,String intervalTime) {
-		for(DeviceAnalysisResult deviceAnalysisResult:scene.getDeviceAnalysisResults()) {
-			String deviceName=deviceAnalysisResult.getDeviceName();
-			DeviceDetail device=deviceHashMap.get(deviceName);
-			GraphNode deviceNode=deviceNodeHashMap.get(deviceName);
-			//////分别获得check 冲突时间、jitter的时间；以及分别给出原因的时间
-			List<JitterReason> jitterReasons=DynamicAnalysisService.jitterAnalysis(scene.getDataStartTimeValueEndTimeValuesHashMap().get(device.getDeviceName()), simulationTime, equivalentTime, intervalTime);
-			////分析问题原因
-			
-			if(jitterReasons.size()>0) {
+//				for(ConflictReason conflictReason:conflictReasons) {
+//					////每次conflict原因
+//					getConflictReason(scene, conflictReason, device, deviceNode,graphNodes,rulesMap);
+////					System.out.println(causingRules);
+//
+//				}
+//			}
+//			if(jitterReasons.size()>0) {
 //				System.out.println(device.getDeviceName()+" jitter");
-				for(JitterReason jitterReason:jitterReasons) {
-					////每次jitter原因
-					DynamicAnalysisService.getJitterReason(scene, jitterReason, device, deviceNode,graphNodes,rulesMap);
-//					System.out.println(causingRules);
-				}
-			}
-			deviceAnalysisResult.setJitterReasons(jitterReasons);
-		}
-		
-
-	}
-	
-	public static void getSingleScenarioDynamicAnalysis(Scene scene,List<DeviceDetail> devices,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap,String simulationTime,String equivalentTime,String intervalTime) {
-		////先获得场景dataTimeValue和startTimeValueEndTimeValue的hashmap
-		getSceneDataHashMap(scene);
-		List<DeviceAnalysisResult> deviceAnalysisResults=new ArrayList<>();
-		for(DeviceDetail device:devices) {
-			///找到对应设备节点
-			GraphNode deviceNode=new GraphNode();
-			for(GraphNode node:graphNodes) {
-				if(node.getName().equals(device.getDeviceName())) {
-					deviceNode=node;
-					break;
-				}
-			}
-			////分析设备
-			DeviceAnalysisResult deviceAnalysisResult=new DeviceAnalysisResult();
-			deviceAnalysisResult.setDeviceName(device.getDeviceName());
-			//////分别获得check 冲突时间、jitter的时间；以及分别给出原因的时间
-			List<ConflictReason> conflictReasons=DynamicAnalysisService.conflictAnalysis(scene.getDataTimeValuesHashMap().get(device.getDeviceName()));
-			List<JitterReason> jitterReasons=DynamicAnalysisService.jitterAnalysis(scene.getDataStartTimeValueEndTimeValuesHashMap().get(device.getDeviceName()), simulationTime, equivalentTime, intervalTime);
-			////分析问题原因
-			if(conflictReasons.size()>0) {
-				System.out.println(device.getDeviceName()+" conflict");
-				for(ConflictReason conflictReason:conflictReasons) {
-					////每次conflict原因
-					getConflictReason(scene, conflictReason, device, deviceNode,graphNodes,rulesMap);
-//					System.out.println(causingRules);
-					
-				}
-			}
-			if(jitterReasons.size()>0) {
-				System.out.println(device.getDeviceName()+" jitter");
-				for(JitterReason jitterReason:jitterReasons) {
-					////每次jitter原因
-					DynamicAnalysisService.getJitterReason(scene, jitterReason, device, deviceNode,graphNodes,rulesMap);
-//					System.out.println(causingRules);
-				}
-			}
-			
-			
-			deviceAnalysisResult.setConflictReasons(conflictReasons);
-			deviceAnalysisResult.setJitterReasons(jitterReasons);
-			deviceAnalysisResults.add(deviceAnalysisResult);
-		}
-		scene.setDeviceAnalysisResults(deviceAnalysisResults);
-	}
-	
-	public static void  getJitterReason(Scene scene,JitterReason jitterReason,DeviceDetail device,GraphNode deviceNode,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap) {
-		////IFD上找所有规则的前提规则
-		List<RuleNode> rulePreRules=getRulePreRules(graphNodes, rulesMap);
-		HashMap<String,RuleNode> rulePreRulesMap=new HashMap<>();
-		List<CauseRule> causingRules=new ArrayList<>();
-		for(RuleNode rulePreRule:rulePreRules) {
-			rulePreRulesMap.put(rulePreRule.getRule().getRuleName(), rulePreRule);
-		}
-		List<Integer> differentValues=new ArrayList<>();  ///抖动的状态
-		for(double[] timeValue:jitterReason.getJitter()) {
-			boolean exist=false;
-			Integer stateValue=(int) timeValue[1];  ////状态值
-			for(Integer value:differentValues) {
-				if(value.equals(stateValue)) {
-					exist=true;
-					break;
-				}
-			}
-			if(!exist) {
-				differentValues.add(stateValue);
-			}
-		}
-		for(Integer value:differentValues) {
-			////找到对应的设备状态的action
-			for(String[] stateActionValue:device.getDeviceType().stateActionValues) {
-				if(value==Integer.parseInt(stateActionValue[2])) {
-					String action=stateActionValue[1];
-					////找到IFD上的相关规则
-					List<RuleNode> relatedRulePreRules=getRelatedRulesFromIFD(action, deviceNode,rulePreRulesMap);
-					////再看能否被触发
-					List<RuleNode> stateCausingRules=getCanTriggeredRules(relatedRulePreRules, scene.getDataStartTimeValueEndTimeValuesHashMap(), jitterReason.getJitter().get(0)[0], jitterReason.getJitter().get(jitterReason.getJitter().size()-1)[0]);
-					List<RuleNode> newStateCausingRules=new ArrayList<>();
-					for(RuleNode causingRule:stateCausingRules) {
-						newStateCausingRules.add(avoidRecurse(causingRule, new ArrayList<>()));
-						
-					}
-					CauseRule causingRule=new CauseRule();
-					causingRule.setState(stateActionValue[0]);
-					causingRule.setValue(Integer.parseInt(stateActionValue[2]));
-					causingRule.setStateCausingRules(newStateCausingRules);
-					causingRules.add(causingRule);
-				}
-			}
-		}
-		jitterReason.setCausingRules(causingRules);
-	}
-	
-	//////寻找哪些规则导致的状态冲突和抖动
-	public static void getConflictReason(Scene scene,ConflictReason conflictReason,DeviceDetail device,GraphNode deviceNode,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap) {
-
-		////IFD上找所有规则的前提规则
-		List<RuleNode> rulePreRules=getRulePreRules(graphNodes, rulesMap);
-		HashMap<String,RuleNode> rulePreRulesMap=new HashMap<>();
-//		List<List<RuleNode>> statesCausingRules=new ArrayList<>();
-		List<CauseRule> causingRules=new ArrayList<>();
-		for(RuleNode rulePreRule:rulePreRules) {
-			rulePreRulesMap.put(rulePreRule.getRule().getRuleName(), rulePreRule);
-		}
-		for(double value:conflictReason.getConflict().getConflictValues()) {
-			////找到值对应的action
-			
-			for(String[] stateActionValue:device.getDeviceType().stateActionValues) {
-				if((int)value==Integer.parseInt(stateActionValue[2])) {
-					String action=stateActionValue[1];
-//					List<String> stateCausingRules=new ArrayList<>();
-					////找到IFD上的该action相关规则，以及前提规则
-					List<RuleNode> relatedRulePreRules=getRelatedRulesFromIFD(action, deviceNode,rulePreRulesMap);
-					
-					////再看能否被触发
-					////找到相关规则
-					List<RuleNode> stateCausingRules=getCanTriggeredRules(relatedRulePreRules, scene.getDataStartTimeValueEndTimeValuesHashMap(), conflictReason.getConflict().getTime());
-					List<RuleNode> newStateCausingRules=new ArrayList<>();
-					for(RuleNode causingRule:stateCausingRules) {
-						newStateCausingRules.add(avoidRecurse(causingRule, new ArrayList<>()));
-						
-					}
-					CauseRule causingRule=new CauseRule();
-					causingRule.setState(stateActionValue[0]);
-					causingRule.setValue(Integer.parseInt(stateActionValue[2]));
-					causingRule.setStateCausingRules(newStateCausingRules);
-					causingRules.add(causingRule);
-//					statesCausingRules.add(stateCausingRules);
-				}
-			}
-		}
-		conflictReason.setCausingRules(causingRules);
-	}
+//				for(JitterReason jitterReason:jitterReasons) {
+//					////每次jitter原因
+//					DynamicAnalysisService.getJitterReason(scene, jitterReason, device, deviceNode,graphNodes,rulesMap);
+////					System.out.println(causingRules);
+//				}
+//			}
+//
+//
+//			deviceAnalysisResult.setConflictReasons(conflictReasons);
+//			deviceAnalysisResult.setJitterReasons(jitterReasons);
+//			deviceAnalysisResults.add(deviceAnalysisResult);
+//		}
+//		scene.setDeviceAnalysisResults(deviceAnalysisResults);
+//	}
+//
+//	public static void  getJitterReason(Scene scene,JitterReason jitterReason,DeviceDetail device,GraphNode deviceNode,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap) {
+//		////IFD上找所有规则的前提规则
+//		List<RuleNode> rulePreRules=getRulePreRules(graphNodes, rulesMap);
+//		HashMap<String,RuleNode> rulePreRulesMap=new HashMap<>();
+//		List<CauseRule> causingRules=new ArrayList<>();
+//		for(RuleNode rulePreRule:rulePreRules) {
+//			rulePreRulesMap.put(rulePreRule.getRule().getRuleName(), rulePreRule);
+//		}
+//		List<Integer> differentValues=new ArrayList<>();  ///抖动的状态
+//		for(double[] timeValue:jitterReason.getJitter()) {
+//			boolean exist=false;
+//			Integer stateValue=(int) timeValue[1];  ////状态值
+//			for(Integer value:differentValues) {
+//				if(value.equals(stateValue)) {
+//					exist=true;
+//					break;
+//				}
+//			}
+//			if(!exist) {
+//				differentValues.add(stateValue);
+//			}
+//		}
+//		for(Integer value:differentValues) {
+//			////找到对应的设备状态的action
+//			for(String[] stateActionValue:device.getDeviceType().stateActionValues) {
+//				if(value==Integer.parseInt(stateActionValue[2])) {
+//					String action=stateActionValue[1];
+//					////找到IFD上的相关规则
+//					List<RuleNode> relatedRulePreRules=getRelatedRulesFromIFD(action, deviceNode,rulePreRulesMap);
+//					////再看能否被触发
+//					List<RuleNode> stateCausingRules=getCanTriggeredRules(relatedRulePreRules, scene.getDataStartTimeValueEndTimeValuesHashMap(), jitterReason.getJitter().get(0)[0], jitterReason.getJitter().get(jitterReason.getJitter().size()-1)[0]);
+//					List<RuleNode> newStateCausingRules=new ArrayList<>();
+//					for(RuleNode causingRule:stateCausingRules) {
+//						newStateCausingRules.add(avoidRecurse(causingRule, new ArrayList<>()));
+//
+//					}
+//					CauseRule causingRule=new CauseRule();
+//					causingRule.setState(stateActionValue[0]);
+//					causingRule.setValue(Integer.parseInt(stateActionValue[2]));
+//					causingRule.setStateCausingRules(newStateCausingRules);
+//					causingRules.add(causingRule);
+//				}
+//			}
+//		}
+//		jitterReason.setCausingRules(causingRules);
+//	}
+//
+//	//////寻找哪些规则导致的状态冲突和抖动
+//	public static void getConflictReason(Scene scene,ConflictReason conflictReason,DeviceDetail device,GraphNode deviceNode,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap) {
+//
+//		////IFD上找所有规则的前提规则
+//		List<RuleNode> rulePreRules=getRulePreRules(graphNodes, rulesMap);
+//		HashMap<String,RuleNode> rulePreRulesMap=new HashMap<>();
+////		List<List<RuleNode>> statesCausingRules=new ArrayList<>();
+//		List<CauseRule> causingRules=new ArrayList<>();
+//		for(RuleNode rulePreRule:rulePreRules) {
+//			rulePreRulesMap.put(rulePreRule.getRule().getRuleName(), rulePreRule);
+//		}
+//		for(double value:conflictReason.getConflict().getConflictValues()) {
+//			////找到值对应的action
+//
+//			for(String[] stateActionValue:device.getDeviceType().stateActionValues) {
+//				if((int)value==Integer.parseInt(stateActionValue[2])) {
+//					String action=stateActionValue[1];
+////					List<String> stateCausingRules=new ArrayList<>();
+//					////找到IFD上的该action相关规则，以及前提规则
+//					List<RuleNode> relatedRulePreRules=getRelatedRulesFromIFD(action, deviceNode,rulePreRulesMap);
+//
+//					////再看能否被触发
+//					////找到相关规则
+//					List<RuleNode> stateCausingRules=getCanTriggeredRules(relatedRulePreRules, scene.getDataStartTimeValueEndTimeValuesHashMap(), conflictReason.getConflict().getTime());
+//					List<RuleNode> newStateCausingRules=new ArrayList<>();
+//					for(RuleNode causingRule:stateCausingRules) {
+//						newStateCausingRules.add(avoidRecurse(causingRule, new ArrayList<>()));
+//
+//					}
+//					CauseRule causingRule=new CauseRule();
+//					causingRule.setState(stateActionValue[0]);
+//					causingRule.setValue(Integer.parseInt(stateActionValue[2]));
+//					causingRule.setStateCausingRules(newStateCausingRules);
+//					causingRules.add(causingRule);
+////					statesCausingRules.add(stateCausingRules);
+//				}
+//			}
+//		}
+//		conflictReason.setCausingRules(causingRules);
+//	}
 	
 	/////////为避免递归存在，删除循环递归的pre规则
 	public static RuleNode avoidRecurse(RuleNode causingRule,List<RuleNode> causingRules){
@@ -779,355 +775,8 @@ public class DynamicAnalysisService {
 		
 		return rulePreRulesNodes;
 	}
-	
-	public static List<PropertyVerifyResult> analizeAllproperties(List<String> properties,List<Scene> scenes,List<DeviceDetail> devices,List<BiddableType> biddableTypes,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap) {
-		List<PropertyVerifyResult> propertyVerifyResults=new ArrayList<>();
-		for(Scene scene:scenes) {
-			getSceneDataHashMap(scene);
-		}
-		for(String property:properties) {
-			System.out.println(property);
-			long propertyStartTime=System.currentTimeMillis();
-			PropertyVerifyResult propertyVerifyResult=propertyAnalysis(property, scenes, devices, biddableTypes, graphNodes, rulesMap);
-			System.out.println("propertyTime:"+(System.currentTimeMillis()-propertyStartTime));
-			propertyVerifyResults.add(propertyVerifyResult);
-		}
-		return propertyVerifyResults;
-	}
-	
-	///////property验证，看其是否可达，如果可达找原因，对于设备状态，找到触发规则，看在当前能否触发
-	///////"AirConditioner_0.cool & Window_0.wopen"分别找到触发cool和wopen的规则，看都能否触发
-	public static PropertyVerifyResult propertyAnalysis(String property,List<Scene> scenes,List<DeviceDetail> devices,List<BiddableType> biddableTypes,List<GraphNode> graphNodes,HashMap<String,Rule> rulesMap) {
-		PropertyVerifyResult propertyVerifyResult=new PropertyVerifyResult();
-		propertyVerifyResult.setProperty(property);
-		System.out.println(property);
-		
-		////解析出property中的conditions   temperature>30 & Window_0.wclosed
-		List<String> conditions=Arrays.asList(property.split("&"));
-		/////看有哪些场景哪些时间段这些条件能同时满足
-		/////分别找到各个condition满足的时间段，然后取交集
-		List<HashMap<String,List<double[]>>> saperateSatisfySceneTimeHashMapList=new ArrayList<>();
-		List<String[]> deviceActionStateValues=new ArrayList<>();
-		for(String condition:conditions) {
-			condition=condition.trim();
-			String[] attrVal=RuleService.getTriAttrVal(condition, biddableTypes);
-			if(attrVal[1].equals(".")) {
-				String stateValue="";
-				////说明是设备状态
-				device:
-				for(DeviceDetail device:devices) {
-					if(device.getDeviceName().equals(attrVal[0])) {
-						DeviceType deviceType=device.getDeviceType();
-						for(String[] stateActionValue:deviceType.stateActionValues) {
-							if(stateActionValue[0].equals(attrVal[2])) {
-								////找到状态对应的值
-								stateValue=stateActionValue[2];
-								String[] deviceActionStateValue=new String[4];  
-								deviceActionStateValue[0]=device.getDeviceName();   ////设备名
-								deviceActionStateValue[1]=stateActionValue[1];     ////设备状态对应的action
-								deviceActionStateValue[2]=stateActionValue[0];     ////state
-								deviceActionStateValue[3]=stateActionValue[2];     /////value
-								deviceActionStateValues.add(deviceActionStateValue);  ///记录action
-								break device;
-							}
-						}
-					}
-				}
-				////将设备状态改为 device = stateValue
-				attrVal[1]="=";
-				attrVal[2]=stateValue;
-			}
-			/////找到这个condition满足的场景和时间段 scenarioName,String --- timelist,List<double[]>，为double[2], startTime,endTime
-			////HashMap<String,List<double[]>> 满足的场景和时间段   ，key:scenarioName value:timelist
-			HashMap<String,List<double[]>> satisfySceneTimeHashMap=getSatisfySceneTimeListHashMap(attrVal, scenes, devices, biddableTypes);
-			saperateSatisfySceneTimeHashMapList.add(satisfySceneTimeHashMap);
-		}
-		/////看是否存在交集
-		HashMap<String,List<double[]>> allSatisfySceneTimeHashMap=new HashMap<>();
-		for(HashMap<String,List<double[]>> saperateSatisfySceneTimeHashMap:saperateSatisfySceneTimeHashMapList) {
-			if(allSatisfySceneTimeHashMap.isEmpty()) {
-				////如果是空的，表明是第一个,把第一个condition的hashMap存入，作为起始
-				for(Entry<String, List<double[]>> sceneTimeList:saperateSatisfySceneTimeHashMap.entrySet()) {
-					allSatisfySceneTimeHashMap.put(sceneTimeList.getKey(), sceneTimeList.getValue());
-				}
-			}else {
-				for(Entry<String, List<double[]>> sceneTimeList:saperateSatisfySceneTimeHashMap.entrySet()) {
-					////分场景取交集
-					List<double[]> lastSatisfyTimeList=allSatisfySceneTimeHashMap.get(sceneTimeList.getKey());
-					if(lastSatisfyTimeList!=null&&sceneTimeList.getValue()!=null) {
-						////不为空则取交集
-						List<double[]> satisfyTimeList=getIntersaction(lastSatisfyTimeList, sceneTimeList.getValue());
-						if(satisfyTimeList.size()==0) {   //如果没有交集，则为null
-							satisfyTimeList=null;
-						}
-						allSatisfySceneTimeHashMap.put(sceneTimeList.getKey(), satisfyTimeList);
-					}else {
-						allSatisfySceneTimeHashMap.put(sceneTimeList.getKey(), null);
-					}
-				}
-			}
-		}
-		/////看是否有交集,存在交集则说明property可达,但交集的时间不能太短，因为时间太短都还没反应过来呢，不小于1s吧
-		////得到所有能同时满足的时间段，寻找原因
-		////先获得设备状态对应的action。
-		
-		boolean isReachable=false;
-		for(Entry<String, List<double[]>> sceneSatisfyTimeList:allSatisfySceneTimeHashMap.entrySet()) {
-			if(sceneSatisfyTimeList.getValue()!=null) {
-				List<double[]> satisfyTimeList=sceneSatisfyTimeList.getValue();
-				for(double[] satisfyTime:satisfyTimeList) {
-					if((satisfyTime[1]-satisfyTime[0])>1) {
-						isReachable=true;
-						/////可达的话就要找原因
-//						System.out.println("Property is reachable.");
-						///获得对应场景
-						Scene scene=new Scene();
-						for(Scene sce:scenes) {
-							if(sce.getScenarioName().equals(sceneSatisfyTimeList.getKey())) {
-								scene=sce;
-							}
-						}
-						////ReachableReason
-						ReachableReason reachableReason=new ReachableReason();
-						reachableReason.setSatisfyIntervalTime(satisfyTime);  ////可达区间，找到该区间可达原因
-						reachableReason.setScenarioName(sceneSatisfyTimeList.getKey());/////可达的场景
-						////IFD上找所有规则的前提规则
-						List<RuleNode> rulePreRules=getRulePreRules(graphNodes, rulesMap);
-						HashMap<String,RuleNode> rulePreRulesMap=new HashMap<>();
-						List<List<RuleNode>> statesCausingRules=new ArrayList<>();
-						for(RuleNode rulePreRule:rulePreRules) {
-							rulePreRulesMap.put(rulePreRule.getRule().getRuleName(), rulePreRule);
-						}
-						////找对应触发的规则
-						for(String[] deviceActionStateValue:deviceActionStateValues) {
-							////分别找到原因
-							////找到IFD上的相关规则
-							////找到对应的设备节点
-							GraphNode deviceNode=new GraphNode();
-							for(GraphNode node:graphNodes) {
-								if(node.getName().equals(deviceActionStateValue[0])) {
-								////找到对应的设备节点
-									deviceNode=node;
-									break;
-								}
-							}
-							////某个状态的causingRules
-							CauseRule causingRule=new CauseRule();
-							causingRule.setState(deviceActionStateValue[0]+"."+deviceActionStateValue[2]);   ////device.state
-							causingRule.setValue(Integer.parseInt(deviceActionStateValue[3]));  ////value
-							List<RuleNode> relatedRulePreRules=getRelatedRulesFromIFD(deviceActionStateValue[1], deviceNode,rulePreRulesMap);
-							////再看能否被触发
-							List<RuleNode> stateCausingRules=getCanTriggeredRules(relatedRulePreRules, scene.getDataStartTimeValueEndTimeValuesHashMap(), satisfyTime[0], satisfyTime[1]);
-							causingRule.setStateCausingRules(stateCausingRules);
-							reachableReason.getCausingRules().add(causingRule);
-							statesCausingRules.add(stateCausingRules);
-							
 
-						}
-						propertyVerifyResult.getReachableReasons().add(reachableReason);
-//						System.out.println(statesCausingRules);
-					}
-				}
-			}
-		}
-		if(!isReachable) {
-			System.out.println("Property is not reachabel.");
-		}
-		if(isReachable) {
-			/////如果可达的话，就看是否已经有一条对应规则，当其中一个条件满足时，则会使另一个条件不满足，如果没有则建议添加这条规则
-			boolean existUnsatRule=false;
-			if(deviceActionStateValues.size()==1) {
-				////只有一个是设备相关的
-				for(String condition:conditions) {
-					condition=condition.trim();
-					////找trigger相关
-					String[] attrVal=RuleService.getTriAttrVal(condition, biddableTypes);
-					if(!attrVal[1].equals(".")) {
-						////不是设备相关的
-						for(Entry<String,Rule> ruleKey:rulesMap.entrySet()) {
-							Rule rule=ruleKey.getValue();
-							if(rule.getTrigger().size()==1) {
-								////只有一个trigger
-								////首先有对应的使之不满足的action
-								boolean existUnsatAction=false;
-								for(String action:rule.getAction()) {
-									String deviceName=action.substring(0,action.indexOf(".")).trim();
-									String actionName=action.substring(action.indexOf(".")+1).trim();
-									if(deviceName.equals(deviceActionStateValues.get(0)[0])&&!actionName.equals(deviceActionStateValues.get(0)[1])) {
-										existUnsatAction=true;
-									}
-								}
-								if(!existUnsatAction) {
-									continue;
-								}
-								////再判断trigger是否包含
-								String[] attrVal2=RuleService.getTriAttrVal(rule.getTrigger().get(0), biddableTypes);
-								if(!attrVal2[1].equals(".")) {
-									if(attrVal2[0].equals(attrVal[0])) {
-										///相同属性,看attrVal2是否包含attrVal
-										if(attrVal[1].contains(">")&&attrVal2[1].contains(">")) {
-											if(Double.parseDouble(attrVal2[2])<=Double.parseDouble(attrVal[2])) {
-												existUnsatRule=true;
-												propertyVerifyResult.setHasCorrespondRule(existUnsatRule);
-												propertyVerifyResult.getCorrespondingRules().add(rule);
-												break;
-											}
-										}else if(attrVal[1].contains("<")&&attrVal2[1].contains("<")) {
-											if(Double.parseDouble(attrVal2[2])>=Double.parseDouble(attrVal[2])) {
-												existUnsatRule=true;
-												propertyVerifyResult.setHasCorrespondRule(existUnsatRule);
-												propertyVerifyResult.getCorrespondingRules().add(rule);
-												break;
-											}
-										}else if(attrVal[1].equals("=")&&attrVal2[1].equals("=")) {
-											if(Integer.parseInt(attrVal2[2])==Integer.parseInt(attrVal[2])) {
-												existUnsatRule=true;
-												propertyVerifyResult.setHasCorrespondRule(existUnsatRule);
-												propertyVerifyResult.getCorrespondingRules().add(rule);
-												break;
-											}
-										}
-										
-									}
-								}
-							}
-						}
-						if(!existUnsatRule) {
-							////如果不存在使之不满足的规则
-							propertyVerifyResult.setHasCorrespondRule(existUnsatRule);
-							/////建议添加如下规则
 
-							for(DeviceDetail device:devices) {
-								if(device.getDeviceName().equals(deviceActionStateValues.get(0)[0])){
-									////找到对应设备
-									List<String[]> stateActionValues=device.getDeviceType().getStateActionValues();
-									for(String[] stateActionValue:stateActionValues) {
-										if(!stateActionValue[1].equals(deviceActionStateValues.get(0)[1])) {
-											////找到不一样的action
-											Rule suggestRule=new Rule();
-											////trigger
-											suggestRule.getTrigger().add(condition);
-											/////action根据设备找
-											suggestRule.getAction().add(device.getDeviceName()+"."+stateActionValue[1]);
-											suggestRule.setRuleContent("IF "+condition+" THEN "+device.getDeviceName()+"."+stateActionValue[1]);
-											propertyVerifyResult.getCorrespondingRules().add(suggestRule);
-										}
-									}
-									break;
-								}
-							}
-						}
-						break;
-					}
-					
-				}
-				
-			}else if(deviceActionStateValues.size()==2) {
-				/////如果两个都是设备相关的
-
-				for(Entry<String,Rule> ruleKey:rulesMap.entrySet()) {
-					Rule rule=ruleKey.getValue();
-					if(rule.getTrigger().size()==1) {
-						////只有一个trigger
-						////首先有对应的使之不满足的action
-						boolean existUnsatAction=false;
-						boolean num0Exist=false;  ////表示deviceActionStateValues.get(0)的unsatAction是否存在
-						boolean num1Exist=false;  ////表示deviceActionStateValues.get(1)的unsatAction是否存在
-						for(String action:rule.getAction()) {
-							String deviceName=action.substring(0,action.indexOf(".")).trim();
-							String actionName=action.substring(action.indexOf(".")+1).trim();
-							if(deviceName.equals(deviceActionStateValues.get(0)[0])&&!actionName.equals(deviceActionStateValues.get(0)[1])) {
-								existUnsatAction=true;
-								num0Exist=true;
-							}else if(deviceName.equals(deviceActionStateValues.get(1)[0])&&!actionName.equals(deviceActionStateValues.get(1)[1])) {
-								existUnsatAction=true;
-								num1Exist=true;
-							}
-							
-						}
-						if(!existUnsatAction) {
-							continue;
-						}
-						////再判断trigger是否包含
-						String[] attrVal2=RuleService.getTriAttrVal(rule.getTrigger().get(0), biddableTypes);
-						if(attrVal2[1].equals(".")) {
-							if(num0Exist) {
-								////如果deviceActionStateValues.get(0)的unsatAction存在，看trigger是不是和另一个相同,即get(1)
-								if(attrVal2[0].equals(deviceActionStateValues.get(1)[0])) {
-									///相同设备,看是否同一状态
-									if(attrVal2[2].equals(deviceActionStateValues.get(1)[2])) {
-										existUnsatRule=true;
-										propertyVerifyResult.setHasCorrespondRule(existUnsatRule);
-										propertyVerifyResult.getCorrespondingRules().add(rule);
-										break;
-									}
-									
-								}
-							}
-							if(num1Exist) {
-								////如果deviceActionStateValues.get(1)的unsatAction存在，看trigger是不是和另一个相同,即get(0)
-								if(attrVal2[0].equals(deviceActionStateValues.get(0)[0])) {
-									///相同设备,看是否同一状态
-									if(attrVal2[2].equals(deviceActionStateValues.get(0)[2])) {
-										existUnsatRule=true;
-										propertyVerifyResult.setHasCorrespondRule(existUnsatRule);
-										propertyVerifyResult.getCorrespondingRules().add(rule);
-										break;
-									}
-									
-								}
-							}
-							
-						}
-					}
-				}
-				if(!existUnsatRule) {
-					////如果不存在使之不满足的规则
-					propertyVerifyResult.setHasCorrespondRule(existUnsatRule);
-					/////建议添加如下规则  1.IF device1.state THEN device2.action   2.IF device2.state THEN device1.action 
-
-					for(DeviceDetail device:devices) {
-						if(device.getDeviceName().equals(deviceActionStateValues.get(0)[0])){
-							//////找到对应设备
-							/////// 1.IF device1.state THEN device2.action
-							List<String[]> stateActionValues=device.getDeviceType().getStateActionValues();
-							for(String[] stateActionValue:stateActionValues) {
-								if(!stateActionValue[1].equals(deviceActionStateValues.get(0)[1])) {
-									////找到不一样的action
-									Rule suggestRule=new Rule();
-									////trigger
-									suggestRule.getTrigger().add(deviceActionStateValues.get(1)[0]+"."+deviceActionStateValues.get(1)[2]);
-									/////action根据设备找
-									suggestRule.getAction().add(device.getDeviceName()+"."+stateActionValue[1]);
-									suggestRule.setRuleContent("IF "+deviceActionStateValues.get(1)[0]+"."+deviceActionStateValues.get(1)[2]+" THEN "+device.getDeviceName()+"."+stateActionValue[1]);
-									propertyVerifyResult.getCorrespondingRules().add(suggestRule);
-								}
-							}							
-						}else if(device.getDeviceName().equals(deviceActionStateValues.get(1)[0])){
-							//////找到对应设备
-							///////  2.IF device2.state THEN device1.action 
-							List<String[]> stateActionValues=device.getDeviceType().getStateActionValues();
-							for(String[] stateActionValue:stateActionValues) {
-								if(!stateActionValue[1].equals(deviceActionStateValues.get(1)[1])) {
-									////找到不一样的action
-									Rule suggestRule=new Rule();
-									////trigger
-									suggestRule.getTrigger().add(deviceActionStateValues.get(0)[0]+"."+deviceActionStateValues.get(0)[2]);
-									/////action根据设备找
-									suggestRule.getAction().add(device.getDeviceName()+"."+stateActionValue[1]);
-									suggestRule.setRuleContent("IF "+deviceActionStateValues.get(0)[0]+"."+deviceActionStateValues.get(0)[2]+" THEN "+device.getDeviceName()+"."+stateActionValue[1]);
-									propertyVerifyResult.getCorrespondingRules().add(suggestRule);
-								}
-							}							
-						}
-					}
-				}
-			}
-		}
-		propertyVerifyResult.setReachable(isReachable);
-		return propertyVerifyResult;
-	}
-	
 	
 	/////找同一场景下满足时间段的交集
 	public static List<double[]> getIntersaction(List<double[]> timeList,List<double[]> newTimeList){
@@ -1163,155 +812,7 @@ public class DynamicAnalysisService {
 		return finalTimeList;
 	}
 	
-	/////找到这个condition满足的场景和时间段 scenarioName,String --- timelist,List<double[]>，为double[2], startTime,endTime
-	////HashMap<String,List<double[]>> 存储满足的场景和时间段   ，key:scenarioName value:timelist
-	public static HashMap<String,List<double[]>> getSatisfySceneTimeListHashMap(String[] attrVal,List<Scene> scenes,List<DeviceDetail> devices,List<BiddableType> biddableTypes) {
-		/////解析condition   temperature >= 30,  Person.Out=>position = 0,  Window_0 . wclosed 
-//		String[] attrVal=RuleService.getTriAttrVal(condition, biddableTypes);
-		HashMap<String,List<double[]>> satisfySceneTimeHashMap=new HashMap<>();
-//		if(attrVal[1].equals(".")) {
-//			String stateValue="";
-//			////说明是设备状态
-//			device:
-//			for(DeviceDetail device:devices) {
-//				if(device.getDeviceName().equals(attrVal[0])) {
-//					DeviceType deviceType=device.getDeviceType();
-//					for(String[] stateActionValue:deviceType.stateActionValues) {
-//						if(stateActionValue[0].equals(attrVal[2])) {
-//							////找到状态对应的值
-//							stateValue=stateActionValue[2];
-//							break device;
-//						}
-//					}
-//				}
-//			}
-//			////将设备状态改为 device = stateValue
-//			attrVal[1]="=";
-//			attrVal[2]=stateValue;
-//		}
-		if(attrVal[1].contains(">")) {
-			////// temperature >= 30
-			double value=Double.parseDouble(attrVal[2]);    //30
-			for(Scene scene:scenes) {
-				////获得对应数据名的timeValue。。。
-				List<double[]> startTimeValueEndTimeValues=scene.getDataStartTimeValueEndTimeValuesHashMap().get(attrVal[0]);
-				////存放满足的时间段
-				List<double[]> satisfyStartEndTimeList=new ArrayList<>();
-				for(double[] startTimeValueEndTimeValue:startTimeValueEndTimeValues) {
-					double startValue=startTimeValueEndTimeValue[1];
-					double endValue=startTimeValueEndTimeValue[3];
-					double startTime=startTimeValueEndTimeValue[0];
-					double endTime=startTimeValueEndTimeValue[2];
-					double[] satisfyStartEndTime=new double[2];   //////////存当前这段时间中满足的时间段
-					if(startValue<=value&&endValue<=value) {  ///不满足
-						continue;
-					}
-					if(startValue>value) {
-						satisfyStartEndTime[0]=startTime;
-						if(endValue>=value) {
-							satisfyStartEndTime[1]=endTime;
-						}else {
-							////计算终止时间
-							double t=(startTime-endTime)/(startValue-endValue)*(startValue-value);
-							satisfyStartEndTime[1]=startTime-t;
-						}
-					}else if(endValue>value) {
-						satisfyStartEndTime[1]=endTime;
-						if(startValue>=value) {
-							satisfyStartEndTime[0]=startTime;
-						}else {
-							////计算起始时间
-							double t=(startTime-endTime)/(startValue-endValue)*(startValue-value);
-							satisfyStartEndTime[0]=startTime+t;
-						}
-					}
-					satisfyStartEndTimeList.add(satisfyStartEndTime);
-				}
-				if(satisfyStartEndTimeList.size()>0) {
-					/////该场景存在满足该condition的时间段,则存入
-					satisfySceneTimeHashMap.put(scene.getScenarioName(),satisfyStartEndTimeList);
-				}else {
-					satisfySceneTimeHashMap.put(scene.getScenarioName(),null);
-				}
-			}
-		}else if(attrVal[1].contains("<")) {
-			double value=Double.parseDouble(attrVal[2]);
-			for(Scene scene:scenes) {
-				////获得对应数据名的timeValue。。。
-				List<double[]> startTimeValueEndTimeValues=scene.getDataStartTimeValueEndTimeValuesHashMap().get(attrVal[0]);
-				////存放满足的时间段
-				List<double[]> satisfyStartEndTimeList=new ArrayList<>();
-				for(double[] startTimeValueEndTimeValue:startTimeValueEndTimeValues) {
-					double startValue=startTimeValueEndTimeValue[1];
-					double endValue=startTimeValueEndTimeValue[3];
-					double startTime=startTimeValueEndTimeValue[0];
-					double endTime=startTimeValueEndTimeValue[2];
-					double[] satisfyStartEndTime=new double[2];   //////////存当前这段时间中满足的时间段
-					if(startValue>=value&&endValue>=value) {   ////不满足
-						continue;
-					}
-					if(startValue<value) {
-						satisfyStartEndTime[0]=startTime;
-						if(endValue<=value) {
-							satisfyStartEndTime[1]=endTime;
-						}else {
-							////计算终止时间
-							double t=(startTime-endTime)/(startValue-endValue)*(startValue-value);
-							satisfyStartEndTime[1]=startTime+t;
-						}
-					}else if(endValue<value) {
-						satisfyStartEndTime[1]=endTime;
-						if(startValue<=value) {
-							satisfyStartEndTime[0]=startTime;
-						}else {
-							////计算起始时间
-							double t=(startTime-endTime)/(startValue-endValue)*(startValue-value);
-							satisfyStartEndTime[0]=startTime+t;
-						}
-					}
-					satisfyStartEndTimeList.add(satisfyStartEndTime);
-				}
-				if(satisfyStartEndTimeList.size()>0) {
-					/////该场景存在满足该condition的时间段,则存入
-					satisfySceneTimeHashMap.put(scene.getScenarioName(),satisfyStartEndTimeList);
-				}else {
-					satisfySceneTimeHashMap.put(scene.getScenarioName(),null);
-				}
-			}
-		}else if(attrVal[1].contains("=")) {  ////都是对应实体状态
-			int value=Integer.parseInt(attrVal[2]);  ///对应状态值
-			for(Scene scene:scenes) {
-				////获得对应数据名的timeValue。。。
-				List<double[]> startTimeValueEndTimeValues=scene.getDataStartTimeValueEndTimeValuesHashMap().get(attrVal[0]);
-				////存放满足的时间段
-				List<double[]> satisfyStartEndTimeList=new ArrayList<>();
-				for(double[] startTimeValueEndTimeValue:startTimeValueEndTimeValues) {
-					int startValue=(int) startTimeValueEndTimeValue[1];
-					int endValue=(int) startTimeValueEndTimeValue[3];
-					double startTime=startTimeValueEndTimeValue[0];
-					double endTime=startTimeValueEndTimeValue[2];
-					double[] satisfyStartEndTime=new double[2];   //////////存当前这段时间中满足的时间段
-					if(startValue==value&&endValue==value) {    /////只有这种情况才满足
-						satisfyStartEndTime[0]=startTime;
-						satisfyStartEndTime[1]=endTime;
-					}else {
-						continue;
-					}
-					satisfyStartEndTimeList.add(satisfyStartEndTime);
-				}
-				if(satisfyStartEndTimeList.size()>0) {
-					/////该场景存在满足该condition的时间段,则存入
-					satisfySceneTimeHashMap.put(scene.getScenarioName(),satisfyStartEndTimeList);
-				}else {
-					satisfySceneTimeHashMap.put(scene.getScenarioName(),null);
-				}
-			}
-		}
 
-		
-		return satisfySceneTimeHashMap;
-	}
-	
 	////////抖动分析，看当前场景下，该设备是否会发生抖动
 	public static List<JitterReason> jitterAnalysis(List<double[]> startTimeValueEndTimeValues, String simulationTime, String equivalentTime, String intervalTime) {
 		
@@ -1528,72 +1029,72 @@ public class DynamicAnalysisService {
 	
 	
 	/////生成各个场景的仿真结果
-	public static List<Scene> getAllSimulationResults(ScenesTree scenesTree,List<DeviceDetail> devices,String fileName,String modelFilePath,String uppaalPath,String simulateResultFilePath) {
-		final String fileNameWithoutSuffix=fileName.substring(0, fileName.lastIndexOf(".xml"));
-		final List<Scene> scenes=new ArrayList<>();
-//		List<Thread> threads=new ArrayList<>();
-		long simulationStartTime=System.currentTimeMillis();
-		ExecutorService executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(1000));
-		for(int i=0;i<scenesTree.getChildren().size();i++) {
-			SimulationThreadService sRunnable=new SimulationThreadService(scenes, devices, uppaalPath, fileNameWithoutSuffix, i+"", modelFilePath,simulateResultFilePath);
-			executorService.execute(sRunnable);		
-		}
-		executorService.shutdown();
-//		for(Thread thread:threads) {
-//			try {
-//				thread.join();
-//			} catch (InterruptedException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
+//	public static List<Scene> getAllSimulationResults(ScenesTree scenesTree,List<DeviceDetail> devices,String fileName,String modelFilePath,String uppaalPath,String simulateResultFilePath) {
+//		final String fileNameWithoutSuffix=fileName.substring(0, fileName.lastIndexOf(".xml"));
+//		final List<Scene> scenes=new ArrayList<>();
+////		List<Thread> threads=new ArrayList<>();
+//		long simulationStartTime=System.currentTimeMillis();
+//		ExecutorService executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(1000));
+//		for(int i=0;i<scenesTree.getChildren().size();i++) {
+//			SimulationThreadService sRunnable=new SimulationThreadService(scenes, devices, uppaalPath, fileNameWithoutSuffix, i+"", modelFilePath,simulateResultFilePath);
+//			executorService.execute(sRunnable);
+//		}
+//		executorService.shutdown();
+////		for(Thread thread:threads) {
+////			try {
+////				thread.join();
+////			} catch (InterruptedException e) {
+////				// TODO Auto-generated catch block
+////				e.printStackTrace();
+////			}
+////		}
+//		try {
+//			executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//		if(scenes==null){
+//			///仿真结果有误
+//			return null;
+//		}
+//		if(scenes.size()>0){
+//			if(scenes.get(0).getDataTimeValues().size()==0){
+//				return null;
 //			}
 //		}
-		try {
-			executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		if(scenes==null){
-			///仿真结果有误
-			return null;
-		}
-		if(scenes.size()>0){
-			if(scenes.get(0).getDataTimeValues().size()==0){
-				return null;
-			}
-		}
-		System.out.println("simulationTime:"+(System.currentTimeMillis()-simulationStartTime));
-		Comparator<Scene> c=new Comparator<Scene>() {
-
-			@Override
-			public int compare(Scene s1, Scene s2) {
-				int num1=Integer.parseInt(s1.getScenarioName().substring("scenario-".length()));
-				int num2=Integer.parseInt(s2.getScenarioName().substring("scenario-".length()));
-				if(num1<num2) {
-					return -1;
-				}else {
-					return 1;
-				}
-			}
-		};
-		Collections.sort(scenes, c);
-		return scenes;
-	}
-	
-	public static Scene getSingleSimulationResult(List<DeviceDetail> devices,String uppaalPath,String fileNameWithoutSuffix,String scenarioNum,String modelFilePath,String simulationResultFilePath) {
-		///仿真
-		List<Scene> scenes=new ArrayList<>();
-		SimulationThreadService sRunnable=new SimulationThreadService(scenes, devices, uppaalPath, fileNameWithoutSuffix, scenarioNum, modelFilePath, simulationResultFilePath);
-		Thread thread=new Thread(sRunnable);
-		thread.start();
-		try {
-			thread.join();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return scenes.get(0);
-	}
+//		System.out.println("simulationTime:"+(System.currentTimeMillis()-simulationStartTime));
+//		Comparator<Scene> c=new Comparator<Scene>() {
+//
+//			@Override
+//			public int compare(Scene s1, Scene s2) {
+//				int num1=Integer.parseInt(s1.getScenarioName().substring("scenario-".length()));
+//				int num2=Integer.parseInt(s2.getScenarioName().substring("scenario-".length()));
+//				if(num1<num2) {
+//					return -1;
+//				}else {
+//					return 1;
+//				}
+//			}
+//		};
+//		Collections.sort(scenes, c);
+//		return scenes;
+//	}
+//
+//	public static Scene getSingleSimulationResult(List<DeviceDetail> devices,String uppaalPath,String fileNameWithoutSuffix,String scenarioNum,String modelFilePath,String simulationResultFilePath) {
+//		///仿真
+//		List<Scene> scenes=new ArrayList<>();
+//		SimulationThreadService sRunnable=new SimulationThreadService(scenes, devices, uppaalPath, fileNameWithoutSuffix, scenarioNum, modelFilePath, simulationResultFilePath);
+//		Thread thread=new Thread(sRunnable);
+//		thread.start();
+//		try {
+//			thread.join();
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//		return scenes.get(0);
+//	}
 	
 	/////将仿真结果解析成 <数据名，（时间，取值）List> 的格式存入hashmap,数据名作为key
 	public static HashMap<String,List<double[]>> getDataTimeValuesHashMap(String simulationResult){

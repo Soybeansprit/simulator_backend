@@ -4,32 +4,32 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class OutputConstruct {
-	public static class EnvironmentStatic{
-		private EnvironmentModel environmentModel;
-		private StaticAnalysisResult1 staticAnalysisResult1;
-		
-		public EnvironmentStatic() {
-			super();
-		}
-		public EnvironmentStatic(EnvironmentModel environmentModel, StaticAnalysisResult1 staticAnalysisResult1) {
-			super();
-			this.environmentModel = environmentModel;
-			this.staticAnalysisResult1 = staticAnalysisResult1;
-		}
-		public EnvironmentModel getEnvironmentModel() {
-			return environmentModel;
-		}
-		public void setEnvironmentModel(EnvironmentModel environmentModel) {
-			this.environmentModel = environmentModel;
-		}
-		public StaticAnalysisResult1 getStaticAnalysisResult() {
-			return staticAnalysisResult1;
-		}
-		public void setStaticAnalysisResult(StaticAnalysisResult1 staticAnalysisResult1) {
-			this.staticAnalysisResult1 = staticAnalysisResult1;
-		}
-		
-	}
+//	public static class EnvironmentStatic{
+//		private EnvironmentModel environmentModel;
+//		private StaticAnalysisResult1 staticAnalysisResult1;
+//
+//		public EnvironmentStatic() {
+//			super();
+//		}
+//		public EnvironmentStatic(EnvironmentModel environmentModel, StaticAnalysisResult1 staticAnalysisResult1) {
+//			super();
+//			this.environmentModel = environmentModel;
+//			this.staticAnalysisResult1 = staticAnalysisResult1;
+//		}
+//		public EnvironmentModel getEnvironmentModel() {
+//			return environmentModel;
+//		}
+//		public void setEnvironmentModel(EnvironmentModel environmentModel) {
+//			this.environmentModel = environmentModel;
+//		}
+//		public StaticAnalysisResult1 getStaticAnalysisResult() {
+//			return staticAnalysisResult1;
+//		}
+//		public void setStaticAnalysisResult(StaticAnalysisResult1 staticAnalysisResult1) {
+//			this.staticAnalysisResult1 = staticAnalysisResult1;
+//		}
+//
+//	}
 	
 	public static class ScenePropertyResult{
 		private List<Scene> scenes=new ArrayList<Scene>();

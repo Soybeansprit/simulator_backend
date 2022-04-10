@@ -153,6 +153,9 @@ public class SimulationService {
 		}
     }
 
+    /**
+     * 使用uppaal-smc仿真
+     * */
     ////获得仿真结果
     public static String getSimulationResult(String uppaalPath,String filePath,String fileName,String system) {
         InputStream error = null;

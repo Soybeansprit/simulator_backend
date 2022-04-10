@@ -9,15 +9,15 @@ public class SensorType extends EntityType{
 	private String attribute="";  ///传感器检测什么属性
 
 
-	private String style="";   ///该属性所属实体的类型 "causal" or "biddable"
-	private String name="";
+//	private String style="";   ///该属性所属实体的类型 "causal" or "biddable"
+//	private String name="";
 
-	public String getStyle() {
-		return style;
-	}
-	public void setStyle(String style) {
-		this.style = style;
-	}
+//	public String getStyle() {
+//		return style;
+//	}
+//	public void setStyle(String style) {
+//		this.style = style;
+//	}
 	public String getAttribute() {
 		return attribute;
 	}
@@ -25,13 +25,13 @@ public class SensorType extends EntityType{
 		this.attribute = attribute;
 	}
 
-	public String getName() {
-		return name;
-	}
-
-	public void setName(String name) {
-		this.name = name;
-	}
+//	public String getName() {
+//		return name;
+//	}
+//
+//	public void setName(String name) {
+//		this.name = name;
+//	}
 
 
 	public String getMonitoredEntityType() {
