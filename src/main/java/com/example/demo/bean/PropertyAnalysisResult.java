@@ -2,7 +2,9 @@ package com.example.demo.bean;
 
 import java.util.ArrayList;
 import java.util.List;
-
+/**
+ * 自定义性质验证结果
+ * */
 public class PropertyAnalysisResult {
     private String property="";   //性质内容
     private boolean reachable=false;   //是否可达

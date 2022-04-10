@@ -32,113 +32,113 @@ import com.example.demo.bean.ScenarioTree.AttributeValue;
 public class SystemModelService {
 	
 
-	///////////////生成多个场景，根据temperature等biddable类型的的trigger取值分段获得
-	public static ScenesTree generateAllScenarios(String fileName,String filePath,DeclarationQueryResult declarationQueryResult) throws DocumentException, IOException {
-		/////生成场景树
-		ScenesTree scenesTree=new ScenesTree();
-		scenesTree.setName("smart home");
-		List<List<Trigger>> attributesSameTriggers=declarationQueryResult.getAttributesSameTriggers();
-		List<String[]> declarations=declarationQueryResult.getDeclarations();
-		//////////--------------放到控制器生成那部分
-//		/////获得所有模型
-//		List<TemplGraph> templGraphs=TemplGraphService.getTemplGraphs(fileName, filePath);
-//		List<TemplGraph> controllers=new ArrayList<TemplGraph>();
-//		List<TemplGraph> controlledDevices=new ArrayList<>();
-//		for(TemplGraph templGraph:templGraphs) {
-//			if(templGraph.getName().indexOf("Rule")>=0) {
-//				controllers.add(templGraph);
-//			}else if(templGraph.getDeclaration().contains("controlled_device")) {
-//				controlledDevices.add(templGraph);
-//			}
-//		}
-//		/////声明的参数
-//		List<String[]> declarations=generateDeclaration(rules, biddableTypes, deviceTypes, sensorTypes, attributes, controlledDevices);
-//		List<Action> actions=RuleService.getAllActions(rules, devices);
-//		List<Trigger> triggers=RuleService.getAllTriggers(rules, sensorTypes, biddableTypes);
-//		////////找到涉及相同causal类型的属性的triggers，分别获得分段点，用于多个场景的初始值分段赋值
-//		List<List<Trigger>> attributesSameTriggers=new ArrayList<List<Trigger>>();
-//		for(String[] declaration:declarations) {
-//			/////////declaration: [0]clock/double [1]temperature
-//			if(declaration[0].equals("double")||declaration[0].equals("clock")) {
-//				for(SensorType sensor:sensorTypes) {
-//					////找到检测该属性的sensor
-//					if(sensor.attribute.equals(declaration[1]) &&
-//							sensor.style.equals("causal")) {
-//						/////causal类型的属性用于区分场景
-//						/////找到涉及该属性的所有triggers
-//						List<Trigger> triggersWithSameAttribute=getTriggersWithSameAttribute(declaration, triggers);
-//						if(triggersWithSameAttribute.size()>0) {
-//							/////如果有涉及该属性的triggers
-//							attributesSameTriggers.add(triggersWithSameAttribute);
-//						}
-//						break;
-//					}
-//				}
-//			}
-//		}
-		/////计算上述分段情况下能生成多少个场景
-		////如temperature属性的断点为18、30 && humidity属性的断点为40
-		////则能生成3*2个场景
-		long generationStartTime=System.currentTimeMillis();
-		int scenarioNum=getScenarioNum(attributesSameTriggers);
-		/////获得控制器模型
+//	///////////////生成多个场景，根据temperature等biddable类型的的trigger取值分段获得
+//	public static ScenesTree generateAllScenarios(String fileName,String filePath,DeclarationQueryResult declarationQueryResult) throws DocumentException, IOException {
+//		/////生成场景树
+//		ScenesTree scenesTree=new ScenesTree();
+//		scenesTree.setName("smart home");
+//		List<List<Trigger>> attributesSameTriggers=declarationQueryResult.getAttributesSameTriggers();
+//		List<String[]> declarations=declarationQueryResult.getDeclarations();
+//		//////////--------------放到控制器生成那部分
+////		/////获得所有模型
+////		List<TemplGraph> templGraphs=TemplGraphService.getTemplGraphs(fileName, filePath);
+////		List<TemplGraph> controllers=new ArrayList<TemplGraph>();
+////		List<TemplGraph> controlledDevices=new ArrayList<>();
+////		for(TemplGraph templGraph:templGraphs) {
+////			if(templGraph.getName().indexOf("Rule")>=0) {
+////				controllers.add(templGraph);
+////			}else if(templGraph.getDeclaration().contains("controlled_device")) {
+////				controlledDevices.add(templGraph);
+////			}
+////		}
+////		/////声明的参数
+////		List<String[]> declarations=generateDeclaration(rules, biddableTypes, deviceTypes, sensorTypes, attributes, controlledDevices);
+////		List<Action> actions=RuleService.getAllActions(rules, devices);
+////		List<Trigger> triggers=RuleService.getAllTriggers(rules, sensorTypes, biddableTypes);
+////		////////找到涉及相同causal类型的属性的triggers，分别获得分段点，用于多个场景的初始值分段赋值
+////		List<List<Trigger>> attributesSameTriggers=new ArrayList<List<Trigger>>();
+////		for(String[] declaration:declarations) {
+////			/////////declaration: [0]clock/double [1]temperature
+////			if(declaration[0].equals("double")||declaration[0].equals("clock")) {
+////				for(SensorType sensor:sensorTypes) {
+////					////找到检测该属性的sensor
+////					if(sensor.attribute.equals(declaration[1]) &&
+////							sensor.style.equals("causal")) {
+////						/////causal类型的属性用于区分场景
+////						/////找到涉及该属性的所有triggers
+////						List<Trigger> triggersWithSameAttribute=getTriggersWithSameAttribute(declaration, triggers);
+////						if(triggersWithSameAttribute.size()>0) {
+////							/////如果有涉及该属性的triggers
+////							attributesSameTriggers.add(triggersWithSameAttribute);
+////						}
+////						break;
+////					}
+////				}
+////			}
+////		}
+//		/////计算上述分段情况下能生成多少个场景
+//		////如temperature属性的断点为18、30 && humidity属性的断点为40
+//		////则能生成3*2个场景
+//		long generationStartTime=System.currentTimeMillis();
+//		int scenarioNum=getScenarioNum(attributesSameTriggers);
+//		/////获得控制器模型
+////
+////		/////模型声明各个场景相同
+////		String modelDeclaration=getModelDeclaration(actions, triggers, devices, biddableTypes, controllers, attributes, simulationTime);
+////		/////query仿真公式
+////		String queryFormula=getQueryFormula(declarations, simulationTime);
+//		//////------------放到控制器生成那部分------------
 //
-//		/////模型声明各个场景相同
-//		String modelDeclaration=getModelDeclaration(actions, triggers, devices, biddableTypes, controllers, attributes, simulationTime);
-//		/////query仿真公式
-//		String queryFormula=getQueryFormula(declarations, simulationTime);
-		//////------------放到控制器生成那部分------------
-		
-		
-		////文件名
-		String fileNameWithoutSuffix=fileName.substring(0, fileName.lastIndexOf(".xml"));
-		/////各场景分别赋予不同的值
-		ExecutorService executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(1000));
-		for(int i=0;i<scenarioNum;i++) {
-			/////生成场景树子节点
-			final int k=i;
-			Runnable runnable=new Runnable() {
-				@Override
-				public void run() {
-					// TODO Auto-generated method stub
-					SceneChild sceneChild=new SceneChild();
-					sceneChild.setName("scenario-"+k);
-					////场景模型文件名
-					String newFileName=fileNameWithoutSuffix+"-scenario-"+k+".xml";
-					/////给causal的参数赋值并返回
-					long startTime=System.currentTimeMillis();
-					List<AttributeValue> attributeValues=setCausalInitialValue(declarations, attributesSameTriggers, k);
-					System.out.println("setAttributeTime:"+(System.currentTimeMillis()-startTime));
-					try {
-						generateScenario(declarations,  fileName, newFileName, filePath);
-					} catch (DocumentException | IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-					System.out.println("scenarioTime:"+(System.currentTimeMillis()-startTime));
-					/////作为展示细节按钮的子节点
-					AttributeValue attributeValue=new AttributeValue();
-					attributeValue.setName("scenario-"+k +" details");
-					sceneChild.addChildrens(attributeValues);
-					sceneChild.addChildren(attributeValue);
-					scenesTree.addChildren(sceneChild);
-				}
-			};
-			executorService.execute(runnable);
-
-			/////生成模型
-			
-		}
-		executorService.shutdown();
-		try {
-			executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		System.out.println("senarioGenerationTime:"+(System.currentTimeMillis()-generationStartTime));
-		return scenesTree;
-	}
+//
+//		////文件名
+//		String fileNameWithoutSuffix=fileName.substring(0, fileName.lastIndexOf(".xml"));
+//		/////各场景分别赋予不同的值
+//		ExecutorService executorService=new ThreadPoolExecutor(15, 30, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(1000));
+//		for(int i=0;i<scenarioNum;i++) {
+//			/////生成场景树子节点
+//			final int k=i;
+//			Runnable runnable=new Runnable() {
+//				@Override
+//				public void run() {
+//					// TODO Auto-generated method stub
+//					SceneChild sceneChild=new SceneChild();
+//					sceneChild.setName("scenario-"+k);
+//					////场景模型文件名
+//					String newFileName=fileNameWithoutSuffix+"-scenario-"+k+".xml";
+//					/////给causal的参数赋值并返回
+//					long startTime=System.currentTimeMillis();
+//					List<AttributeValue> attributeValues=setCausalInitialValue(declarations, attributesSameTriggers, k);
+//					System.out.println("setAttributeTime:"+(System.currentTimeMillis()-startTime));
+//					try {
+//						generateScenario(declarations,  fileName, newFileName, filePath);
+//					} catch (DocumentException | IOException e) {
+//						// TODO Auto-generated catch block
+//						e.printStackTrace();
+//					}
+//					System.out.println("scenarioTime:"+(System.currentTimeMillis()-startTime));
+//					/////作为展示细节按钮的子节点
+//					AttributeValue attributeValue=new AttributeValue();
+//					attributeValue.setName("scenario-"+k +" details");
+//					sceneChild.addChildrens(attributeValues);
+//					sceneChild.addChildren(attributeValue);
+//					scenesTree.addChildren(sceneChild);
+//				}
+//			};
+//			executorService.execute(runnable);
+//
+//			/////生成模型
+//
+//		}
+//		executorService.shutdown();
+//		try {
+//			executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//		System.out.println("senarioGenerationTime:"+(System.currentTimeMillis()-generationStartTime));
+//		return scenesTree;
+//	}
 	
 
 	public static void generateScenario(List<String[]> declarations, String modelDeclaration,String query,String fileName,String newFileName,String filePath) throws DocumentException, IOException {
@@ -291,39 +291,39 @@ public class SystemModelService {
 		return queryFormula.toString();
 	}
 	
-	public static List<AttributeValue> setCausalInitialValue(List<String[]> declarations,List<List<Trigger>> attributesSameTriggers,int scenarioIndex) {
-		/////返回场景树中各场景下的各属性子节点的取值
-		List<AttributeValue> attributeValues=new ArrayList<>();
-		for(List<Trigger> triggersWithSameAttribute:attributesSameTriggers) {
-			////给每个属性赋值
-			int k=scenarioIndex % (triggersWithSameAttribute.size()+1);
-			scenarioIndex=scenarioIndex/(triggersWithSameAttribute.size()+1);
-			for(String[] declaration:declarations) {
-				if(declaration[1].equals(triggersWithSameAttribute.get(0).attrVal[0])) {
-					AttributeValue attributeValue=new AttributeValue();
-					attributeValue.setName(triggersWithSameAttribute.get(0).attrVal[0]);
-					if(k==0) {
-						///第一段,value-1
-						Double value=Double.parseDouble(triggersWithSameAttribute.get(k).attrVal[2]);
-						declaration[2]=String.format("%.1f", value-10);
-					}else if(k==triggersWithSameAttribute.size()) {
-						///最后一段,value+1
-						Double value=Double.parseDouble(triggersWithSameAttribute.get(k-1).attrVal[2]);
-						declaration[2]=String.format("%.1f", value+10);
-					}else {
-						///中间段,中间值
-						Double value1=Double.parseDouble(triggersWithSameAttribute.get(k-1).attrVal[2]);
-						Double value2=Double.parseDouble(triggersWithSameAttribute.get(k).attrVal[2]);
-						declaration[2]=String.format("%.1f", (value1+value2)/2);
-					}
-					attributeValue.setValue(Double.parseDouble(declaration[2]));
-					attributeValues.add(attributeValue);
-					break;
-				}
-			}
-		}
-		return attributeValues;
-	}
+//	public static List<AttributeValue> setCausalInitialValue(List<String[]> declarations,List<List<Trigger>> attributesSameTriggers,int scenarioIndex) {
+//		/////返回场景树中各场景下的各属性子节点的取值
+//		List<AttributeValue> attributeValues=new ArrayList<>();
+//		for(List<Trigger> triggersWithSameAttribute:attributesSameTriggers) {
+//			////给每个属性赋值
+//			int k=scenarioIndex % (triggersWithSameAttribute.size()+1);
+//			scenarioIndex=scenarioIndex/(triggersWithSameAttribute.size()+1);
+//			for(String[] declaration:declarations) {
+//				if(declaration[1].equals(triggersWithSameAttribute.get(0).attrVal[0])) {
+//					AttributeValue attributeValue=new AttributeValue();
+//					attributeValue.setName(triggersWithSameAttribute.get(0).attrVal[0]);
+//					if(k==0) {
+//						///第一段,value-1
+//						Double value=Double.parseDouble(triggersWithSameAttribute.get(k).attrVal[2]);
+//						declaration[2]=String.format("%.1f", value-10);
+//					}else if(k==triggersWithSameAttribute.size()) {
+//						///最后一段,value+1
+//						Double value=Double.parseDouble(triggersWithSameAttribute.get(k-1).attrVal[2]);
+//						declaration[2]=String.format("%.1f", value+10);
+//					}else {
+//						///中间段,中间值
+//						Double value1=Double.parseDouble(triggersWithSameAttribute.get(k-1).attrVal[2]);
+//						Double value2=Double.parseDouble(triggersWithSameAttribute.get(k).attrVal[2]);
+//						declaration[2]=String.format("%.1f", (value1+value2)/2);
+//					}
+//					attributeValue.setValue(Double.parseDouble(declaration[2]));
+//					attributeValues.add(attributeValue);
+//					break;
+//				}
+//			}
+//		}
+//		return attributeValues;
+//	}
 	
 
 	//////////计算场景数量
@@ -338,44 +338,44 @@ public class SystemModelService {
 	}
 	
 	/////////找到涉及相同属性的triggers, 并按照分段点取值大小排序（分段点取值不重复）
-	public static List<Trigger> getTriggersWithSameAttribute(String[] declaration,List<Trigger> triggers) {
-		///如temperature>30和temperature<18,temperature<=30
-		////temperature属性的断点为18、30
-		List<Trigger> triggersWithSameAttribute=new ArrayList<>();
-		for(Trigger trigger:triggers) {			
-			if(trigger.attrVal[0].equals(declaration[1])) {
-				////////找到涉及该属性的triggers
-				////////保证断点值不重复
-				boolean pointValueExist=false;
-				for(Trigger sameTrigger:triggersWithSameAttribute) {
-					if(trigger.attrVal[2].equals(sameTrigger.attrVal[2])) {
-						////////保证断点值不重复
-						pointValueExist=true;
-					}
-				}
-				if(!pointValueExist) {
-					triggersWithSameAttribute.add(trigger);
-				}
-			}
-		}
-		Comparator<Trigger> comparator=new Comparator<Trigger>() {
-			/////按分段点取值排序
-			/////其中分段点的取值为attrVal[2]
-			@Override
-			public int compare(Trigger t1, Trigger t2) {
-				Double v1=Double.parseDouble(t1.attrVal[2]);
-				Double v2=Double.parseDouble(t2.attrVal[2]);
-				if(v1<v2) {
-					return -1;
-				}else {
-					return 1;
-				}
-			}
-		};
-		//////////对triggers进行排序
-		Collections.sort(triggersWithSameAttribute, comparator);		
-		return triggersWithSameAttribute;
-	}
+//	public static List<Trigger> getTriggersWithSameAttribute(String[] declaration,List<Trigger> triggers) {
+//		///如temperature>30和temperature<18,temperature<=30
+//		////temperature属性的断点为18、30
+//		List<Trigger> triggersWithSameAttribute=new ArrayList<>();
+//		for(Trigger trigger:triggers) {
+//			if(trigger.attrVal[0].equals(declaration[1])) {
+//				////////找到涉及该属性的triggers
+//				////////保证断点值不重复
+//				boolean pointValueExist=false;
+//				for(Trigger sameTrigger:triggersWithSameAttribute) {
+//					if(trigger.attrVal[2].equals(sameTrigger.attrVal[2])) {
+//						////////保证断点值不重复
+//						pointValueExist=true;
+//					}
+//				}
+//				if(!pointValueExist) {
+//					triggersWithSameAttribute.add(trigger);
+//				}
+//			}
+//		}
+//		Comparator<Trigger> comparator=new Comparator<Trigger>() {
+//			/////按分段点取值排序
+//			/////其中分段点的取值为attrVal[2]
+//			@Override
+//			public int compare(Trigger t1, Trigger t2) {
+//				Double v1=Double.parseDouble(t1.attrVal[2]);
+//				Double v2=Double.parseDouble(t2.attrVal[2]);
+//				if(v1<v2) {
+//					return -1;
+//				}else {
+//					return 1;
+//				}
+//			}
+//		};
+//		//////////对triggers进行排序
+//		Collections.sort(triggersWithSameAttribute, comparator);
+//		return triggersWithSameAttribute;
+//	}
 	
 	
 	

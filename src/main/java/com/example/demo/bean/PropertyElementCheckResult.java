@@ -2,7 +2,9 @@ package com.example.demo.bean;
 
 import java.util.ArrayList;
 import java.util.List;
-
+/**
+ * 自定义性质的子状态信息
+ * */
 public class PropertyElementCheckResult {
     private String dataName="";   ///涉及数据名
     private String instanceName="";  ///涉及实例名
