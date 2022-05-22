@@ -12,7 +12,7 @@ public class DeviceStateAndCausingRules {
     private String deviceName="";  ////设备名
     private String stateName="";   ////状态名
     private int stateValue=0;  ///状态取值
-    private List<RuleAndPreRule> causingRulesAndPreRules=new ArrayList<>();
+    private List<RuleAndPreRule> causingRulesAndPreRules=new ArrayList<>();  ///原因，包括直接原因的前置原因
 
     public String getDeviceName() {
         return deviceName;

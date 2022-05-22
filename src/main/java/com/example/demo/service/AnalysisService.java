@@ -1464,7 +1464,7 @@ public class AnalysisService {
         ////获得单个场景下property中同时满足的时间段
         List<double[]> durations=getConformTogetherDurations(propertyElementCheckResults);
 
-        ///在当前场景下property是否可达，不可达给出原因和建议
+        ///在当前场景下property是否可达，可达给出原因和建议
         PropertyAnalysisResult newPropertyAnalysisResult=getPropertyReachableReasonAndGiveAdvise(durations,dataTimeValueHashMap,propertyElementCheckResults,instanceLayer,rules);
         if (propertyAnalysisResult==null||!propertyAnalysisResult.isReachable()){
             //添加验证结果

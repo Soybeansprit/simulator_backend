@@ -1,5 +1,8 @@
 package com.example.demo.bean;
-
+/**
+ * 设备（执行器）类型的实例
+ * 包括实例名、所处的空间位置、设备类型、是否可被屋外观察
+ * */
 public class DeviceInstance extends Instance{
     private String location="";   //设备位置
     private int sequenceNumber=0;  //设备实例的序号

@@ -5,6 +5,9 @@ import java.util.List;
 
 import com.example.demo.bean.ScenarioTree.ScenesTree;
 
+/**
+ * 各种从前端发起的输入类
+ * */
 public class InputConstruct {
 
 

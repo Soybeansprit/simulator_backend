@@ -79,7 +79,7 @@ public class Action {
 	private String actionId="";   ///对应IFD中action节点的id
 	private String instanceName="";  ///对应的实例名，可能是设备，也可能是cyber service
 	private String sync="";   ///对应的synchronisation
-	private List<Rule> relatedRules=new ArrayList<>();
+	private List<Rule> relatedRules=new ArrayList<>();  ///会发送该执行指令action的TAP规则
 
 	public String getActionContent() {
 		return actionContent;

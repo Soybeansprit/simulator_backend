@@ -10,7 +10,7 @@ import java.util.List;
  * 实体类型名,【内容、属性名、属性总变化率变量名】
  * */
 public class AttributeEntityType extends EntityType{
-    private List<Attribute> attributes=new ArrayList<>();
+    private List<Attribute> attributes=new ArrayList<>();   ///会有各种环境属性
 
 
     public List<Attribute> getAttributes() {

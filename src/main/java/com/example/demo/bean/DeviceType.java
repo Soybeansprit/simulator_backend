@@ -96,7 +96,7 @@ public class DeviceType extends EntityType{
 		private String synchronisation="";   ///对应同步信号通道
 		private String value="";  ///identifier取值
 		private double power=0.0; ///状态的功率，用于计算能耗
-		private List<String[]> effects=new ArrayList<>();  ///effect[0]=attribute, effect[1]=delta（对于会对总变化率产生影响的）, effect[2]=影响值
+		private List<String[]> effects=new ArrayList<>();  ///对环境的影响，可能是直接影响环境属性effect[0]=attribute, 或是影响环境属性的总变化率effect[1]=delta（对于会对总变化率产生影响的，如果为""就表明直接对环境属性影响）, effect[2]=影响值
 
 		public String getStateName() {
 			return stateName;

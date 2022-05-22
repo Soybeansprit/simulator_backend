@@ -2,20 +2,24 @@ package com.example.demo.bean;
 
 import java.util.ArrayList;
 import java.util.List;
-
+/**
+ * 信息流图
+ * */
 public class IFDGraph {
 	public static class GraphNode {
-		////实体节点不用管
+		/**
+		 * 节点信息
+		 * */
 
 		private String name="";  ///////节点名 trigger1
 		private String shape=""; ///////节点形状 oval
 		private String fillcolor=""; ////节点填充色 
-		private String label="";  //////节点内容 
-		public boolean flag=false; ///用于表示是否遍历过
-		private List<GraphNodeArrow> pNodeList=new ArrayList<GraphNodeArrow>(); ////指向该节点的边的列表
-		private List<GraphNodeArrow> cNodeList=new ArrayList<GraphNodeArrow>();	///该节点出发的边的裂变
+		private String label="";  //////节点内容 ，对于trigger和action节点，label就是trigger和action的内容
+//		public boolean flag=false; ///用于表示是否遍历过
+//		private List<GraphNodeArrow> pNodeList=new ArrayList<GraphNodeArrow>(); ////指向该节点的边的列表
+//		private List<GraphNodeArrow> cNodeList=new ArrayList<GraphNodeArrow>();	///该节点出发的边的裂变
 
-		private String[] relatedInstanceAndColor=new String[2];   ///如果是trigger或者action，会涉及到相应的实例，添加实例名以及节点的颜色
+		private String[] relatedInstanceAndColor=new String[2];   ///如果是trigger或者action，会涉及到相应的实例，添加[0]实例名以及[1]节点的颜色
 		private boolean isTraversed=false;  ///表示是否遍历过
 		private List<GraphNodeArrow> pNodeArrowList=new ArrayList<>();   ////指向该节点的边的列表
 		private List<GraphNodeArrow> cNodeArrowList=new ArrayList<>();   ///该节点出发的边的裂变
@@ -30,13 +34,13 @@ public class IFDGraph {
 
 		}
 
-		public void addpNodeList(GraphNodeArrow pNodeList) {
-			this.pNodeList.add(pNodeList);
-		}
-		
-		public void addcNodeList(GraphNodeArrow cNodeList) {
-			this.cNodeList.add(cNodeList);
-		}
+//		public void addpNodeList(GraphNodeArrow pNodeList) {
+//			this.pNodeList.add(pNodeList);
+//		}
+//
+//		public void addcNodeList(GraphNodeArrow cNodeList) {
+//			this.cNodeList.add(cNodeList);
+//		}
 
 
 		public String getName() {
@@ -73,32 +77,32 @@ public class IFDGraph {
 			return label;
 		}
 
-		public boolean isFlag() {
-			return flag;
-		}
-
-		public void setFlag(boolean flag) {
-			this.flag = flag;
-		}
+//		public boolean isFlag() {
+//			return flag;
+//		}
+//
+//		public void setFlag(boolean flag) {
+//			this.flag = flag;
+//		}
 
 		public void setLabel(String label) {
 			this.label = label;
 		}
 
 
-		public List<GraphNodeArrow> getpNodeList() {
-			return pNodeList;
-		}
-
-
-		public void setpNodeList(List<GraphNodeArrow> pNodeList) {
-			this.pNodeList = pNodeList;
-		}
-
-
-		public List<GraphNodeArrow> getcNodeList() {
-			return cNodeList;
-		}
+//		public List<GraphNodeArrow> getpNodeList() {
+//			return pNodeList;
+//		}
+//
+//
+//		public void setpNodeList(List<GraphNodeArrow> pNodeList) {
+//			this.pNodeList = pNodeList;
+//		}
+//
+//
+//		public List<GraphNodeArrow> getcNodeList() {
+//			return cNodeList;
+//		}
 
 		public String[] getRelatedInstanceAndColor() {
 			return relatedInstanceAndColor;
@@ -116,9 +120,9 @@ public class IFDGraph {
 			isTraversed = traversed;
 		}
 
-		public void setcNodeList(List<GraphNodeArrow> cNodeList) {
-			this.cNodeList = cNodeList;
-		}
+//		public void setcNodeList(List<GraphNodeArrow> cNodeList) {
+//			this.cNodeList = cNodeList;
+//		}
 
 		public List<GraphNodeArrow> getpNodeArrowList() {
 			return pNodeArrowList;

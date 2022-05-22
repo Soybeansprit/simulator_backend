@@ -104,6 +104,7 @@ public class StaticAnalysisService {
 
 
 		long t3=System.currentTimeMillis();
+		//冗余规则
 		List<List<Rule>> redundantRules=new ArrayList<>();
 		for (Rule rule:newRules){
 			GraphNode ruleNode=graphNodeHashMap.get(rule.getRuleName());
@@ -983,147 +984,147 @@ public class StaticAnalysisService {
 	 * 解析IFD的节点和边
 	 * */
 	//////////////////////获得IFD节点，以及节点间的关系
-	public static List<GraphNode> getIFDNode(String ifdFileName,String ifdPath) {
-		String dotPath=ifdPath+ifdFileName;
-		List<GraphNode> graphNodes=new ArrayList<GraphNode>();
-		HashMap<String,GraphNode> graphNodeMap=new HashMap<>();
-		try(BufferedReader br=new BufferedReader(new FileReader(dotPath))){
-			List<String> strings=new ArrayList<String>();
-			String str="";
-			while((str=br.readLine())!=null) {
-				//获得各节点
-				strings.add(str);
-				if(str.indexOf("[")>0) {
-					if(str.indexOf("->")<0) {
-						///如action1[label="Bulb.turn_bulb_on",shape="record",style="filled",fillcolor="beige"]
-						///trigger1[label="temperature<=15",shape="oval",style="filled",fillcolor="lightpink"]
-						GraphNode graphNode=new GraphNode();
-						String nodeName=str.substring(0, str.indexOf("[")).trim();
-						///action1
-						graphNode.setName(nodeName);
-						String attr=str.substring(str.indexOf("["), str.indexOf("]")).substring("[".length());
-						///label="Bulb.turn_bulb_on",shape="record",style="filled",fillcolor="beige"
-						String[] features=attr.split(",");
-						for(String feature:features) {
-							String[] featureName=feature.split("=\"");
-							featureName[1]=featureName[1].replaceAll("\"", "");
-							if(featureName[0].equals("shape")) {
-								graphNode.setShape(featureName[1]);
-							}
-							if(featureName[0].equals("label")) {
-								graphNode.setLabel(featureName[1]);
-							}
-							if(featureName[0].equals("fillcolor")) {
-								graphNode.setFillcolor(featureName[1]);
-							}
-						}
-						graphNodes.add(graphNode);
-						graphNodeMap.put(graphNode.getName(), graphNode);
-					}
-					
-				}
-			}
-			
-			
-			for(String string:strings) {
-				if(string.indexOf("->")>0) {
-					////////如trigger9->trigger1[color="red",fontsize="18"]
-					String arrow="";
-					String attrbutes="";
-					String[] features=null;
-					if(string.indexOf("[")>0) {
-						//trigger9->trigger1
-						arrow=string.substring(0, string.indexOf("["));
-						//color="red",fontsize="18"
-						attrbutes=string.substring(string.indexOf("["), string.indexOf("]")).substring("[".length());
-						features=attrbutes.split(",");
-					}else {
-						arrow=string;
-					}
-					//trigger9->trigger1
-					String[] nodes=arrow.split("->");
-					for(int i=0;i<nodes.length;i++) {            
-						nodes[i]=nodes[i].trim();
-					}
-					/////获得前后关系的两个节点的边
-					GraphNode pGraphNode=graphNodeMap.get(nodes[0]);
-					GraphNode cGraphNode=graphNodeMap.get(nodes[1]);
-					GraphNodeArrow pNode=new GraphNodeArrow();
-					GraphNodeArrow cNode=new GraphNodeArrow();
-					pNode.setGraphNode(pGraphNode);
-					cNode.setGraphNode(cGraphNode);
-					if(features!=null) {
-						for(String feature:features) {
-							String[] featureValue=new String[2];
-							featureValue[0]=feature.substring(0,feature.indexOf("="));
-							featureValue[1]=feature.substring(feature.indexOf("=")+1);
-							if(featureValue[0].equals("label")) {
-								String label=featureValue[1].replaceAll("\"", "");
-								pNode.setLabel(label);
-								cNode.setLabel(label);
-							}
-							if(featureValue[0].equals("style")) {
-								String style=featureValue[1].replaceAll("\"", "");
-								pNode.setStyle(style);
-								cNode.setStyle(style);
-							}
-							if(featureValue[0].equals("color")) {
-								String color=featureValue[1].replaceAll("\"", "");
-								pNode.setColor(color);
-								cNode.setColor(color);
-							}
-						}
-					}
-					pGraphNode.addcNodeList(cNode);
-					cGraphNode.addpNodeList(pNode);
-//					for(int i=0;i<graphNodes.size();i++) {
-//						if(nodes[0].equals(graphNodes.get(i).getName())){
-//							//先找到trigger9
-//							for(int j=0;j<graphNodes.size();j++) {
-//								if(nodes[1].equals(graphNodes.get(j).getName())){
-//								//再找到trigger1	
-//									GraphNodeArrow pNode=new GraphNodeArrow();
-//									GraphNodeArrow cNode=new GraphNodeArrow();
-//									pNode.setGraphNode(graphNodes.get(i));
-//									cNode.setGraphNode(graphNodes.get(j));
-//									if(features!=null) {
-//										for(String feature:features) {
-//											String[] featureValue=feature.split("=");
-//											if(featureValue[0].equals("label")) {
-//												String label=featureValue[1].replaceAll("\"", "");
-//												pNode.setLabel(label);
-//												cNode.setLabel(label);
-//											}
-//											if(featureValue[0].equals("style")) {
-//												String style=featureValue[1].replaceAll("\"", "");
-//												pNode.setStyle(style);
-//												cNode.setStyle(style);
-//											}
-//											if(featureValue[0].equals("color")) {
-//												String color=featureValue[1].replaceAll("\"", "");
-//												pNode.setColor(color);
-//												cNode.setColor(color);
-//											}
-//										}
-//									}
-//									graphNodes.get(i).addcNodeList(cNode);
-//									graphNodes.get(j).addpNodeList(pNode);
-//									break;
-//								}
+//	public static List<GraphNode> getIFDNode(String ifdFileName,String ifdPath) {
+//		String dotPath=ifdPath+ifdFileName;
+//		List<GraphNode> graphNodes=new ArrayList<GraphNode>();
+//		HashMap<String,GraphNode> graphNodeMap=new HashMap<>();
+//		try(BufferedReader br=new BufferedReader(new FileReader(dotPath))){
+//			List<String> strings=new ArrayList<String>();
+//			String str="";
+//			while((str=br.readLine())!=null) {
+//				//获得各节点
+//				strings.add(str);
+//				if(str.indexOf("[")>0) {
+//					if(str.indexOf("->")<0) {
+//						///如action1[label="Bulb.turn_bulb_on",shape="record",style="filled",fillcolor="beige"]
+//						///trigger1[label="temperature<=15",shape="oval",style="filled",fillcolor="lightpink"]
+//						GraphNode graphNode=new GraphNode();
+//						String nodeName=str.substring(0, str.indexOf("[")).trim();
+//						///action1
+//						graphNode.setName(nodeName);
+//						String attr=str.substring(str.indexOf("["), str.indexOf("]")).substring("[".length());
+//						///label="Bulb.turn_bulb_on",shape="record",style="filled",fillcolor="beige"
+//						String[] features=attr.split(",");
+//						for(String feature:features) {
+//							String[] featureName=feature.split("=\"");
+//							featureName[1]=featureName[1].replaceAll("\"", "");
+//							if(featureName[0].equals("shape")) {
+//								graphNode.setShape(featureName[1]);
 //							}
-//							break;
+//							if(featureName[0].equals("label")) {
+//								graphNode.setLabel(featureName[1]);
+//							}
+//							if(featureName[0].equals("fillcolor")) {
+//								graphNode.setFillcolor(featureName[1]);
+//							}
+//						}
+//						graphNodes.add(graphNode);
+//						graphNodeMap.put(graphNode.getName(), graphNode);
+//					}
+//
+//				}
+//			}
+//
+//
+//			for(String string:strings) {
+//				if(string.indexOf("->")>0) {
+//					////////如trigger9->trigger1[color="red",fontsize="18"]
+//					String arrow="";
+//					String attrbutes="";
+//					String[] features=null;
+//					if(string.indexOf("[")>0) {
+//						//trigger9->trigger1
+//						arrow=string.substring(0, string.indexOf("["));
+//						//color="red",fontsize="18"
+//						attrbutes=string.substring(string.indexOf("["), string.indexOf("]")).substring("[".length());
+//						features=attrbutes.split(",");
+//					}else {
+//						arrow=string;
+//					}
+//					//trigger9->trigger1
+//					String[] nodes=arrow.split("->");
+//					for(int i=0;i<nodes.length;i++) {
+//						nodes[i]=nodes[i].trim();
+//					}
+//					/////获得前后关系的两个节点的边
+//					GraphNode pGraphNode=graphNodeMap.get(nodes[0]);
+//					GraphNode cGraphNode=graphNodeMap.get(nodes[1]);
+//					GraphNodeArrow pNode=new GraphNodeArrow();
+//					GraphNodeArrow cNode=new GraphNodeArrow();
+//					pNode.setGraphNode(pGraphNode);
+//					cNode.setGraphNode(cGraphNode);
+//					if(features!=null) {
+//						for(String feature:features) {
+//							String[] featureValue=new String[2];
+//							featureValue[0]=feature.substring(0,feature.indexOf("="));
+//							featureValue[1]=feature.substring(feature.indexOf("=")+1);
+//							if(featureValue[0].equals("label")) {
+//								String label=featureValue[1].replaceAll("\"", "");
+//								pNode.setLabel(label);
+//								cNode.setLabel(label);
+//							}
+//							if(featureValue[0].equals("style")) {
+//								String style=featureValue[1].replaceAll("\"", "");
+//								pNode.setStyle(style);
+//								cNode.setStyle(style);
+//							}
+//							if(featureValue[0].equals("color")) {
+//								String color=featureValue[1].replaceAll("\"", "");
+//								pNode.setColor(color);
+//								cNode.setColor(color);
+//							}
 //						}
 //					}
-				}
-			}
-			
-			
-		}catch(IOException e) {
-			e.printStackTrace();
-		}
-		
-		return graphNodes;
-	}
+//					pGraphNode.addcNodeList(cNode);
+//					cGraphNode.addpNodeList(pNode);
+////					for(int i=0;i<graphNodes.size();i++) {
+////						if(nodes[0].equals(graphNodes.get(i).getName())){
+////							//先找到trigger9
+////							for(int j=0;j<graphNodes.size();j++) {
+////								if(nodes[1].equals(graphNodes.get(j).getName())){
+////								//再找到trigger1
+////									GraphNodeArrow pNode=new GraphNodeArrow();
+////									GraphNodeArrow cNode=new GraphNodeArrow();
+////									pNode.setGraphNode(graphNodes.get(i));
+////									cNode.setGraphNode(graphNodes.get(j));
+////									if(features!=null) {
+////										for(String feature:features) {
+////											String[] featureValue=feature.split("=");
+////											if(featureValue[0].equals("label")) {
+////												String label=featureValue[1].replaceAll("\"", "");
+////												pNode.setLabel(label);
+////												cNode.setLabel(label);
+////											}
+////											if(featureValue[0].equals("style")) {
+////												String style=featureValue[1].replaceAll("\"", "");
+////												pNode.setStyle(style);
+////												cNode.setStyle(style);
+////											}
+////											if(featureValue[0].equals("color")) {
+////												String color=featureValue[1].replaceAll("\"", "");
+////												pNode.setColor(color);
+////												cNode.setColor(color);
+////											}
+////										}
+////									}
+////									graphNodes.get(i).addcNodeList(cNode);
+////									graphNodes.get(j).addpNodeList(pNode);
+////									break;
+////								}
+////							}
+////							break;
+////						}
+////					}
+//				}
+//			}
+//
+//
+//		}catch(IOException e) {
+//			e.printStackTrace();
+//		}
+//
+//		return graphNodes;
+//	}
 
 	/**
 	 * 解析IFD的节点和边，但获得instance节点
@@ -1400,6 +1401,8 @@ public class StaticAnalysisService {
 		BufferedWriter bw=new BufferedWriter(new FileWriter(filePath+ifdFileName));
 		bw.write(sb.toString());
 		bw.close();
+
+		////将ifd.dot转为pdf
 	}
 	///找到指向trigger的节点和边
 	public static void getToTriggerDot(Trigger trigger, HashMap<String,Trigger> triggerMap, HashMap<String,Action> actionMap, HashMap<String,Instance> interactiveInstanceMap,StringBuilder sb,String compare){
@@ -1852,26 +1855,26 @@ public class StaticAnalysisService {
 	 * 获得一条TAP规则能触发的其他TAP规则
 	 * */
 	///获得各规则能触发的所有规则
-	public static List<List<Rule>> getRulesTriggeredRules(HashMap<String,Rule> ruleMap,List<GraphNode> graphNodes){
-		List<List<Rule>> rulesTriggeredRules=new ArrayList<>();
-		HashMap<String,List<Rule>> rulesTriggeredRulesMap=new HashMap<>();
-		for(GraphNode graphNode:graphNodes) {
-			if(graphNode.getShape().equals("hexagon")) {
-				////初步获得每条规则能触发的规则
-				List<Rule> triggeredRules=getRuleTriggeredRules(ruleMap, graphNode, graphNodes);
-				rulesTriggeredRules.add(triggeredRules);
-				rulesTriggeredRulesMap.put(triggeredRules.get(0).getRuleName(), triggeredRules);
-			}
-		}
-		for(List<Rule> ruleTriggeredRules:rulesTriggeredRules) {
-			for(int i=1;i<ruleTriggeredRules.size();i++) {
-				List<Rule> init=new ArrayList<>();
-				////获得每条规则能触发的所有规则
-				getRuleTriggeredRulesAll(ruleTriggeredRules, init,rulesTriggeredRulesMap);				
-			}
-		}
-		return rulesTriggeredRules;
-	}
+//	public static List<List<Rule>> getRulesTriggeredRules(HashMap<String,Rule> ruleMap,List<GraphNode> graphNodes){
+//		List<List<Rule>> rulesTriggeredRules=new ArrayList<>();
+//		HashMap<String,List<Rule>> rulesTriggeredRulesMap=new HashMap<>();
+//		for(GraphNode graphNode:graphNodes) {
+//			if(graphNode.getShape().equals("hexagon")) {
+//				////初步获得每条规则能触发的规则
+//				List<Rule> triggeredRules=getRuleTriggeredRules(ruleMap, graphNode, graphNodes);
+//				rulesTriggeredRules.add(triggeredRules);
+//				rulesTriggeredRulesMap.put(triggeredRules.get(0).getRuleName(), triggeredRules);
+//			}
+//		}
+//		for(List<Rule> ruleTriggeredRules:rulesTriggeredRules) {
+//			for(int i=1;i<ruleTriggeredRules.size();i++) {
+//				List<Rule> init=new ArrayList<>();
+//				////获得每条规则能触发的所有规则
+//				getRuleTriggeredRulesAll(ruleTriggeredRules, init,rulesTriggeredRulesMap);
+//			}
+//		}
+//		return rulesTriggeredRules;
+//	}
 	
 	////根据最初获得的每条规则能触发的规则获得每条规则能触发的所有规则
 	public static void getRuleTriggeredRulesAll(List<Rule> ruleTriggeredRules,List<Rule> lastRuleTriggeredRules,HashMap<String,List<Rule>> rulesTriggeredRulesMap) {
@@ -1898,88 +1901,44 @@ public class StaticAnalysisService {
 	}
 	
 	/////获得每条规则能触发的规则数量,先找到每条规则直接能触发的规则
-	public static List<Rule> getRuleTriggeredRules(HashMap<String,Rule> ruleMap,GraphNode ruleNode,List<GraphNode> graphNodes){
-		///存本身以及本身能触发的ruleNodes
-		List<GraphNode> triggeredRuleNodes=new ArrayList<>();
-		triggeredRuleNodes.add(ruleNode);
-		List<GraphNode> triggerNodes=new ArrayList<>();
-		List<GraphNode> actionNodes=new ArrayList<>();
-		for(GraphNodeArrow pArrow:ruleNode.getpNodeList()) {
-			triggerNodes.add(pArrow.getGraphNode());
-		}
-		for(GraphNodeArrow cArrow:ruleNode.getcNodeList()) {
-			actionNodes.add(cArrow.getGraphNode());
-		}
-		////分别找到可能引发的其他rules
-		for(GraphNode triggerNode:triggerNodes) {
-			for(GraphNodeArrow cArrow:triggerNode.getcNodeList()) {
-				if(cArrow.getGraphNode().getShape().equals("hexagon")&&!cArrow.getGraphNode().getName().equals(ruleNode.getName())) {
-					//rule
-					//如ti∈Ti存在黑色实线后继节点，即为rule Rj≠Ri，获得Rj的所有trigger节点Tj，判断Tj在Ri的情况下能否满足
-					GraphNode otherRuleNode=cArrow.getGraphNode();
-					boolean canAllBeTriggered=true;
-					for(GraphNodeArrow pArrow:otherRuleNode.getpNodeList()) {
-						if(!canTriggerBeTriggered(ruleNode, pArrow.getGraphNode(), graphNodes)) {
-							canAllBeTriggered=false;
-						}
-					}
-					if(canAllBeTriggered) {
-						triggeredRuleNodes.add(otherRuleNode);
-					}
-				}else if(cArrow.getGraphNode().getShape().equals("oval")) {
-					//如ti∈Ti存在红色实线后继节点，即为trigger tj，获得tj的黑色实线后继节点rule Rj，获得Rj的所有trigger节点Tj，判断Tj在Ri的情况下能否满足
-					for(GraphNodeArrow ccArrow:cArrow.getGraphNode().getcNodeList()) {
-						if(ccArrow.getGraphNode().getShape().equals("hexagon")&&!ccArrow.getGraphNode().getName().equals(ruleNode.getName())) {
-							///rule
-							GraphNode otherRuleNode=ccArrow.getGraphNode();
-							boolean canAllBeTriggered=true;
-							for(GraphNodeArrow pArrow:otherRuleNode.getpNodeList()) {
-								//trigger
-								//看这条trigger能否满足
-								if(!canTriggerBeTriggered(ruleNode, pArrow.getGraphNode(), graphNodes)) {
-									canAllBeTriggered=false;
-								}
-							}
-							if(canAllBeTriggered) {
-								triggeredRuleNodes.add(otherRuleNode);
-							}
-						}
-					}
-				}
-			}
-		}
-		for(GraphNode actionNode:actionNodes) {
-			for(GraphNodeArrow cArrow:actionNode.getcNodeList()) {
-				if(cArrow.getGraphNode().getShape().equals("oval")) {
-					//trigger
-					//如ai∈Ai存在红色实线后继节点，即为trigger tj，获得tj的黑色实线后继节点rule Rj，获得Rj的所有trigger节点Tj，判断Tj在Ri的情况下能否满足
-					for(GraphNodeArrow ccArrow:cArrow.getGraphNode().getcNodeList()) {
-						if(ccArrow.getGraphNode().getShape().equals("hexagon")&&!ccArrow.getGraphNode().getName().equals(ruleNode.getName())) {
-							//rule
-							GraphNode otherRuleNode=ccArrow.getGraphNode();
-							boolean canAllBeTriggered=true;
-							for(GraphNodeArrow pArrow:otherRuleNode.getpNodeList()) {
-								//trigger
-								//看这条trigger能否满足
-								if(!canTriggerBeTriggered(ruleNode, pArrow.getGraphNode(), graphNodes)) {
-									canAllBeTriggered=false;
-								}
-							}
-							if(canAllBeTriggered) {
-								triggeredRuleNodes.add(otherRuleNode);
-							}
-						}
-					}
-				}
-//				else if(cArrow.getGraphNode().getShape().equals("oval")&&cArrow.getStyle().equals("dashed")) {
-//					//trigger
-//					//如ai∈Ai存在红色虚线后继节点，即为trigger tj，判断tj在Ri情况下能否满足，如能满足，获得tj的黑色实线后继节点rule Rj，获得Rj的所有trigger节点Tj，判断Tj在Ri的情况下能否满足
-//					if(canTriggerBeTriggered(ruleNode, cArrow.getGraphNode(), graphNodes))
+//	public static List<Rule> getRuleTriggeredRules(HashMap<String,Rule> ruleMap,GraphNode ruleNode,List<GraphNode> graphNodes){
+//		///存本身以及本身能触发的ruleNodes
+//		List<GraphNode> triggeredRuleNodes=new ArrayList<>();
+//		triggeredRuleNodes.add(ruleNode);
+//		List<GraphNode> triggerNodes=new ArrayList<>();
+//		List<GraphNode> actionNodes=new ArrayList<>();
+//		for(GraphNodeArrow pArrow:ruleNode.getpNodeList()) {
+//			triggerNodes.add(pArrow.getGraphNode());
+//		}
+//		for(GraphNodeArrow cArrow:ruleNode.getcNodeList()) {
+//			actionNodes.add(cArrow.getGraphNode());
+//		}
+//		////分别找到可能引发的其他rules
+//		for(GraphNode triggerNode:triggerNodes) {
+//			for(GraphNodeArrow cArrow:triggerNode.getcNodeList()) {
+//				if(cArrow.getGraphNode().getShape().equals("hexagon")&&!cArrow.getGraphNode().getName().equals(ruleNode.getName())) {
+//					//rule
+//					//如ti∈Ti存在黑色实线后继节点，即为rule Rj≠Ri，获得Rj的所有trigger节点Tj，判断Tj在Ri的情况下能否满足
+//					GraphNode otherRuleNode=cArrow.getGraphNode();
+//					boolean canAllBeTriggered=true;
+//					for(GraphNodeArrow pArrow:otherRuleNode.getpNodeList()) {
+//						if(!canTriggerBeTriggered(ruleNode, pArrow.getGraphNode(), graphNodes)) {
+//							canAllBeTriggered=false;
+//						}
+//					}
+//					if(canAllBeTriggered) {
+//						triggeredRuleNodes.add(otherRuleNode);
+//					}
+//				}else if(cArrow.getGraphNode().getShape().equals("oval")) {
+//					//如ti∈Ti存在红色实线后继节点，即为trigger tj，获得tj的黑色实线后继节点rule Rj，获得Rj的所有trigger节点Tj，判断Tj在Ri的情况下能否满足
 //					for(GraphNodeArrow ccArrow:cArrow.getGraphNode().getcNodeList()) {
 //						if(ccArrow.getGraphNode().getShape().equals("hexagon")&&!ccArrow.getGraphNode().getName().equals(ruleNode.getName())) {
+//							///rule
 //							GraphNode otherRuleNode=ccArrow.getGraphNode();
 //							boolean canAllBeTriggered=true;
 //							for(GraphNodeArrow pArrow:otherRuleNode.getpNodeList()) {
+//								//trigger
+//								//看这条trigger能否满足
 //								if(!canTriggerBeTriggered(ruleNode, pArrow.getGraphNode(), graphNodes)) {
 //									canAllBeTriggered=false;
 //								}
@@ -1990,14 +1949,58 @@ public class StaticAnalysisService {
 //						}
 //					}
 //				}
-			}
-		}
-		List<Rule> ruleList=new ArrayList<>();
-		for(GraphNode triggeredRuleNode:triggeredRuleNodes) {
-			ruleList.add(ruleMap.get(triggeredRuleNode.getName()));
-		}
-		return ruleList;
-	}
+//			}
+//		}
+//		for(GraphNode actionNode:actionNodes) {
+//			for(GraphNodeArrow cArrow:actionNode.getcNodeList()) {
+//				if(cArrow.getGraphNode().getShape().equals("oval")) {
+//					//trigger
+//					//如ai∈Ai存在红色实线后继节点，即为trigger tj，获得tj的黑色实线后继节点rule Rj，获得Rj的所有trigger节点Tj，判断Tj在Ri的情况下能否满足
+//					for(GraphNodeArrow ccArrow:cArrow.getGraphNode().getcNodeList()) {
+//						if(ccArrow.getGraphNode().getShape().equals("hexagon")&&!ccArrow.getGraphNode().getName().equals(ruleNode.getName())) {
+//							//rule
+//							GraphNode otherRuleNode=ccArrow.getGraphNode();
+//							boolean canAllBeTriggered=true;
+//							for(GraphNodeArrow pArrow:otherRuleNode.getpNodeList()) {
+//								//trigger
+//								//看这条trigger能否满足
+//								if(!canTriggerBeTriggered(ruleNode, pArrow.getGraphNode(), graphNodes)) {
+//									canAllBeTriggered=false;
+//								}
+//							}
+//							if(canAllBeTriggered) {
+//								triggeredRuleNodes.add(otherRuleNode);
+//							}
+//						}
+//					}
+//				}
+////				else if(cArrow.getGraphNode().getShape().equals("oval")&&cArrow.getStyle().equals("dashed")) {
+////					//trigger
+////					//如ai∈Ai存在红色虚线后继节点，即为trigger tj，判断tj在Ri情况下能否满足，如能满足，获得tj的黑色实线后继节点rule Rj，获得Rj的所有trigger节点Tj，判断Tj在Ri的情况下能否满足
+////					if(canTriggerBeTriggered(ruleNode, cArrow.getGraphNode(), graphNodes))
+////					for(GraphNodeArrow ccArrow:cArrow.getGraphNode().getcNodeList()) {
+////						if(ccArrow.getGraphNode().getShape().equals("hexagon")&&!ccArrow.getGraphNode().getName().equals(ruleNode.getName())) {
+////							GraphNode otherRuleNode=ccArrow.getGraphNode();
+////							boolean canAllBeTriggered=true;
+////							for(GraphNodeArrow pArrow:otherRuleNode.getpNodeList()) {
+////								if(!canTriggerBeTriggered(ruleNode, pArrow.getGraphNode(), graphNodes)) {
+////									canAllBeTriggered=false;
+////								}
+////							}
+////							if(canAllBeTriggered) {
+////								triggeredRuleNodes.add(otherRuleNode);
+////							}
+////						}
+////					}
+////				}
+//			}
+//		}
+//		List<Rule> ruleList=new ArrayList<>();
+//		for(GraphNode triggeredRuleNode:triggeredRuleNodes) {
+//			ruleList.add(ruleMap.get(triggeredRuleNode.getName()));
+//		}
+//		return ruleList;
+//	}
 	
 //	////
 //	public static List<GraphNode> canBeTriggered(GraphNode ruleNode,GraphNode otherRuleNode,List<GraphNode> graphNodes){
@@ -2066,77 +2069,77 @@ public class StaticAnalysisService {
 //	}
 	
 	////判断trigger在这条rule的前提下能否触发
-	public static boolean canTriggerBeTriggered(GraphNode ruleNode,GraphNode triggerNode,List<GraphNode> graphNodes) {
-		//判断在Ri的Ti和Ai下，rule Rj(≠Ri)的triggers Tj能否满足可分解为：
-		//判断在Ri的Ti和Ai下，trigger tj∈Tj能否满足
-
-		List<GraphNode> triggerNodes=new ArrayList<>();
-		List<GraphNode> actionNodes=new ArrayList<>();
-		for(GraphNodeArrow pArrow:ruleNode.getpNodeList()) {
-			triggerNodes.add(pArrow.getGraphNode());
-		}
-		for(GraphNodeArrow cArrow:ruleNode.getcNodeList()) {
-			actionNodes.add(cArrow.getGraphNode());
-		}
-		if(triggerNodes.contains(triggerNode)) {
-			//如果tj属于Ti，则tj能满足
-			return true;
-		}
-		for(GraphNodeArrow pArrow:triggerNode.getpNodeList()) {
-			GraphNode pGraphNode=pArrow.getGraphNode();
-			if(pGraphNode.getShape().equals("oval")) {
-				//如果tj有红色实线的前驱trigger tk节点，tk属于Ti，则tj能满足
-				if(triggerNodes.contains(pGraphNode)) {
-					return true;
-				}
-			}else if(pGraphNode.getShape().equals("record")&&pArrow.getStyle().equals("")) {
-				//如果tj有红色实线的前驱action ak节点，ak属于Ai，则tj能满足
-				if(actionNodes.contains(pGraphNode)) {
-					return true;
-				}
-			}else if(pGraphNode.getShape().equals("record")&&pArrow.getStyle().equals("dashed")) {
-				//如果tj有红色虚线的前驱action ak节点， ak属于Ai，查看tj红色实线的后继trigger tm节点（tm与tj涉及相同属性，
-				//连接同一sensor或device），如果存在tm会触发某条规则Rm，Rm中存在某个action am，am与ak属于同一设备，且am到tj没有连线，
-				//则ak无法触发tj，如果tj的所有红色虚线的前驱action 都无法触发tj，则tj不能满足，否则tj能满足
-				if(!actionNodes.contains(pGraphNode)) {
-					continue;
-				}
-				boolean canTrigger=false;
-				GraphNode deviceNode=new GraphNode();
-				for(GraphNodeArrow apArrow:pGraphNode.getpNodeList()) {
-					if(apArrow.getGraphNode().getShape().equals("doubleoctagon")) {
-						///找到对应的device
-						deviceNode=apArrow.getGraphNode();
-						break;
-					}
-				}
-				if(actionNodes.contains(pGraphNode)) {
-					// ak属于Ai
-					canTrigger=true;
-					for(GraphNodeArrow cArrow:triggerNode.getcNodeList()) {
-						if(cArrow.getGraphNode().getShape().equals("oval")) {
-							///trigger
-							for(GraphNodeArrow ccArrow:cArrow.getGraphNode().getcNodeList()) {
-								///rule
-								for(GraphNodeArrow cccArrow:ccArrow.getGraphNode().getcNodeList()) {
-									///action
-									for(GraphNodeArrow pcccArrow:cccArrow.getGraphNode().getpNodeList()) {
-										if(pcccArrow.getGraphNode().getShape().equals("doubleoctagon")) {
-											////device
-											if(pcccArrow.getGraphNode().getName().equals(deviceNode.getName())&&cccArrow.getGraphNode()!=pGraphNode) {
-												///设备相同但是action不同
-												canTrigger=false;
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-				return canTrigger;
-			}
-		}
-		return false;
-	}
+//	public static boolean canTriggerBeTriggered(GraphNode ruleNode,GraphNode triggerNode,List<GraphNode> graphNodes) {
+//		//判断在Ri的Ti和Ai下，rule Rj(≠Ri)的triggers Tj能否满足可分解为：
+//		//判断在Ri的Ti和Ai下，trigger tj∈Tj能否满足
+//
+//		List<GraphNode> triggerNodes=new ArrayList<>();
+//		List<GraphNode> actionNodes=new ArrayList<>();
+//		for(GraphNodeArrow pArrow:ruleNode.getpNodeList()) {
+//			triggerNodes.add(pArrow.getGraphNode());
+//		}
+//		for(GraphNodeArrow cArrow:ruleNode.getcNodeList()) {
+//			actionNodes.add(cArrow.getGraphNode());
+//		}
+//		if(triggerNodes.contains(triggerNode)) {
+//			//如果tj属于Ti，则tj能满足
+//			return true;
+//		}
+//		for(GraphNodeArrow pArrow:triggerNode.getpNodeList()) {
+//			GraphNode pGraphNode=pArrow.getGraphNode();
+//			if(pGraphNode.getShape().equals("oval")) {
+//				//如果tj有红色实线的前驱trigger tk节点，tk属于Ti，则tj能满足
+//				if(triggerNodes.contains(pGraphNode)) {
+//					return true;
+//				}
+//			}else if(pGraphNode.getShape().equals("record")&&pArrow.getStyle().equals("")) {
+//				//如果tj有红色实线的前驱action ak节点，ak属于Ai，则tj能满足
+//				if(actionNodes.contains(pGraphNode)) {
+//					return true;
+//				}
+//			}else if(pGraphNode.getShape().equals("record")&&pArrow.getStyle().equals("dashed")) {
+//				//如果tj有红色虚线的前驱action ak节点， ak属于Ai，查看tj红色实线的后继trigger tm节点（tm与tj涉及相同属性，
+//				//连接同一sensor或device），如果存在tm会触发某条规则Rm，Rm中存在某个action am，am与ak属于同一设备，且am到tj没有连线，
+//				//则ak无法触发tj，如果tj的所有红色虚线的前驱action 都无法触发tj，则tj不能满足，否则tj能满足
+//				if(!actionNodes.contains(pGraphNode)) {
+//					continue;
+//				}
+//				boolean canTrigger=false;
+//				GraphNode deviceNode=new GraphNode();
+//				for(GraphNodeArrow apArrow:pGraphNode.getpNodeList()) {
+//					if(apArrow.getGraphNode().getShape().equals("doubleoctagon")) {
+//						///找到对应的device
+//						deviceNode=apArrow.getGraphNode();
+//						break;
+//					}
+//				}
+//				if(actionNodes.contains(pGraphNode)) {
+//					// ak属于Ai
+//					canTrigger=true;
+//					for(GraphNodeArrow cArrow:triggerNode.getcNodeList()) {
+//						if(cArrow.getGraphNode().getShape().equals("oval")) {
+//							///trigger
+//							for(GraphNodeArrow ccArrow:cArrow.getGraphNode().getcNodeList()) {
+//								///rule
+//								for(GraphNodeArrow cccArrow:ccArrow.getGraphNode().getcNodeList()) {
+//									///action
+//									for(GraphNodeArrow pcccArrow:cccArrow.getGraphNode().getpNodeList()) {
+//										if(pcccArrow.getGraphNode().getShape().equals("doubleoctagon")) {
+//											////device
+//											if(pcccArrow.getGraphNode().getName().equals(deviceNode.getName())&&cccArrow.getGraphNode()!=pGraphNode) {
+//												///设备相同但是action不同
+//												canTrigger=false;
+//											}
+//										}
+//									}
+//								}
+//							}
+//						}
+//					}
+//				}
+//				return canTrigger;
+//			}
+//		}
+//		return false;
+//	}
 }

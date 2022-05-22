@@ -4,11 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 某设备在整个仿真过程中的冲突
+ * 某个场景下，某设备在整个仿真过程中的冲突
  * */
 public class DeviceConflict {
     private String instanceName="";   ///实例名,设备名
-    private List<List<Double>> conflictTimeValues=new ArrayList<>();  ///整个仿真过程中所有冲突发生的时间和冲突的值，每次冲突时conflictTimeValue.get(0)=time,conflictTimeValue.get(1...)=value
+    private List<List<Double>> conflictTimeValues=new ArrayList<>();  ///整个仿真过程中所有【冲突发生的时间和冲突的状态值】，每次冲突时conflictTimeValue.get(0)=time,conflictTimeValue.get(1...)=value
 
     public String getInstanceName() {
         return instanceName;
