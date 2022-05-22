@@ -3,7 +3,13 @@ package com.example.demo.bean;
 import java.util.ArrayList;
 import java.util.List;
 /**
- * 实例层
+ * 实例层信息
+ * 人的实例：最多一个
+ * 环境属性实体的实例：最多一个
+ * 各不确定实体的实例，例如雨：分别最多一个
+ * 各网络服务实例：分别最多一个
+ * 各设备实例：可多个
+ * 各传感器实例：分别最多一个
  * */
 public class InstanceLayer {
     private HumanInstance humanInstance=new HumanInstance();

@@ -2,15 +2,18 @@ package com.example.demo.bean;
 
 import java.util.ArrayList;
 import java.util.List;
-
+/**
+ * uppaal上的模型类
+ * 包括模型类、模型声明、模型参数、初始节点、节点及边
+ * */
 public class ModelGraph {
 	//////表示uppaal模型的类
 	public static class TemplGraph {
 		private String name="";   /////模型名
-		private String declaration="";  
-		private String parameter="";
-		private String init="";   
-		private List<TemplGraphNode> templGraphNodes=new ArrayList<TemplGraphNode>();
+		private String declaration="";   ///模型声明
+		private String parameter="";  ///模型参数
+		private String init="";   ///初始节点id
+		private List<TemplGraphNode> templGraphNodes=new ArrayList<TemplGraphNode>();  ///各节点和边的关系
 		public String getName() {
 			return name;
 		}
@@ -50,13 +53,13 @@ public class ModelGraph {
 	
 	/////节点类
 	public static class TemplGraphNode {
-		public String name="";
-		public String id="";
-		public String invariant="";
-		public String style="";       //location or branchpoint or committed  urgent?
-		public boolean flag=false;
-		public List<TemplTransition> inTransitions=new ArrayList<TemplTransition>();
-		public List<TemplTransition> outTransitions=new ArrayList<TemplTransition>();
+		public String name="";  ///节点名
+		public String id="";  ///节点id
+		public String invariant="";  ///节点上的不变式
+		public String style="";       //节点类型 location or branchpoint or committed  urgent?
+		public boolean flag=false;   ///表示节点是否被访问过
+		public List<TemplTransition> inTransitions=new ArrayList<TemplTransition>();  ///节点的入边
+		public List<TemplTransition> outTransitions=new ArrayList<TemplTransition>();  ///节点的出边
 		public String getName() {
 			return name;
 		}
@@ -103,13 +106,13 @@ public class ModelGraph {
 	
 	/////边类
 	public static class TemplTransition {
-		public String source="";
-		public String target="";
-		public TemplGraphNode node=new TemplGraphNode();
-		public String assignment="";
-		public String synchronisation="";
-		public String guard="";
-		public String probability="";     //source or target中有branchpoint则有这一项
+		public String source="";  ///源节点id
+		public String target="";  ///目标节点id
+		public TemplGraphNode node=new TemplGraphNode();  ///另一个节点
+		public String assignment="";  ///边上的更新
+		public String synchronisation=""; ///边上的同步信号
+		public String guard="";  ///边上的卫式
+		public String probability="";     //边上的权重，source or target中有branchpoint则有这一项
 		public String getSource() {
 			return source;
 		}

@@ -3,6 +3,10 @@ package com.example.demo.bean;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 对应前端中的场景树结构
+ * 是树结构
+ * */
 public class ScenarioTree {
 	public static class ScenesTree {
 		////场景树
@@ -37,7 +41,7 @@ public class ScenarioTree {
 	public static class SceneChild {
 		////场景树子节点的名字和其子节点取值
 		private String name="";     ////场景名
-		private List<AttributeValue> children=new ArrayList<AttributeValue>();
+		private List<AttributeValue> children=new ArrayList<AttributeValue>();  ///各属性取值
 		
 		
 		public void addChildren(String attributeName,double value) {

@@ -4,7 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-
+/**
+ * 对应信息流图中规则节点，无用的类
+ * */
 public class RuleNode {
 	/////用于locate error ，当前规则和会引发这个规则的其他规则
 	private Rule rule=new Rule();   //////当前规则

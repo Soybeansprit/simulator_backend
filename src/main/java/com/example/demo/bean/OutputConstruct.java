@@ -2,7 +2,9 @@ package com.example.demo.bean;
 
 import java.util.ArrayList;
 import java.util.List;
-
+/**
+ * 返回到前端的各输出类
+ * */
 public class OutputConstruct {
 //	public static class EnvironmentStatic{
 //		private EnvironmentModel environmentModel;

@@ -5,12 +5,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class AddressService {
  
-	public final static String MODEL_FILE_PATH= "D:\\workspace\\modelFile\\";
-	public final static String UPPAAL_PATH="D:\\tools\\uppaal-4.1.24\\uppaal-4.1.24\\bin-Windows\\";
-	public final static String IFD_FILE_PATH="D:\\workspace\\ifdFile\\";
-	public final static String IFD_FILE_NAME="ifd.dot";
-	public final static String SIMULATE_RESULT_FILE_PATH="D:\\workspace\\resultFile\\";
-	public final static String SYSTEM="window";
+	public final static String MODEL_FILE_PATH= "D:\\workspace\\modelFile\\";   ///各模型文件的路径
+	public final static String UPPAAL_PATH="D:\\tools\\uppaal-4.1.24\\uppaal-4.1.24\\bin-Windows\\";  ///uppaal可执行文件路径
+	public final static String IFD_FILE_PATH="D:\\workspace\\ifdFile\\"; ///信息流图存放路径
+	public final static String IFD_FILE_NAME="ifd.dot";  ///信息流图名
+	public final static String SIMULATE_RESULT_FILE_PATH="D:\\workspace\\resultFile\\";  ///仿真结果文件路径
+	public final static String SYSTEM="window";  ////操作系统类型
 
 //	public final static String MODEL_FILE_PATH= "/root/TAPs-Simulator/data/modelFile/";
 //	public final static String UPPAAL_PATH="/root/TAPs-Simulator/tool/uppaal64-4.1.24/bin-Linux/";

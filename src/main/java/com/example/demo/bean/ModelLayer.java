@@ -5,7 +5,7 @@ import java.util.List;
 
 /**
  * 模型层
- * 包括 人、不确定实体、包含各环境属性的实体（air）、设备、传感器
+ * 包括 人、不确定实体、环境属性实体（air）、设备、传感器
  * */
 public class ModelLayer {
     private Human human=new Human();  ///一个人类型模型

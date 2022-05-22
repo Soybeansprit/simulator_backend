@@ -49,7 +49,7 @@ public class Trigger {
 	private String sensor="";   ///对应的sensor                                                         ///////temperature_sensor     //////                ///person_sensor
 	private String[] triggerForm=new String[3];  /// attribute<(<=,>,>=)value or Instance.state        ///////temperature >= 30       //////Bulb_0 . bon   ///Emma . lobby
 	private String forTime="";  ///表示for多长时间  instance.state for 3这种
-	private List<Rule> relatedRules=new ArrayList<>();
+	private List<Rule> relatedRules=new ArrayList<>();  ///包含该trigger的规则
 
 	public String getTriggerContent() {
 		return triggerContent;

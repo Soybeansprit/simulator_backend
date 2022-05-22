@@ -1,5 +1,7 @@
 package com.example.demo.bean;
-
+/**
+ * 感知器实例
+ * */
 public class SensorInstance extends Instance{
     private SensorType sensorType=new SensorType();
 
