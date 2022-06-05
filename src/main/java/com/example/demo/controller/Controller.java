@@ -29,6 +29,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.demo.bean.IFDGraph.GraphNode;
 import com.example.demo.bean.OutputConstruct.DeclarationQueryResult;
+
+import javax.servlet.http.HttpServletResponse;
 //import com.example.demo.bean.OutputConstruct.EnvironmentStatic;
 //import com.example.demo.bean.ScenarioTree.ScenesTree;
 //import com.example.demo.bean.InputConstruct.EnvironmentRule;
@@ -157,6 +159,21 @@ public class Controller {
 		interactiveLayerAndRules.setRules(rules);
 		interactiveLayerAndRules.setIfdFileName(ifdFileName);
 		return interactiveLayerAndRules;
+	}
+
+	/**
+	 * 获得信息流图png
+	 * */
+	@RequestMapping(value="/getIFDPng",method=RequestMethod.GET)
+	@ResponseBody
+	public void getIFDPng(String pngFilePath, HttpServletResponse response){
+//		String ifdFileName=fileNames.get(0);
+//		String pngFileName=ifdFileName.substring(0,ifdFileName.indexOf(".dot"))+".png";
+//		StaticAnalysisService.generateIFDPng(AddressService.IFD_FILE_PATH,ifdFileName,AddressService.ASSETS_FILE_PATH,pngFileName);
+//		List<String> pngResults=new ArrayList<>();
+//		pngResults.add(pngFileName);
+		StaticAnalysisService.accessPng(pngFilePath,response);
+
 	}
 
 	/**

@@ -1,10 +1,6 @@
 package com.example.demo.service;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 import com.example.demo.bean.*;
@@ -14,6 +10,8 @@ import org.springframework.stereotype.Service;
 //import com.example.demo.bean.DeviceType.StateEffect;
 import com.example.demo.bean.IFDGraph.GraphNode;
 import com.example.demo.bean.IFDGraph.GraphNodeArrow;
+
+import javax.servlet.http.HttpServletResponse;
 
 @Service
 public class StaticAnalysisService {	
@@ -1402,8 +1400,60 @@ public class StaticAnalysisService {
 		bw.write(sb.toString());
 		bw.close();
 
-		////将ifd.dot转为pdf
+		////将ifd.dot转为png
+		String pngFileName=ifdFileName.substring(0,ifdFileName.indexOf(".dot"))+".png";
+		generateIFDPng(AddressService.IFD_FILE_PATH,ifdFileName,AddressService.IFD_FILE_PATH,pngFileName);
 	}
+
+	///生成IFD的png格式图形
+	public static void generateIFDPng(String ifdFilePath,String ifdFileName,String pngFilePath,String pngFileName){
+		String command=String.format("dot -Tpng %s -o %s",ifdFilePath+ifdFileName,pngFilePath+pngFileName);
+		InputStream error = null;
+		try{
+			Process process = Runtime.getRuntime().exec(command);
+			error = process.getErrorStream();
+			process.waitFor();
+		}catch (Exception ex){
+			if (error != null) {
+				try {
+					error.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			ex.printStackTrace();
+		}
+	}
+	///访问图片资源
+	public static void accessPng(String fileNamePath, HttpServletResponse response){
+		FileInputStream is=null;
+		File filePic=new File(fileNamePath);
+		System.out.println("png");
+		if (filePic.exists()){
+			try{
+				is=new FileInputStream(filePic);
+			}catch (FileNotFoundException e){
+				e.printStackTrace();
+			}
+			response.setContentType("image/png");
+			if(is!=null){
+				try{
+					int i=is.available();
+					byte data[]=new byte[i];
+					is.read(data);
+					is.close();
+					response.setContentType("image/png");
+					OutputStream toClient=response.getOutputStream();
+					toClient.write(data);
+					toClient.close();
+				}catch (IOException e){
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
+
 	///找到指向trigger的节点和边
 	public static void getToTriggerDot(Trigger trigger, HashMap<String,Trigger> triggerMap, HashMap<String,Action> actionMap, HashMap<String,Instance> interactiveInstanceMap,StringBuilder sb,String compare){
 		///找其他蕴含该trigger的trigger，即otherTrigger是trigger的子集
